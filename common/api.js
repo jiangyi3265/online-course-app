@@ -1,5 +1,5 @@
 const TOKEN_KEY = 'apiToken'
-const LOCAL_API_ORIGIN = 'http://127.0.0.1:8080'
+const LOCAL_API_ORIGIN = 'http://127.0.0.1:8007'
 const APP_API_PATH = '/course/app'
 const ADMIN_API_PATH = '/course/admin'
 

@@ -23,12 +23,12 @@
 ## 快速启动
 
 ```powershell
-# 先启动 online-course-backend，默认监听 8080
+# 先启动 online-course-backend，默认监听 8007
 npm install
 npm run dev:h5
 ```
 
-本地开发默认请求 `http://127.0.0.1:8080/course/app`。如需构建 H5：
+本地开发默认请求 `http://127.0.0.1:8007/course/app`。如需构建 H5：
 
 ```powershell
 npm run build:h5
