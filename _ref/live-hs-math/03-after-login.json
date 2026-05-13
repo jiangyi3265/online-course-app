@@ -1,0 +1,130 @@
+{
+  "url": "https://h5.jiaoxuebang.cn/pages/user/myClass?tentantId=52",
+  "title": "我的课程",
+  "bodyText": "您还未登录~\n首页\n我的课程\n会员中心\n提示\n您还未登录，是否登录?\n取消\n登录",
+  "texts": [
+    "<strong>Please enable JavaScript to continue.</strong>",
+    "您还未登录~\n首页\n我的课程\n会员中心\n提示\n您还未登录，是否登录?\n取消\n登录",
+    "您还未登录~\n首页\n我的课程\n会员中心",
+    "您还未登录~\n首页\n我的课程\n会员中心",
+    "您还未登录~\n首页\n我的课程\n会员中心",
+    "您还未登录~\n首页\n我的课程\n会员中心",
+    "您还未登录~",
+    "您还未登录~",
+    "您还未登录~",
+    "首页\n我的课程\n会员中心",
+    "首页\n我的课程\n会员中心",
+    "首页",
+    "首页",
+    "我的课程",
+    "我的课程",
+    "会员中心",
+    "会员中心",
+    "首页\n        \n          我的课程\n        \n          会员中心",
+    "首页\n        \n          我的课程\n        \n          会员中心",
+    "首页",
+    "首页",
+    "首页",
+    "我的课程",
+    "我的课程",
+    "我的课程",
+    "会员中心",
+    "会员中心",
+    "会员中心",
+    "提示\n您还未登录，是否登录?\n取消\n登录",
+    "提示\n您还未登录，是否登录?\n取消\n登录",
+    "提示",
+    "提示",
+    "您还未登录，是否登录?",
+    "取消\n登录",
+    "取消",
+    "登录"
+  ],
+  "links": [
+    {
+      "idx": 0,
+      "tag": "UNI-VIEW",
+      "text": "您还未登录~\n首页\n我的课程\n会员中心",
+      "cls": "content",
+      "href": ""
+    },
+    {
+      "idx": 1,
+      "tag": "UNI-VIEW",
+      "text": "您还未登录~",
+      "cls": "contentBox",
+      "href": ""
+    },
+    {
+      "idx": 2,
+      "tag": "UNI-VIEW",
+      "text": "您还未登录~",
+      "cls": "",
+      "href": ""
+    },
+    {
+      "idx": 3,
+      "tag": "UNI-VIEW",
+      "text": "您还未登录~",
+      "cls": "",
+      "href": ""
+    },
+    {
+      "idx": 4,
+      "tag": "UNI-VIEW",
+      "text": "首页\n我的课程\n会员中心",
+      "cls": "tab-bar btnTabbar",
+      "href": ""
+    },
+    {
+      "idx": 5,
+      "tag": "UNI-VIEW",
+      "text": "首页\n我的课程\n会员中心",
+      "cls": "content",
+      "href": ""
+    },
+    {
+      "idx": 6,
+      "tag": "UNI-VIEW",
+      "text": "首页",
+      "cls": "one-tab",
+      "href": ""
+    },
+    {
+      "idx": 9,
+      "tag": "UNI-VIEW",
+      "text": "首页",
+      "cls": "tit texts",
+      "href": ""
+    },
+    {
+      "idx": 10,
+      "tag": "UNI-VIEW",
+      "text": "我的课程",
+      "cls": "one-tab",
+      "href": ""
+    },
+    {
+      "idx": 13,
+      "tag": "UNI-VIEW",
+      "text": "我的课程",
+      "cls": "tit selectTexts",
+      "href": ""
+    },
+    {
+      "idx": 14,
+      "tag": "UNI-VIEW",
+      "text": "会员中心",
+      "cls": "one-tab",
+      "href": ""
+    },
+    {
+      "idx": 17,
+      "tag": "UNI-VIEW",
+      "text": "会员中心",
+      "cls": "tit texts",
+      "href": ""
+    }
+  ],
+  "inputs": []
+}

@@ -1,0 +1,39 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="studyCasesGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#fd79a8;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e84393;stop-opacity:1" />
+        </linearGradient>
+        <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.2"/>
+        </filter>
+    </defs>
+    
+    <!-- 背景圆角矩形 -->
+    <rect x="10" y="10" width="100" height="100" rx="20" ry="20" fill="url(#studyCasesGradient)" filter="url(#shadow)"/>
+    
+    <!-- 学案框架 -->
+    <g transform="translate(25, 25)">
+        <!-- 主要矩形框 -->
+        <rect x="10" y="10" width="50" height="50" rx="4" ry="4" fill="none" stroke="white" stroke-width="3"/>
+        
+        <!-- 标题栏 -->
+        <rect x="10" y="10" width="50" height="12" rx="4" ry="4" fill="rgba(255,255,255,0.3)"/>
+        
+        <!-- 内容线条 -->
+        <rect x="15" y="28" width="20" height="2" rx="1" fill="white"/>
+        <rect x="15" y="33" width="25" height="2" rx="1" fill="white"/>
+        <rect x="15" y="38" width="18" height="2" rx="1" fill="white"/>
+        
+        <!-- 复选框 -->
+        <rect x="15" y="46" width="6" height="6" rx="1" fill="none" stroke="white" stroke-width="1.5"/>
+        <rect x="25" y="46" width="6" height="6" rx="1" fill="none" stroke="white" stroke-width="1.5"/>
+        <rect x="35" y="46" width="6" height="6" rx="1" fill="none" stroke="white" stroke-width="1.5"/>
+        
+        <!-- 第一个复选框打勾 -->
+        <path d="M17,49 L18.5,50.5 L20.5,48" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        
+        <!-- 书签角标 -->
+        <path d="M50,10 L50,25 L45,20 L40,25 L40,10" fill="rgba(255,255,255,0.4)"/>
+    </g>
+</svg>

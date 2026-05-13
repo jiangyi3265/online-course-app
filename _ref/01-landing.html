@@ -1,0 +1,641 @@
+<!DOCTYPE html><html lang="zh-CN" style="--status-bar-height: 0px; --top-window-height: 0px; --window-left: 0px; --window-right: 0px; --window-margin: 0px; --window-bottom: 0px; --window-top: calc(var(--top-window-height) + 0px);"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>库学君</title><script>var coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)') || CSS.supports('top: constant(a)'))
+			document.write('<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' + (coverSupport ? ', viewport-fit=cover' : '') + '" />')
+			console.log('欢迎使用智能教学');</script><meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover"><script charset="utf-8" src="/static/ct4/ct4.js"></script><script>window.MathJax = {
+					tex: {
+						inlineMath: [
+							['$', '$'],
+							['\\(', '\\)']
+						], //行内公式选择符
+				
+						displayMath: [
+							["$$", "$$"],
+							["\\[", "\\]"]
+						], //段内公式选择符
+						// 支持渲染某些公式
+						processEnvironments: true,
+						processRefs: true,
+					},
+					// 参考官方文档 https://www.osgeo.cn/mathjax/options/menu.html#menu-options
+					options: {
+						//关闭右击选择菜单
+						enableMenu: false,
+						// 跳过渲染的标签
+						skipHtmlTags: ['noscript', 'style', 'textarea', 'pre', 'code', 'a'],
+						// 跳过mathjax处理的元素的类名，任何元素指定一个类 tex2jax_ignore 将被跳过，多个累=类名'class1|class2'
+						ignoreHtmlClass: 'tex2jax_ignore',
+					},
+				
+					svg: {
+						scale: 1.2
+					}
+				};</script><script src="https://zgkadmin.jiaoxuebang.cn/mathjax/tex-mml-chtml.js" id="MathJax-script"></script><style type="text/css">.CtxtMenu_InfoClose {  top:.2em; right:.2em;}
+.CtxtMenu_InfoContent {  overflow:auto; text-align:left; font-size:80%;  padding:.4em .6em; border:1px inset; margin:1em 0px;  max-height:20em; max-width:30em; background-color:#EEEEEE;  white-space:normal;}
+.CtxtMenu_Info.CtxtMenu_MousePost {outline:none;}
+.CtxtMenu_Info {  position:fixed; left:50%; width:auto; text-align:center;  border:3px outset; padding:1em 2em; background-color:#DDDDDD;  color:black;  cursor:default; font-family:message-box; font-size:120%;  font-style:normal; text-indent:0; text-transform:none;  line-height:normal; letter-spacing:normal; word-spacing:normal;  word-wrap:normal; white-space:nowrap; float:none; z-index:201;  border-radius: 15px;                     /* Opera 10.5 and IE9 */  -webkit-border-radius:15px;               /* Safari and Chrome */  -moz-border-radius:15px;                  /* Firefox */  -khtml-border-radius:15px;                /* Konqueror */  box-shadow:0px 10px 20px #808080;         /* Opera 10.5 and IE9 */  -webkit-box-shadow:0px 10px 20px #808080; /* Safari 3 & Chrome */  -moz-box-shadow:0px 10px 20px #808080;    /* Forefox 3.5 */  -khtml-box-shadow:0px 10px 20px #808080;  /* Konqueror */  filter:progid:DXImageTransform.Microsoft.dropshadow(OffX=2, OffY=2, Color="gray", Positive="true"); /* IE */}
+</style><style type="text/css">.CtxtMenu_MenuClose {  position:absolute;  cursor:pointer;  display:inline-block;  border:2px solid #AAA;  border-radius:18px;  -webkit-border-radius: 18px;             /* Safari and Chrome */  -moz-border-radius: 18px;                /* Firefox */  -khtml-border-radius: 18px;              /* Konqueror */  font-family: "Courier New", Courier;  font-size:24px;  color:#F0F0F0}
+.CtxtMenu_MenuClose span {  display:block; background-color:#AAA; border:1.5px solid;  border-radius:18px;  -webkit-border-radius: 18px;             /* Safari and Chrome */  -moz-border-radius: 18px;                /* Firefox */  -khtml-border-radius: 18px;              /* Konqueror */  line-height:0;  padding:8px 0 6px     /* may need to be browser-specific */}
+.CtxtMenu_MenuClose:hover {  color:white!important;  border:2px solid #CCC!important}
+.CtxtMenu_MenuClose:hover span {  background-color:#CCC!important}
+.CtxtMenu_MenuClose:hover:focus {  outline:none}
+</style><style type="text/css">.CtxtMenu_Menu {  position:absolute;  background-color:white;  color:black;  width:auto; padding:5px 0px;  border:1px solid #CCCCCC; margin:0; cursor:default;  font: menu; text-align:left; text-indent:0; text-transform:none;  line-height:normal; letter-spacing:normal; word-spacing:normal;  word-wrap:normal; white-space:nowrap; float:none; z-index:201;  border-radius: 5px;                     /* Opera 10.5 and IE9 */  -webkit-border-radius: 5px;             /* Safari and Chrome */  -moz-border-radius: 5px;                /* Firefox */  -khtml-border-radius: 5px;              /* Konqueror */  box-shadow:0px 10px 20px #808080;         /* Opera 10.5 and IE9 */  -webkit-box-shadow:0px 10px 20px #808080; /* Safari 3 & Chrome */  -moz-box-shadow:0px 10px 20px #808080;    /* Forefox 3.5 */  -khtml-box-shadow:0px 10px 20px #808080;  /* Konqueror */}
+.CtxtMenu_MenuItem {  padding: 1px 2em;  background:transparent;}
+.CtxtMenu_MenuArrow {  position:absolute; right:.5em; padding-top:.25em; color:#666666;  font-family: null; font-size: .75em}
+.CtxtMenu_MenuActive .CtxtMenu_MenuArrow {color:white}
+.CtxtMenu_MenuArrow.CtxtMenu_RTL {left:.5em; right:auto}
+.CtxtMenu_MenuCheck {  position:absolute; left:.7em;  font-family: null}
+.CtxtMenu_MenuCheck.CtxtMenu_RTL { right:.7em; left:auto }
+.CtxtMenu_MenuRadioCheck {  position:absolute; left: .7em;}
+.CtxtMenu_MenuRadioCheck.CtxtMenu_RTL {  right: .7em; left:auto}
+.CtxtMenu_MenuInputBox {  padding-left: 1em; right:.5em; color:#666666;  font-family: null;}
+.CtxtMenu_MenuInputBox.CtxtMenu_RTL {  left: .1em;}
+.CtxtMenu_MenuComboBox {  left:.1em; padding-bottom:.5em;}
+.CtxtMenu_MenuSlider {  left: .1em;}
+.CtxtMenu_SliderValue {  position:absolute; right:.1em; padding-top:.25em; color:#333333;  font-size: .75em}
+.CtxtMenu_SliderBar {  outline: none; background: #d3d3d3}
+.CtxtMenu_MenuLabel {  padding: 1px 2em 3px 1.33em;  font-style:italic}
+.CtxtMenu_MenuRule {  border-top: 1px solid #DDDDDD;  margin: 4px 3px;}
+.CtxtMenu_MenuDisabled {  color:GrayText}
+.CtxtMenu_MenuActive {  background-color: #606872;  color: white;}
+.CtxtMenu_MenuDisabled:focus {  background-color: #E8E8E8}
+.CtxtMenu_MenuLabel:focus {  background-color: #E8E8E8}
+.CtxtMenu_ContextMenu:focus {  outline:none}
+.CtxtMenu_ContextMenu .CtxtMenu_MenuItem:focus {  outline:none}
+.CtxtMenu_SelectionMenu {  position:relative; float:left;  border-bottom: none; -webkit-box-shadow:none; -webkit-border-radius:0px; }
+.CtxtMenu_SelectionItem {  padding-right: 1em;}
+.CtxtMenu_Selection {  right: 40%; width:50%; }
+.CtxtMenu_SelectionBox {  padding: 0em; max-height:20em; max-width: none;  background-color:#FFFFFF;}
+.CtxtMenu_SelectionDivider {  clear: both; border-top: 2px solid #000000;}
+.CtxtMenu_Menu .CtxtMenu_MenuClose {  top:-10px; left:-10px}
+</style><link rel="stylesheet" href="/static/index.1.0.81774943561105.css"><style type="text/css">@charset "UTF-8";
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色 */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */.no-network-popup[data-v-c7848c2e]{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}.no-network-popup .btn[data-v-c7848c2e]{margin-top:22px;width:110px;height:33px;line-height:33px;text-align:center;background:#007aff;color:#fff;border-radius:16px}</style><style type="text/css">@charset "UTF-8";
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色 */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */body{
+  /* IOS禁止微信调整字体大小 */-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;-moz-text-size-adjust:100%!important}::-webkit-scrollbar{width:0!important;height:0!important;background:transparent!important;display:none}body{width:100%!important;padding-left:-5px;padding-right:-5px;margin:0 auto!important;background:#fff;overflow:hidden auto}
+/* 针对手机设备 */@media screen and (max-width:768px){body body{max-width:414px!important}body .btnTabbar{max-width:414px!important;width:100%!important}}
+/* 针对桌面电脑设备 */@media screen and (min-width:1024px){body{max-width:450px!important}.btnTabbar{max-width:450px!important;width:100%!important;margin:0 auto} .uni-navbar--border{max-width:450px!important;border-left:1px solid #ddd;border-right:1px solid #ddd}.wbtn{max-width:448px!important;border-left:1px solid #ddd;border-right:1px solid #ddd}}
+/* 横竖屏切换 */@media screen and (orientation:portrait){
+  /* 竖屏样式 */body{max-width:414px!important}.btnTabbar{max-width:414px!important} .uni-navbar--border{max-width:414px!important;border-left:1px solid #ddd;border-right:1px solid #ddd} .uni-ellipsis-1{font-size:11px!important}.wbtn{max-width:414px!important;border-left:1px solid #ddd;border-right:1px solid #ddd}}@media screen and (orientation:landscape){
+  /* 横屏样式 */body{max-width:450px!important}.btnTabbar{max-width:450px!important}}.float_none_imp{float:none!important}.uni-tabbar{max-width:450px!important;width:100%;margin:0 auto;overflow:hidden}.uni-tabbar-bottom{width:100%;margin:0 auto;overflow:hidden}.uni-navbar--border{margin:0 auto;overflow:hidden}.col333{color:#333}.col666{color:#666}.col999{color:#999!important}.col888{color:#888}.fm{font-family:PingFang SC}.fz30{font-size:16px}.fz24{font-size:13px}.fz26{font-size:14px}.fz22{font-size:12px}.fz20{font-size:11px}.fz18{font-size:9px}.fz36{font-size:19px}.fz42{font-size:23px}.fz38{font-size:20px}.fz34{font-size:18px}.fz32{font-size:17px}.fz40{font-size:22px}.dflex{display:flex}.alicenter{align-items:center}.center{text-align:center}.flex{flex:1}.flex-column{flex-direction:column}.flex4{justify-content:flex-start;align-items:center;flex-wrap:wrap}.flexCne{align-items:center}.flex_three{flex:1;text-align:center;box-sizing:border-box;width:calc((100% - 60px) / 3);min-width:calc((100% - 60px) / 3);max-width:calc((100% - 60px) / 3)}.flex_three:nth-child(3n + 3){margin-right:0}.flex_four{flex:1;text-align:center;margin:0 20px 20px 0;padding-top:20px;box-sizing:border-box;width:calc((100% - 60px) / 4);min-width:calc((100% - 60px) / 4);max-width:calc((100% - 60px) / 4)}.flex_four:nth-child(4n + 4){margin-right:0}.flex_1_5{flex:1;text-align:center;margin:0 10px 10px 0;padding-top:20px;box-sizing:border-box;width:calc((100% - 60px) / 5);min-width:calc((100% - 60px) / 5);max-width:calc((100% - 60px) / 5)}.flex_1_5:nth-child(5n + 5){margin-right:0}.flex_fourAge{flex:1;text-align:center;margin:0 20px 5px 0;padding-top:5px;box-sizing:border-box;width:calc((100% - 60px) / 4);min-width:calc((100% - 60px) / 4);max-width:calc((100% - 60px) / 4)}.flex_fourAge:nth-child(4n + 4){margin-right:0}.flex_four1{flex:1;text-align:left;margin:0 1px 6px 0;padding:6px 14px 0px 6px;box-sizing:border-box;width:calc((100% - 10px) / 4);min-width:calc((100% - 10px) / 4);max-width:calc((100% - 10px) / 4)}.flex_four1:nth-child(4n + 4){margin-right:0}.flex_four2{flex:1;text-align:left}.flex_two{flex:1;text-align:center;margin:0 20px 20px 0;padding-top:0;box-sizing:border-box;width:calc((100% - 60px) / 2);min-width:calc((100% - 60px) / 2);max-width:calc((100% - 60px) / 2)}.flex_two:nth-child(2n){margin-left:16px}.flex_two1{flex:1;text-align:center;margin:0 10px 20px 0;padding-top:0;box-sizing:border-box;width:calc((100% - 30px) / 2);min-width:calc((100% - 21px) / 2);max-width:calc((100% - 20px) / 2)}.flex_two1:nth-child(2n){margin-left:5px;margin-right:0px}.flex_five{flex:1;text-align:center;margin:0 10px 10px 0;padding-top:0;box-sizing:border-box;width:calc((100% - 60px) / 5);min-width:calc((100% - 60px) / 5);max-width:calc((100% - 60px) / 5)}.leftRaidus{padding:7px 14px 8px 12px;background-color:#069dff;color:#fff;font-weight:700;font-size:13px;font-family:PingFang SC;border-top-right-radius:16px;border-bottom-right-radius:16px}
+/* 水印样式 */.watermark{position:absolute;top:10px;
+  /* 调整水印位置 */right:10px;
+  /* 调整水印位置 */font-size:18px;
+  /* 调整水印文字大小 */color:hsla(0,0%,100%,.3)
+  /* 调整水印文字颜色和透明度 */}
+/* 走马灯样式 */.marquee-container{margin-top:-99px;color:hsla(0,0%,100%,.3);position:relative}.marquee-text{white-space:nowrap;position:absolute;right:0px;-webkit-animation:marquee 15s linear infinite;animation:marquee 15s linear infinite}@-webkit-keyframes marquee{0%{-webkit-transform:translate(100%);transform:translate(100%)}100%{-webkit-transform:translate(-250%);transform:translate(-250%)}}@keyframes marquee{0%{-webkit-transform:translate(100%);transform:translate(100%)}100%{-webkit-transform:translate(-250%);transform:translate(-250%)}}.fw{font-weight:700}.elicps{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.fn{font-weight:400}.relative{position:relative}.absolute{position:absolute}.fixed{position:fixed}.line-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.colc7{color:#c7c7c7}.colfff{color:#fff}.btnPrimary{background-color:#00a3ff;color:#fff;text-align:center;border-radius:5px;font-size:11px}.btnWarning{background-color:#ff8d3a;color:#fff;text-align:center;border-radius:5px;font-size:11px}.lineBlock{display:inline-block;vertical-align:middle;font-size:14px}.lineBottom{display:inline-block;vertical-align:bottom;font-size:14px}.autoHeight{height:auto}.noneBorder{border:none!important}.successRanger{color:#13c800;font-size:15px;font-weight:500;margin-left:16px}.redRanger{color:#cc1313;font-size:15px;font-weight:500;margin-left:16px}.btnSuccess{background-color:#13c801;color:#fff;text-align:center;border-radius:5px;font-size:11px}.btnOrange{background-color:#ff8c39;color:#fff;text-align:center;border-radius:5px;font-size:11px}.btnDanger{background-color:#cc1213;color:#fff;text-align:center;border-radius:5px;font-size:11px}.mt10{margin-top:5px}.mt15{margin-top:8px}.mt40{margin-top:22px}.mt50{margin-top:27px}.mt30{margin-top:16px}.mt20{margin-top:11px}.ml40{margin-left:22px}.ml60{margin-left:33px}.ml10{margin-left:5px}.jusbetween{justify-content:space-between}.juscenter{justify-content:center}.alicenter{align-items:center}#success uni-checkbox.round .wx-checkbox-input,
+#success uni-checkbox.round .uni-checkbox-input{border-radius:55px;border:2px solid #eee}#danger uni-checkbox.round .wx-checkbox-input,
+#danger uni-checkbox.round .uni-checkbox-input{border-radius:55px;border:2px solid #eee}#warning uni-checkbox.round .wx-checkbox-input,
+#warning uni-checkbox.round .uni-checkbox-input{border-radius:55px;border:2px solid #eee}#dangera uni-checkbox.round .wx-checkbox-input,
+#dangera uni-checkbox.round .uni-checkbox-input{border-radius:55px;border:2px solid #eee}
+/* //设置背景色 */
+/* 	checkbox.red[checked] .wx-checkbox-input,
+checkbox.red.checked .uni-checkbox-input {
+	background-color: #13C801 !important;
+	border-color: #13C801 !important;
+	color: #13C801 !important;
+} */#success uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked{background:#13c801;border:2px solid #13c801}#danger uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked{background:#ec6330;content:"X";border:2px solid #ec6330;color:#fff}#warning uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked{background:#ff8c39;border:2px solid #ff8c39;color:#fff}#dangera uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked{background:#13c801;content:"X";border:2px solid #13c801;color:#fff}#success uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked:before{
+  /* background: #13C801; */
+  /* content: '\2022'; */
+  /* color: #ec6330; */color:#fff}#warning uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked:before{
+  /* background: #13C801; */
+  /* content: '\2022'; */
+  /* color: #ec6330; */color:#fff}#danger uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked:before{color:#fff!important;margin-top:-3px;content:"\2716"}#dangera uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked:before{color:#fff!important}.MathJye{border:0 none;direction:ltr;display:inline-block;float:none;font-size:14px;font-style:normal;font-weight:400;letter-spacing:1px;line-height:normal;margin:0;padding:0;text-align:left;text-indent:0;text-transform:none;white-space:nowrap;word-spacing:normal;word-wrap:normal;-webkit-text-size-adjust:none}.MathJye div, .MathJye span{border:0 none;margin:0;padding:0;line-height:normal;text-align:left;height:auto;_height:auto;white-space:normal}.MathJye table{border-collapse:collapse;margin:0;padding:0;text-align:center;vertical-align:middle;line-height:normal;font-size:inherit;*font-size:100%;_font-size:100%;font-style:normal;font-weight:400;border:0;float:none;display:inline-block;*display:inline;zoom:0}.MathJye table td{padding:0;font-size:inherit;line-height:normal;white-space:nowrap;border:0 none;width:auto;_height:auto}.MathJye_mi{font-style:italic}
+/*填空题*/div.quizPutTag{display:inline-block;*display:inline;padding:3px 10px 1px 10px;margin:0 3px;font-size:14px;min-width:1em;min-height:16px;line-height:18px;height:auto;border-bottom:1px solid #03f;text-decoration:none;zoom:1;color:#127176;word-break:break-all}div.quizPutTag:hover{color:#f60}div.quizPutTag img{cursor:pointer;margin-left:10px;max-width:200px}.JyeooHai-letter{font-family:JyeooHai-letter!important}.JyeooHai-Number{font-family:JyeooHai-Number!important}.JyeooHai-letter-Italic{font-family:JyeooHai-letter-Italic!important}.QUES_LI, .rpt_b, fieldset.quesborder{font-family:JyeooHai-letter-Italic,JyeooHai-letter,JyeooHai-Main-Regular,Times New Roman,微软雅黑,Arial,宋体;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+/* .QUES_LI, .rpt_b, fieldset.quesborder { font-family: 'JyeMath','JyeMathLetters','Times New Roman',"微软雅黑", Arial,"宋体"; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; } */table.edittable, table.edittable2, table.edittable3, table.edittable4{border-collapse:collapse;margin:2px}table.edittable th, table.edittable td, table.edittable2 th, table.edittable2 td, table.edittable3 th, table.edittable3 td, table.edittable4 th, table.edittable4 td{line-height:30px;padding:5px;white-space:normal;word-break:break-all;border:1px solid #000;vertical-align:middle}table.edittable{text-align:center}
+/*居中对齐*/table.edittable2{text-align:left}
+/*左对齐*/table.edittable3{text-align:left}
+/*第一行居中,其余左对齐*/table.edittable3 tr:first-child td{text-align:center}table.edittable4{border:1px solid #000}
+/*只有外边框，无内边框*/table.edittable4 td{border:none}table.composition{border-collapse:collapse;text-align:left;margin:2px;width:98%}table.composition th, table.composition td{line-height:30px;white-space:normal;word-break:break-all;border-width:0;vertical-align:middle}table.composition2{border-collapse:collapse;width:auto}table.composition2 th, table.composition2 td{text-align:left;line-height:30px;white-space:normal;word-break:break-all;border:none;border-width:0;vertical-align:middle}.flipv{-ms-transform:scaleX(-1);-moz-transform:scaleX(-1);-webkit-transform:scaleX(-1);-o-transform:scaleX(-1);transform:scaleX(-1);-webkit-filter:FlipH;filter:FlipH}.fliph{-ms-transform:scaleY(-1);-moz-transform:scaleY(-1);-webkit-transform:scaleY(-1);-o-transform:scaleY(-1);transform:scaleY(-1);-webkit-filter:FlipV;filter:FlipV}.mathjye-bold{font-weight:800}.mathjye-del{text-decoration:line-through}.mathjye-underline{border-bottom:1px solid #000;padding-bottom:2px;min-width:2em;min-height:1em;display:inline}@-moz-document url-prefix(){.mathjye-underline{padding-bottom:0}}.mathjye-underpline{border-bottom:2px dotted #000;padding-bottom:3px}@-moz-document url-prefix(){.mathjye-underpline{padding-bottom:1px}}.mathjye-underpoint{padding-bottom:4px}.mathjye-underpoint2{border-bottom:none;*border-bottom:2px dotted #000;
+  /* ie 7*/*background:none;
+  /* ie 7*/padding-bottom:2px}@-moz-document url-prefix(){.mathjye-underpoint{padding-bottom:1px}}.mathjye-underwave{padding-bottom:4px;-webkit-text-decoration:#000 wavy underline;text-decoration:#000 wavy underline;text-underline-offset:4px}@-moz-document url-prefix(){.mathjye-underwave{padding-bottom:1px}}.mathjye-alignleft{display:block;text-align:left}.mathjye-aligncenter{display:block;text-align:center}.mathjye-alignright{display:block;text-align:right}.QUES_LI > h2{font-size:30px;margin-top:20px}
+/*后加*/fieldset.quesborder{font-size:14px}
+/*body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; /*firefox*/
+/*-webkit-text-stroke: 0.1px; }*/
+/*抗锯齿渲染*/sub, sup{font-family:JyeooHai-Letter-Italic,JyeooHai-letter,JyeooHai-Main-Regular,Times New Roman,宋体}
+/*空白行*/.pt6 span, .ac td span.fleft{white-space:normal}.button-onlineFAQ{width:50px;height:26px;background:#fff;border-radius:4px;border:.5px solid #0991fc;text-align:center;line-height:26px;font-size:16px;color:#0991fc}.can-click{color:#0991fc;border-bottom:1px solid #0991fc}.scrollXcitem{white-space:nowrap;padding-top:5px;overflow-x:scroll;overflow:auto;padding-bottom:11px;padding-left:11px;border-bottom:2px solid #eee}.scrollXcitem .viekImg{width:99px;height:55px;border-radius:5px;margin-right:8px;border:1px solid #eee}.overflow-x-auto{display:block;width:100%;overflow-x:auto}mjx-container{max-width:100%!important;overflow-x:auto!important;display:inline-block!important}.latexId, .latexId p{width:100%!important;overflow:hidden!important}</style><script charset="utf-8" src="/static/js/pages-courseAllocation-courseAllocation~pages-home-index~pages-index-chapterTest~pages-index-chapter~cffcb480.1.0.81774943561105.js"></script><script charset="utf-8" src="/static/js/pages-home-index.1.0.81774943561105.js"></script><style type="text/css">.uni-app--showtabbar uni-page-wrapper {
+                    display: block;
+                    height: calc(100% - 50px);
+                    height: calc(100% - 50px - constant(safe-area-inset-bottom));
+                    height: calc(100% - 50px - env(safe-area-inset-bottom));
+                  }
+.uni-app--showtabbar uni-page-wrapper::after {
+                  content: "";
+                  display: block;
+                  width: 100%;
+                  height: 50px;
+                  height: calc(50px + constant(safe-area-inset-bottom));
+                  height: calc(50px + env(safe-area-inset-bottom));
+                }
+.uni-app--showtabbar uni-page-head[uni-page-head-type="default"] ~ uni-page-wrapper {
+                  height: calc(100% - 44px - 50px);
+                  height: calc(100% - 44px - constant(safe-area-inset-top) - 50px - constant(safe-area-inset-bottom));
+                  height: calc(100% - 44px - env(safe-area-inset-top) - 50px - env(safe-area-inset-bottom));
+                }</style><script src="https://res2.wx.qq.com/open/js/jweixin-1.6.0.js"></script><style type="text/css">@charset "UTF-8";
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色 */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */.uni-popup[data-v-3006f50a]{position:fixed;z-index:99}.uni-popup.top[data-v-3006f50a], .uni-popup.left[data-v-3006f50a], .uni-popup.right[data-v-3006f50a]{top:var(--window-top)}.uni-popup .uni-popup__wrapper[data-v-3006f50a]{display:block;position:relative
+  /* iphonex 等安全区设置，底部安全区适配 */}.uni-popup .uni-popup__wrapper.left[data-v-3006f50a], .uni-popup .uni-popup__wrapper.right[data-v-3006f50a]{padding-top:var(--window-top);flex:1}.fixforpc-z-index[data-v-3006f50a]{z-index:999}.fixforpc-top[data-v-3006f50a]{top:0}</style><style type="text/css">@charset "UTF-8";
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色 */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */@-webkit-keyframes enter-data-v-5180f8b2{0%{opacity:0;top:-10px}5%{opacity:1;top:0}50.9%{opacity:1;top:0}55.9%{opacity:0;top:10px}}@keyframes enter-data-v-5180f8b2{0%{opacity:0;top:-10px}5%{opacity:1;top:0}50.9%{opacity:1;top:0}55.9%{opacity:0;top:10px}}@-moz-keyframes enter-data-v-5180f8b2{0%{opacity:0;top:-10px}5%{opacity:1;top:0}50.9%{opacity:1;top:0}55.9%{opacity:0;top:10px}}body[data-v-5180f8b2]{background:#1fbeca}*[data-v-5180f8b2]{margin:0}.loader[data-v-5180f8b2]{position:absolute;left:50%;top:50%;margin-left:-27.5px;margin-top:-27.5px}.square[data-v-5180f8b2]{background:#1fbeca;width:15px;height:15px;float:left;top:-10px;margin-right:5px;margin-top:5px;position:relative;opacity:0;-webkit-animation:enter-data-v-5180f8b2 6s infinite;animation:enter-data-v-5180f8b2 6s infinite}.enter[data-v-5180f8b2]{top:0;opacity:1}.square[data-v-5180f8b2]:nth-child(1){-webkit-animation-delay:1.8s;-moz-animation-delay:1.8s;animation-delay:1.8s}.square[data-v-5180f8b2]:nth-child(2){-webkit-animation-delay:2.1s;-moz-animation-delay:2.1s;animation-delay:2.1s}.square[data-v-5180f8b2]:nth-child(3){-webkit-animation-delay:2.4s;-moz-animation-delay:2.4s;animation-delay:2.4s;background:#fdc96f}.square[data-v-5180f8b2]:nth-child(4){-webkit-animation-delay:.9s;-moz-animation-delay:.9s;animation-delay:.9s}.square[data-v-5180f8b2]:nth-child(5){-webkit-animation-delay:1.2s;-moz-animation-delay:1.2s;animation-delay:1.2s}.square[data-v-5180f8b2]:nth-child(6){-webkit-animation-delay:1.5s;-moz-animation-delay:1.5s;animation-delay:1.5s}.square[data-v-5180f8b2]:nth-child(8){-webkit-animation-delay:.3s;-moz-animation-delay:.3s;animation-delay:.3s}.square[data-v-5180f8b2]:nth-child(9){-webkit-animation-delay:.6s;-moz-animation-delay:.6s;animation-delay:.6s}.clear[data-v-5180f8b2]{clear:both}.last[data-v-5180f8b2]{margin-right:0}</style><style type="text/css">@charset "UTF-8";
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色 */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */.tab-bar[data-v-0d9b22a1]{position:fixed;bottom:0;right:0;margin:0 auto;width:100%;left:0;padding-top:11px;border-top:1px solid #ddd;padding-bottom:calc(5px + constant(safe-area-inset-bottom));padding-bottom:calc(5px + env(safe-area-inset-bottom));background-color:#f8f8f8}.tab-bar .content[data-v-0d9b22a1]{display:flex}.tab-bar .content .one-tab[data-v-0d9b22a1]{display:flex;flex-direction:column;align-items:center;width:50%}.tab-bar .content .one-tab .tab-img[data-v-0d9b22a1]{width:27px;height:27px}.tab-bar .content .one-tab .tab-img .img[data-v-0d9b22a1]{width:100%;height:100%}.tab-bar .content .one-tab .tit[data-v-0d9b22a1]{font-size:16px;-webkit-transform:scale(.7);transform:scale(.7)}.tab-bar .content .one-tab .selectTexts[data-v-0d9b22a1]{color:#1890e1}.tab-bar .content .one-tab .texts[data-v-0d9b22a1]{color:block}</style><style type="text/css">@charset "UTF-8";
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色 */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */[data-v-cc740c5a] .uni-navbar--border{border:none!important}.pic[data-v-cc740c5a]{width:52px;height:52px}.weixin_box[data-v-cc740c5a]{height:328px;width:287px;background:url(/static/image/group.png);background-size:cover;text-align:center;margin-top:-55px}.weixin_box .tip[data-v-cc740c5a]{font-size:20px;font-weight:700;padding-top:165px}.weixin_box .subject[data-v-cc740c5a]{margin-top:13px;color:#333;font-weight:Regular;font-size:15px}.weixin_box .buton[data-v-cc740c5a]{border-radius:23px;width:231px;height:47px;background:#00a3ff;box-shadow:0px 5px 8px 0px rgba(0,163,255,.2);line-height:47px;text-align:center;color:#fff;font-weight:500;font-size:17px;margin:27px auto 0 auto}.bg-container[data-v-cc740c5a]{background-position-x:-16px;background-color:#fff;border-left:1px solid #ddd;border-right:1px solid #ddd;height:100vh;overflow:hidden auto;background-size:cover;background-image:linear-gradient(180deg,#fbfdff,#f5f7fa)}.bg-container .scroll-bottom[data-v-cc740c5a]{margin-bottom:100pxconstant(safe-area-inset-bottom);margin-bottom:100pxenv(safe-area-inset-bottom)}.bg-container .swiper-box[data-v-cc740c5a]{width:100%;margin-top:8px;height:128px}.bg-container .swiper-box .swiper[data-v-cc740c5a]{height:100%}.bg-container .swiper-box .swiper .swiper-item[data-v-cc740c5a]{display:block;background-size:100% 100%;height:100%;border-radius:8px}.bg-container .swiper-box1[data-v-cc740c5a]{width:100%}.bg-container .nav-box[data-v-cc740c5a]{margin:23px 0px;display:flex;align-items:center}.bg-container .nav-box .fz36[data-v-cc740c5a]{font-size:19px}.bg-container .nav-box .col666[data-v-cc740c5a]{color:hsla(0,0%,40%,.4)}.bg-container .nav-box .fz42[data-v-cc740c5a]{font-size:23px}.bg-container .nav-box .col222[data-v-cc740c5a]{color:#222}.bg-container .nav-box .nav-box-child[data-v-cc740c5a]{margin-right:18px;display:inline-block;align-items:baseline;line-height:19px}.bg-container .nav-box .fw[data-v-cc740c5a]{font-weight:700}.bg-container .nav-box1[data-v-cc740c5a]{margin:23px 0px;width:100%;align-items:center}.bg-container .nav-box1 .fz36[data-v-cc740c5a]{font-size:19px}.bg-container .nav-box1 .col666[data-v-cc740c5a]{color:hsla(0,0%,40%,.4)}.bg-container .nav-box1 .fz42[data-v-cc740c5a]{font-size:23px}.bg-container .nav-box1 .col222[data-v-cc740c5a]{color:#222}.bg-container .nav-box1 .nav-box-child[data-v-cc740c5a]{margin-right:18px;display:inline-block;align-items:baseline;line-height:19px}.bg-container .nav-box1 .fw[data-v-cc740c5a]{font-weight:700}.bg-container .dflex[data-v-cc740c5a]{display:flex}.bg-container .body-box[data-v-cc740c5a]{width:100%}.bg-container .body-box .img-info[data-v-cc740c5a]{width:132px;height:99px;margin-right:9px}.bg-container .body-box .img-info uni-image[data-v-cc740c5a]{width:132px!important;height:99px!important;border-radius:8px}.bg-container .body-box .info[data-v-cc740c5a]{width:220px;height:99px;padding:0px 0;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between}.bg-container .body-box .info .title[data-v-cc740c5a]{font-size:17px;font-weight:700;line-height:22px;letter-spacing:0px;color:rgba(0,0,0,.8);font-variation-settings:"opsz" auto;margin-bottom:8px}.bg-container .body-box .info .alicenter[data-v-cc740c5a]{align-items:center}.bg-container .body-box .info .alicenter .title1[data-v-cc740c5a]{font-size:14px;font-weight:400;line-height:15px;letter-spacing:0px;color:rgba(0,0,0,.5)}.bg-container .body-box .info .alicenter .title-line[data-v-cc740c5a]{background-color:rgba(0,0,0,.5);width:1px;height:13px;margin:0 5px}.bg-container .body-box .info .dflex[data-v-cc740c5a]{display:flex}.bg-container .body-box .buy-box[data-v-cc740c5a]{height:35px;align-items:center;display:flex;justify-content:space-between}.bg-container .body-box .buy-box .money_1[data-v-cc740c5a]{font-size:18px;line-height:22px;letter-spacing:0px;color:#ff5137;font-weight:700}.bg-container .body-box .buy-box .btn-buy[data-v-cc740c5a]{width:80px;height:27px;border-radius:15px;background:#48b6fb;display:flex;align-items:center;justify-content:center;font-family:Alibaba PuHuiTi 2;font-size:11px;font-weight:700;letter-spacing:0;color:#fff}</style><script src="https://open.work.weixin.qq.com/wwopen/js/jwxwork-1.0.0.js"></script><style id="MJX-CHTML-styles">
+mjx-container[jax="CHTML"] {
+  line-height: 0;
+}
+
+mjx-container [space="1"] {
+  margin-left: .111em;
+}
+
+mjx-container [space="2"] {
+  margin-left: .167em;
+}
+
+mjx-container [space="3"] {
+  margin-left: .222em;
+}
+
+mjx-container [space="4"] {
+  margin-left: .278em;
+}
+
+mjx-container [space="5"] {
+  margin-left: .333em;
+}
+
+mjx-container [rspace="1"] {
+  margin-right: .111em;
+}
+
+mjx-container [rspace="2"] {
+  margin-right: .167em;
+}
+
+mjx-container [rspace="3"] {
+  margin-right: .222em;
+}
+
+mjx-container [rspace="4"] {
+  margin-right: .278em;
+}
+
+mjx-container [rspace="5"] {
+  margin-right: .333em;
+}
+
+mjx-container [size="s"] {
+  font-size: 70.7%;
+}
+
+mjx-container [size="ss"] {
+  font-size: 50%;
+}
+
+mjx-container [size="Tn"] {
+  font-size: 60%;
+}
+
+mjx-container [size="sm"] {
+  font-size: 85%;
+}
+
+mjx-container [size="lg"] {
+  font-size: 120%;
+}
+
+mjx-container [size="Lg"] {
+  font-size: 144%;
+}
+
+mjx-container [size="LG"] {
+  font-size: 173%;
+}
+
+mjx-container [size="hg"] {
+  font-size: 207%;
+}
+
+mjx-container [size="HG"] {
+  font-size: 249%;
+}
+
+mjx-container [width="full"] {
+  width: 100%;
+}
+
+mjx-box {
+  display: inline-block;
+}
+
+mjx-block {
+  display: block;
+}
+
+mjx-itable {
+  display: inline-table;
+}
+
+mjx-row {
+  display: table-row;
+}
+
+mjx-row > * {
+  display: table-cell;
+}
+
+mjx-mtext {
+  display: inline-block;
+}
+
+mjx-mstyle {
+  display: inline-block;
+}
+
+mjx-merror {
+  display: inline-block;
+  color: red;
+  background-color: yellow;
+}
+
+mjx-mphantom {
+  visibility: hidden;
+}
+
+_::-webkit-full-page-media, _:future, :root mjx-container {
+  will-change: opacity;
+}
+
+mjx-assistive-mml {
+  position: absolute !important;
+  top: 0px;
+  left: 0px;
+  clip: rect(1px, 1px, 1px, 1px);
+  padding: 1px 0px 0px 0px !important;
+  border: 0px !important;
+  display: block !important;
+  width: auto !important;
+  overflow: hidden !important;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+mjx-assistive-mml[display="block"] {
+  width: 100% !important;
+}
+
+mjx-c::before {
+  display: block;
+  width: 0;
+}
+
+.MJX-TEX {
+  font-family: MJXZERO, MJXTEX;
+}
+
+.TEX-B {
+  font-family: MJXZERO, MJXTEX-B;
+}
+
+.TEX-I {
+  font-family: MJXZERO, MJXTEX-I;
+}
+
+.TEX-MI {
+  font-family: MJXZERO, MJXTEX-MI;
+}
+
+.TEX-BI {
+  font-family: MJXZERO, MJXTEX-BI;
+}
+
+.TEX-S1 {
+  font-family: MJXZERO, MJXTEX-S1;
+}
+
+.TEX-S2 {
+  font-family: MJXZERO, MJXTEX-S2;
+}
+
+.TEX-S3 {
+  font-family: MJXZERO, MJXTEX-S3;
+}
+
+.TEX-S4 {
+  font-family: MJXZERO, MJXTEX-S4;
+}
+
+.TEX-A {
+  font-family: MJXZERO, MJXTEX-A;
+}
+
+.TEX-C {
+  font-family: MJXZERO, MJXTEX-C;
+}
+
+.TEX-CB {
+  font-family: MJXZERO, MJXTEX-CB;
+}
+
+.TEX-FR {
+  font-family: MJXZERO, MJXTEX-FR;
+}
+
+.TEX-FRB {
+  font-family: MJXZERO, MJXTEX-FRB;
+}
+
+.TEX-SS {
+  font-family: MJXZERO, MJXTEX-SS;
+}
+
+.TEX-SSB {
+  font-family: MJXZERO, MJXTEX-SSB;
+}
+
+.TEX-SSI {
+  font-family: MJXZERO, MJXTEX-SSI;
+}
+
+.TEX-SC {
+  font-family: MJXZERO, MJXTEX-SC;
+}
+
+.TEX-T {
+  font-family: MJXZERO, MJXTEX-T;
+}
+
+.TEX-V {
+  font-family: MJXZERO, MJXTEX-V;
+}
+
+.TEX-VB {
+  font-family: MJXZERO, MJXTEX-VB;
+}
+
+mjx-stretchy-v mjx-c, mjx-stretchy-h mjx-c {
+  font-family: MJXZERO, MJXTEX-S1, MJXTEX-S4, MJXTEX, MJXTEX-A ! important;
+}
+
+@font-face /* 0 */ {
+  font-family: MJXZERO;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Zero.woff") format("woff");
+}
+
+@font-face /* 1 */ {
+  font-family: MJXTEX;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Main-Regular.woff") format("woff");
+}
+
+@font-face /* 2 */ {
+  font-family: MJXTEX-B;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Main-Bold.woff") format("woff");
+}
+
+@font-face /* 3 */ {
+  font-family: MJXTEX-I;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Math-Italic.woff") format("woff");
+}
+
+@font-face /* 4 */ {
+  font-family: MJXTEX-MI;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Main-Italic.woff") format("woff");
+}
+
+@font-face /* 5 */ {
+  font-family: MJXTEX-BI;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Math-BoldItalic.woff") format("woff");
+}
+
+@font-face /* 6 */ {
+  font-family: MJXTEX-S1;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Size1-Regular.woff") format("woff");
+}
+
+@font-face /* 7 */ {
+  font-family: MJXTEX-S2;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Size2-Regular.woff") format("woff");
+}
+
+@font-face /* 8 */ {
+  font-family: MJXTEX-S3;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Size3-Regular.woff") format("woff");
+}
+
+@font-face /* 9 */ {
+  font-family: MJXTEX-S4;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Size4-Regular.woff") format("woff");
+}
+
+@font-face /* 10 */ {
+  font-family: MJXTEX-A;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_AMS-Regular.woff") format("woff");
+}
+
+@font-face /* 11 */ {
+  font-family: MJXTEX-C;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Calligraphic-Regular.woff") format("woff");
+}
+
+@font-face /* 12 */ {
+  font-family: MJXTEX-CB;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Calligraphic-Bold.woff") format("woff");
+}
+
+@font-face /* 13 */ {
+  font-family: MJXTEX-FR;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Fraktur-Regular.woff") format("woff");
+}
+
+@font-face /* 14 */ {
+  font-family: MJXTEX-FRB;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Fraktur-Bold.woff") format("woff");
+}
+
+@font-face /* 15 */ {
+  font-family: MJXTEX-SS;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_SansSerif-Regular.woff") format("woff");
+}
+
+@font-face /* 16 */ {
+  font-family: MJXTEX-SSB;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_SansSerif-Bold.woff") format("woff");
+}
+
+@font-face /* 17 */ {
+  font-family: MJXTEX-SSI;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_SansSerif-Italic.woff") format("woff");
+}
+
+@font-face /* 18 */ {
+  font-family: MJXTEX-SC;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Script-Regular.woff") format("woff");
+}
+
+@font-face /* 19 */ {
+  font-family: MJXTEX-T;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Typewriter-Regular.woff") format("woff");
+}
+
+@font-face /* 20 */ {
+  font-family: MJXTEX-V;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Vector-Regular.woff") format("woff");
+}
+
+@font-face /* 21 */ {
+  font-family: MJXTEX-VB;
+  src: url("https://zgkadmin.jiaoxuebang.cn/mathjax/output/chtml/fonts/woff-v2/MathJax_Vector-Bold.woff") format("woff");
+}
+</style></head><body class="uni-body pages-home-index"><noscript><strong>Please enable JavaScript to continue.</strong></noscript><uni-app data-v-c7848c2e="" class="uni-app--maxwidth"><uni-page data-page="pages/home/index"><!----><!----><uni-page-wrapper><uni-page-body><uni-view data-v-cc740c5a="" class="bg-container"><uni-view data-v-cc740c5a="" style="padding: 16px 11px; margin-top: -10px;"><uni-view data-v-cc740c5a="" class="swiper-box"><uni-swiper data-v-cc740c5a="" class="swiper"><div class="uni-swiper-wrapper"><div class="uni-swiper-slides"><div class="uni-swiper-slide-frame" style="width: 100%; height: 100%; transform: translate(0%, 0px) translateZ(0px);"><uni-swiper-item data-v-cc740c5a="" style="position: absolute; width: 100%; height: 100%; transform: translate(0%, 0px) translateZ(0px);"><uni-view data-v-cc740c5a="" class="swiper-item" style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/9a170d2e7e17489dba1a0c2c392aec57.png&quot;);"></uni-view></uni-swiper-item></div></div><div class="uni-swiper-dots uni-swiper-dots-horizontal"><div class="uni-swiper-dot uni-swiper-dot-active"></div></div></div></uni-swiper></uni-view><uni-view data-v-cc740c5a="" class="swiper-box1"><uni-view data-v-cc740c5a="" class="flex4 dflex" style="justify-content: space-around;"><uni-view data-v-cc740c5a="" class="flex_fourAge"><uni-image data-v-cc740c5a="" class="pic"><div style="background-image: url(&quot;/static/image/1.png&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="/static/image/1.png" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="font-size: 15px; font-weight: bold;">中考试听</uni-view></uni-view><uni-view data-v-cc740c5a="" class="flex_fourAge"><uni-image data-v-cc740c5a="" class="pic"><div style="background-image: url(&quot;/static/image/2.png&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="/static/image/2.png" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="font-size: 15px; font-weight: bold;">中考课程</uni-view></uni-view><uni-view data-v-cc740c5a="" class="flex_fourAge"><uni-image data-v-cc740c5a="" class="pic"><div style="background-image: url(&quot;/static/image/3.png&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="/static/image/3.png" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="font-size: 15px; font-weight: bold;">高考试听</uni-view></uni-view><uni-view data-v-cc740c5a="" class="flex_fourAge"><uni-image data-v-cc740c5a="" class="pic"><div style="background-image: url(&quot;/static/image/4.png&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="/static/image/4.png" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="font-size: 15px; font-weight: bold;">高考课程</uni-view></uni-view></uni-view></uni-view><!----><uni-scroll-view data-v-cc740c5a="" style="box-sizing: border-box; padding-top: 10px; margin-bottom: 100px;"><div class="uni-scroll-view"><div class="uni-scroll-view" style="overflow: hidden;"><div class="uni-scroll-view-content"><!----><uni-view data-v-cc740c5a="" class="flex4 dflex"><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935624799912140801" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/f23f0188583b41608bf1aec6a1548551.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/f23f0188583b41608bf1aec6a1548551.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《中考语文2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《中考语文2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1086人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥980.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935624627303948290" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/08c0e9bbbd75433d83fee48b8376189b.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/08c0e9bbbd75433d83fee48b8376189b.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《中考数学2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《中考数学2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1456人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935623947482607617" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/269912b269af4b168688ec2023787f82.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/269912b269af4b168688ec2023787f82.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《中考英语2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《中考英语2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1289人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935624468146728961" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/51a16517316f429cb1b32e3276cda4a8.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/51a16517316f429cb1b32e3276cda4a8.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《中考物理2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《中考物理2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1176人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935624249766096898" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/a281b3391c904715ad5d432157d8e342.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/a281b3391c904715ad5d432157d8e342.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《中考化学2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《中考化学2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1237人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935625002232623105" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/1c8662358844446b9df3cbbb18635915.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/1c8662358844446b9df3cbbb18635915.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《高考语文2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《高考语文2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1078人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935625152757805057" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/0a3776159fe54ea39b8d78d0707096ec.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/0a3776159fe54ea39b8d78d0707096ec.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《高考数学2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《高考数学2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1450人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935625330097172482" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/b17dfacdcf6c49f2a885277118df6098.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/b17dfacdcf6c49f2a885277118df6098.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《高考英语2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《高考英语2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1360人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935625522133540865" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/569f8fb44cb648ea86067678b94c9bf6.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/569f8fb44cb648ea86067678b94c9bf6.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《高考物理2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《高考物理2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>1121人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view><uni-view data-v-cc740c5a="" class="body-box flex_two1"><uni-view data-v-cc740c5a="" id="1935625700693450754" style="background-color: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgb(238, 238, 238) 0px 0.5px 0.5px 1px;"><uni-view data-v-cc740c5a="" style="margin: 0px auto; width: 182px; height: 136px; position: relative;"><uni-image data-v-cc740c5a="" style="width: 182px; height: 136px; border-radius: 8px;"><div style="background-image: url(&quot;https://tpcdn.pointpen.cn/temp/17e35025f02e4dd69cbb065a8ed2baf1.jpg&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="https://tpcdn.pointpen.cn/temp/17e35025f02e4dd69cbb065a8ed2baf1.jpg" draggable="false"></uni-image><uni-view data-v-cc740c5a="" style="background: rgba(0, 0, 0, 0.5); position: absolute; bottom: 0px; font-size: 12px; color: white; padding: 5px 11px; border-bottom-left-radius: 8px; border-top-right-radius: 11px;">视频+考练</uni-view></uni-view><uni-view data-v-cc740c5a="" style="padding-left: 11px; margin-top: 10px; padding-right: 5px;"><uni-view data-v-cc740c5a="" class="title line-1" style="text-align: left; font-weight: bold; font-size: 13px; margin-top: 8px;">《高考化学2026》试听课</uni-view><uni-view data-v-cc740c5a="" class="dflex alicenter" style="margin-top: 5px;"><uni-view data-v-cc740c5a="" class="title1 line-1" style="font-size: 12px; color: rgb(102, 102, 102);">《高考化学2026》试听课</uni-view></uni-view><uni-view data-v-cc740c5a="" style="text-align: left; margin-top: 5px;"><uni-text data-v-cc740c5a="" style="background-color: rgb(234, 240, 255); color: rgb(13, 124, 254); padding: 2px 5px; border-radius: 5px; font-size: 11px;"><span>980人学习</span></uni-text></uni-view><uni-view data-v-cc740c5a="" class="dflex" style="text-align: left; margin-top: 11px; padding-bottom: 11px;"><uni-view data-v-cc740c5a="" class="money_1" style="font-size: 13px; color: red; font-weight: bold;">￥0.00</uni-view><uni-view data-v-cc740c5a="" style="color: rgb(204, 204, 204); text-decoration: line-through; font-size: 12px; margin-left: 11px;">￥0.00</uni-view></uni-view><!----></uni-view></uni-view></uni-view></uni-view></div></div></div></uni-scroll-view></uni-view><!----><uni-view data-v-0d9b22a1="" data-v-cc740c5a="" class="tab-bar btnTabbar"><uni-view data-v-0d9b22a1="" class="content"><uni-view data-v-0d9b22a1="" class="one-tab"><uni-view data-v-0d9b22a1=""><uni-view data-v-0d9b22a1="" class="tab-img"><uni-image data-v-0d9b22a1="" class="img"><div style="background-image: url(&quot;/static/home.png&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="/static/home.png" draggable="false"></uni-image></uni-view></uni-view><uni-view data-v-0d9b22a1="" class="tit selectTexts">首页</uni-view></uni-view><uni-view data-v-0d9b22a1="" class="one-tab"><uni-view data-v-0d9b22a1=""><uni-view data-v-0d9b22a1="" class="tab-img"><uni-image data-v-0d9b22a1="" class="img"><div style="background-image: url(&quot;/static/image/book.png&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="/static/image/book.png" draggable="false"></uni-image></uni-view></uni-view><uni-view data-v-0d9b22a1="" class="tit texts">我的课程</uni-view></uni-view><uni-view data-v-0d9b22a1="" class="one-tab"><uni-view data-v-0d9b22a1=""><uni-view data-v-0d9b22a1="" class="tab-img"><uni-image data-v-0d9b22a1="" class="img"><div style="background-image: url(&quot;/static/uer.png&quot;); background-position: 0% 0%; background-size: 100% 100%; background-repeat: no-repeat;"></div><!----><img src="/static/uer.png" draggable="false"></uni-image></uni-view></uni-view><uni-view data-v-0d9b22a1="" class="tit texts">会员中心</uni-view></uni-view></uni-view></uni-view></uni-view></uni-page-body></uni-page-wrapper></uni-page><uni-tabbar class="uni-tabbar-bottom" custom="true" style="display: none;"><div class="uni-tabbar" style="background-color: rgb(248, 248, 248); backdrop-filter: none;"><div class="uni-tabbar-border" style="background-color: rgba(0, 0, 0, 0.33);"></div><div class="uni-tabbar__item"><!----><div class="uni-tabbar__bd" style="height: 50px;"><div class="uni-tabbar__icon" style="width: 24px; height: 24px;"><img src="/static/home.png"></div><div class="uni-tabbar__label" style="color: rgb(0, 122, 255); font-size: 10px; line-height: normal; margin-top: 3px;">
+          首页
+        </div><!----></div></div><div class="uni-tabbar__item"><!----><div class="uni-tabbar__bd" style="height: 50px;"><div class="uni-tabbar__icon" style="width: 24px; height: 24px;"><img src="/static/image/book.png"></div><div class="uni-tabbar__label" style="color: rgb(122, 126, 131); font-size: 10px; line-height: normal; margin-top: 3px;">
+          我的课程
+        </div><!----></div></div><div class="uni-tabbar__item"><!----><div class="uni-tabbar__bd" style="height: 50px;"><div class="uni-tabbar__icon" style="width: 24px; height: 24px;"><img src="/static/uer.png"></div><div class="uni-tabbar__label" style="color: rgb(122, 126, 131); font-size: 10px; line-height: normal; margin-top: 3px;">
+          会员中心
+        </div><!----></div></div></div><div class="uni-placeholder" style="height: 50px;"></div></uni-tabbar><!----><!----><uni-modal style="display: none;"><div class="uni-mask"></div><div class="uni-modal"><!----><div class="uni-modal__bd"></div><div class="uni-modal__ft"><div class="uni-modal__btn uni-modal__btn_default" style="color: rgb(0, 0, 0);">
+          Cancel
+        </div><div class="uni-modal__btn uni-modal__btn_primary" style="color: rgb(0, 122, 255);">
+          OK
+        </div></div></div><!----></uni-modal><!----><!----></uni-app><script src="/static/js/chunk-vendors.1.0.81774943561105.js"></script><script src="/static/js/index.1.0.81774943561105.js"></script><div style="position: absolute; left: 0px; top: 0px; width: 0px; height: 0px; z-index: -1; overflow: hidden; visibility: hidden;"><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-top);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 400px; height: 400px;"></div></div><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-top);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 250%; height: 250%;"></div></div><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-left);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 400px; height: 400px;"></div></div><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-left);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 250%; height: 250%;"></div></div><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-right);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 400px; height: 400px;"></div></div><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-right);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 250%; height: 250%;"></div></div><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-bottom);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 400px; height: 400px;"></div></div><div style="position: absolute; width: 100px; height: 200px; box-sizing: border-box; overflow: hidden; padding-bottom: env(safe-area-inset-bottom);"><div style="transition: all; animation: auto ease 0s 1 normal none running none; width: 250%; height: 250%;"></div></div></div></body></html>

@@ -1,0 +1,120 @@
+{
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "首页"
+			}
+		},
+		{
+			"path": "pages/index/testIndex",
+			"style": {
+				"navigationBarTitleText": "课程"
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/mycourse/mycourse",
+			"style": {
+				"navigationBarTitleText": "我的课程"
+			}
+		},
+		{
+			"path": "pages/member/member",
+			"style": {
+				"navigationBarTitleText": "会员中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/course-detail/course-detail",
+			"style": {
+				"navigationBarTitleText": "课程详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/my-docs/my-docs",
+			"style": {
+				"navigationBarTitleText": "我的课程文档",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/lesson/lesson",
+			"style": {
+				"navigationBarTitleText": "讲点",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/course-full/course-full",
+			"style": {
+				"navigationBarTitleText": "课程",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/practice/practice",
+			"style": {
+				"navigationBarTitleText": "练习测评",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/wrongbook/wrongbook",
+			"style": {
+				"navigationBarTitleText": "错题本",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/reinforce/reinforce",
+			"style": {
+				"navigationBarTitleText": "知识巩固",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/ai-chat/ai-chat",
+			"style": {
+				"navigationBarTitleText": "AI问答",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/study-report/study-report",
+			"style": {
+				"navigationBarTitleText": "学习报告",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/study-plan/study-plan",
+			"style": {
+				"navigationBarTitleText": "我的学案",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/activate/activate",
+			"style": {
+				"navigationBarTitleText": "扫码激活",
+				"navigationStyle": "custom"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"uniIdRouter": {}
+}
