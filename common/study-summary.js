@@ -11,7 +11,7 @@ export const RATING_OPTIONS = [
 const LESSON_RATING_KEY = 'lessonRatings';
 
 export function isAdminUser(user = {}) {
-	return user.phone === OFFICIAL_USER.phone || user.id === OFFICIAL_USER.id || user.role === 'admin';
+	return user.phone === OFFICIAL_USER.phone || user.id === OFFICIAL_USER.id || user.role === 'super_admin';
 }
 
 export function getLessonRatings() {
@@ -33,7 +33,7 @@ export function saveLessonRating(title = '', rating = 0) {
 
 const STUDY_SUMMARY = {
 	knowledge: {
-		title: '知识点巩固',
+		title: '知识点扫雷',
 		items: [
 			{ label: '刷题数', value: '186道' },
 			{ label: '正确', value: '142道' },
@@ -44,8 +44,28 @@ const STUDY_SUMMARY = {
 	chapter: {
 		title: '章节测评',
 		items: [
-			{ label: '测评次数', value: '8次' },
-			{ label: '平均得分', value: '74分' }
+			{ label: '测评次数', value: '18次' },
+			{ label: '平均得分', value: '77分' }
+		],
+		details: [
+			{
+				title: '集合',
+				count: '测试次数8次',
+				score: '平均74分',
+				records: [
+					{ name: '入门测', result: '正确14题，错误6题', score: '72分' },
+					{ name: '章节测试', result: '正确16题，错误4题', score: '76分' }
+				]
+			},
+			{
+				title: '数列',
+				count: '测试次数10次',
+				score: '平均80分',
+				records: [
+					{ name: '通项公式', result: '正确17题，错误3题', score: '82分' },
+					{ name: '求和训练', result: '正确15题，错误5题', score: '78分' }
+				]
+			}
 		]
 	},
 	review: {
@@ -53,14 +73,19 @@ const STUDY_SUMMARY = {
 		items: [
 			{ label: '复习课程完成情况', value: '68%' },
 			{ label: '测评统计', value: '完成6次，平均72分' }
+		],
+		details: [
+			{ title: '第1次复习试卷', count: '完成', score: '70分', records: [{ name: '错题复盘', result: '正确12题，错误5题', score: '70分' }] },
+			{ title: '第2次复习试卷', count: '完成', score: '74分', records: [{ name: '综合测试', result: '正确15题，错误4题', score: '74分' }] }
 		]
 	},
 	thinking: {
 		title: '思维技巧',
 		items: [
-			{ label: '课程完成度', value: '70%' },
+			{ label: '英语完成度', value: '30%' },
 			{ label: '训练做题', value: '96道' },
 			{ label: '正确', value: '73道' },
+			{ label: '错误', value: '23道' },
 			{ label: '平均得分', value: '76分' }
 		]
 	},
@@ -82,7 +107,7 @@ export const MASTERY_LEVELS = [
 ];
 
 const PLATE_SCORES = [
-	{ name: '知识点巩固', score: 78 },
+	{ name: '知识点扫雷', score: 78 },
 	{ name: '章节测评', score: 74 },
 	{ name: '复习情况', score: 62 },
 	{ name: '思维技巧', score: 86 },

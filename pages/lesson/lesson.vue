@@ -45,10 +45,10 @@
 		<view class="rating-panel">
 			<view class="rating-head">
 				<text class="rating-title">本节课程给你带来的收获</text>
-				<text class="rating-state">{{ratingSaved ? '已评价' : '学习完成后打分'}}</text>
+				<text class="rating-state">{{ratingSaved ? '已评价' : (canRate ? '可打分' : '学习90%后可打分')}}</text>
 			</view>
 			<view class="star-row">
-				<view class="star-item" v-for="option in ratingOptions" :key="option.value" :class="{active: currentRating >= option.value}" @click="rateLesson(option.value)">
+				<view class="star-item" v-for="option in ratingOptions" :key="option.value" :class="{active: currentRating >= option.value, disabled: !canRate}" @click="rateLesson(option.value)">
 					<text class="star-icon">{{currentRating >= option.value ? '★' : '☆'}}</text>
 					<text class="star-label">{{option.label}}</text>
 				</view>
@@ -57,7 +57,7 @@
 			<view class="rating-options">
 				<view class="rating-option" v-for="option in ratingOptions" :key="option.label">{{option.label}}（{{option.text}}）</view>
 			</view>
-			<view class="rating-btn" @click="submitRating">{{ratingSaved ? '更新评价' : '提交评价'}}</view>
+			<view class="rating-btn" :class="{disabled: !canRate}" @click="submitRating">{{ratingSaved ? '更新评价' : '提交评价'}}</view>
 		</view>
 
 		<view class="content">
@@ -93,6 +93,9 @@ export default {
 	data() {
 		return {
 			title: '选材与加工高分技巧',
+			courseId: '',
+			courseTitle: '',
+			chapterTitle: '',
 			videoUrl: '',
 			poster: '',
 			initialTime: 0,
@@ -116,6 +119,9 @@ export default {
 	},
 	async onLoad(opts) {
 		if (opts && opts.title) this.title = decodeURIComponent(opts.title);
+		if (opts && opts.courseId) this.courseId = decodeURIComponent(opts.courseId);
+		if (opts && opts.courseTitle) this.courseTitle = decodeURIComponent(opts.courseTitle);
+		if (opts && opts.chapterTitle) this.chapterTitle = decodeURIComponent(opts.chapterTitle);
 		this.currentRating = getLessonRating(this.title);
 		this.ratingSaved = !!this.currentRating;
 		await this.loadLesson();
@@ -125,8 +131,12 @@ export default {
 		this.persistProgress(false);
 	},
 	computed: {
+		canRate() {
+			return Number(this.percent) >= 90;
+		},
 		ratingText() {
 			const matched = this.ratingOptions.find(item => item.value === this.currentRating);
+			if (!this.canRate) return '学习进度达到90%后才可以评价本节课';
 			return matched ? `${matched.label}（${matched.text}）` : '请选择本节课的收获程度';
 		}
 	},
@@ -229,17 +239,29 @@ export default {
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); },
 		rateLesson(value) {
+			if (!this.canRate) {
+				uni.showToast({ title:'学习进度达到90%后才可以打分', icon:'none' });
+				return;
+			}
 			this.currentRating = value;
 			this.ratingSaved = false;
 		},
 		async submitRating() {
+			if (!this.canRate) {
+				uni.showToast({ title:'学习进度达到90%后才可以打分', icon:'none' });
+				return;
+			}
 			if (!this.currentRating) {
 				uni.showToast({ title:'请选择星级', icon:'none' });
 				return;
 			}
 			if (isLoggedIn()) {
 				try {
-					await saveLessonRatingApi(this.title, this.currentRating, this.title);
+					await saveLessonRatingApi(this.title, this.currentRating, this.title, {
+						courseId: this.courseId,
+						courseTitle: this.courseTitle,
+						chapterTitle: this.chapterTitle
+					});
 					saveLessonRating(this.title, this.currentRating);
 					this.ratingSaved = true;
 					uni.showToast({ title:'评价已保存', icon:'success' });
@@ -422,6 +444,7 @@ page { background:#fff; }
 	cursor:pointer;
 }
 .star-item.active { color:#f5b42a; }
+.star-item.disabled { opacity:.5; }
 .star-icon {
 	font-size:44rpx;
 	line-height:48rpx;
@@ -465,6 +488,10 @@ page { background:#fff; }
 	font-weight:700;
 	border-radius:36rpx;
 	cursor:pointer;
+}
+.rating-btn.disabled {
+	background:#d8dde5;
+	color:#8a929c;
 }
 
 /* 底部 */

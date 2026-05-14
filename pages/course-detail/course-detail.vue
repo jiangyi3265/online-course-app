@@ -93,7 +93,8 @@
 		</block>
 
 		<view class="quiz-list" v-else-if="activeTab===1">
-			<view class="quiz" v-for="(q,i) in quizzes" :key="i">
+			<view class="trial-tip">试听课仅开放部分知识扫雷内容，完整测评请开通课程。</view>
+			<view class="quiz" v-for="(q,i) in trialQuizzes" :key="i">
 				<view class="quiz-left">
 					<view class="q-mark">测</view>
 					<view>
@@ -106,15 +107,15 @@
 		</view>
 
 		<view class="minor-panel" v-else-if="activeTab===2">
-			<view class="minor-title">错题本</view>
-			<view class="minor-text">查看本课程练习和测评中沉淀的错题。</view>
-			<view class="minor-btn" @click="goWrongBook">进入错题本</view>
+			<view class="minor-title">错题与测试</view>
+			<view class="minor-text">权限未开通，请联系授权。</view>
+			<view class="minor-btn locked" @click="requestPermission">申请授权</view>
 		</view>
 
 		<view class="minor-panel" v-else>
 			<view class="minor-title">知识巩固</view>
-			<view class="minor-text">按薄弱知识点进行针对性练习。</view>
-			<view class="minor-btn" @click="goReinforce">开始巩固</view>
+			<view class="minor-text">权限未开通，请联系授权。</view>
+			<view class="minor-btn locked" @click="requestPermission">申请授权</view>
 		</view>
 
 		<view style="height:60rpx"></view>
@@ -138,7 +139,7 @@ export default {
 			learntCount: 0,
 			learntDuration: '00小时00分',
 			activeTab: 0,
-			detailTabs: ['技巧干货','知识扫雷','错题本','知识巩固'],
+			detailTabs: ['技巧干货','知识扫雷','错题与测试','知识巩固'],
 			chapters: [
 				{ title:'选材与加工高分技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
 				{ title:'课外文言文做题技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
@@ -148,6 +149,11 @@ export default {
 			showLogin: false,
 			cover: '',
 			courseId: 'gk-math-trial'
+		}
+	},
+	computed: {
+		trialQuizzes() {
+			return (this.quizzes || []).slice(0, 1);
 		}
 	},
 	async onLoad(opts) {
@@ -215,11 +221,14 @@ export default {
 				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(chapter.title)}` });
 				return;
 			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(chapter.title)}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(chapter.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseName)}&chapterTitle=${encodeURIComponent(chapter.title)}` });
 		},
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
+		},
+		requestPermission() {
+			uni.showModal({ title:'权限未开通', content:'权限未开通，请联系授权。', showCancel:false });
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); }
 	}
@@ -444,6 +453,15 @@ page { background:#f5f7fa; }
 }
 
 .quiz-list { padding: 20rpx 24rpx; }
+.trial-tip {
+	margin-bottom:18rpx;
+	padding:18rpx 22rpx;
+	border-radius:12rpx;
+	background:#fff7ed;
+	color:#b45309;
+	font-size:24rpx;
+	line-height:1.5;
+}
 .quiz {
 	background:#fff;
 	border-radius:14rpx;
@@ -514,5 +532,9 @@ page { background:#f5f7fa; }
 	color:#fff;
 	font-size:28rpx;
 	font-weight:700;
+}
+.minor-btn.locked {
+	background:#eef2f7;
+	color:#596272;
 }
 </style>

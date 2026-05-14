@@ -31,7 +31,7 @@
 				<view class="invite-btn">立即邀请</view>
 			</view>
 
-			<view class="section-title">学习情况总结</view>
+			<view id="study-summary-anchor" class="section-title">学习情况总结</view>
 			<view class="summary" v-if="studySummary">
 				<view class="summary-card" v-for="section in studySummary.sections" :key="section.title">
 					<view class="summary-title">{{section.title}}</view>
@@ -39,6 +39,23 @@
 						<view class="summary-item" v-for="item in section.items" :key="item.label">
 							<text class="summary-label">{{item.label}}</text>
 							<text class="summary-value">{{item.value}}</text>
+						</view>
+					</view>
+					<view class="summary-detail-toggle" v-if="section.details && section.details.length" @click="toggleSummary(section.title)">
+						{{expandedSummary[section.title] ? '收起明细' : '展开明细'}}
+					</view>
+					<view class="summary-details" v-if="section.details && section.details.length && expandedSummary[section.title]">
+						<view class="summary-detail" v-for="detail in section.details" :key="detail.title">
+							<view class="detail-head">
+								<text class="detail-title">{{detail.title}}</text>
+								<text class="detail-count">{{detail.count}}</text>
+								<text class="detail-score">{{detail.score}}</text>
+							</view>
+							<view class="detail-record" v-for="record in detail.records" :key="record.name">
+								<text class="record-name">{{record.name}}</text>
+								<text class="record-result">{{record.result}}</text>
+								<text class="record-score">{{record.score}}</text>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -118,6 +135,7 @@ export default {
 			studySummary: null,
 			adminStats: null,
 			isAdmin: false,
+			expandedSummary: {},
 			ratingOptions: RATING_OPTIONS,
 			funcs: [
 				{ ico:'👥', text:'我的推荐人' },
@@ -126,7 +144,7 @@ export default {
 				{ ico:'🎓', text:'我的学生' },
 				{ ico:'📄', text:'隐私政策' },
 				{ ico:'📑', text:'用户协议' },
-				{ ico:'🔳', text:'扫码激活' }
+				{ ico:'📊', text:'学情统计' }
 			]
 		}
 	},
@@ -167,12 +185,16 @@ export default {
 			this.isAdmin = false;
 		},
 		groupBarWidth(group, star) {
-			const max = Math.max(...Object.values(group.counts));
-			const count = group.counts[star] || 0;
+			const counts = group.counts || {};
+			const max = Math.max(0, ...Object.values(counts));
+			const count = counts[star] || 0;
 			return max ? `${Math.round((count / max) * 100)}%` : '0%';
 		},
+		toggleSummary(title) {
+			this.expandedSummary = { ...this.expandedSummary, [title]: !this.expandedSummary[title] };
+		},
 		openFunc(f) {
-			if (f.text === '扫码激活') uni.navigateTo({ url:'/pages/activate/activate?courseId=gk-math-full' });
+			if (f.text === '学情统计') uni.pageScrollTo({ selector:'#study-summary-anchor', duration:220 });
 			else if (f.text === '我的收藏') uni.navigateTo({ url:'/pages/wrongbook/wrongbook' });
 			else uni.showToast({ title:f.text, icon:'none' });
 		}
@@ -238,6 +260,64 @@ page { background:#fff; }
 	margin-top:6rpx;
 	font-size:30rpx;
 	color:#222;
+	font-weight:800;
+}
+.summary-detail-toggle {
+	margin-top:18rpx;
+	color:#1677ff;
+	font-size:24rpx;
+	font-weight:700;
+}
+.summary-details {
+	margin-top:16rpx;
+	border-top:1rpx solid #eef0f3;
+}
+.summary-detail {
+	padding:18rpx 0 4rpx;
+}
+.detail-head {
+	display:flex;
+	align-items:center;
+	flex-wrap:wrap;
+	gap:12rpx;
+}
+.detail-title {
+	font-size:26rpx;
+	color:#222;
+	font-weight:800;
+}
+.detail-count {
+	font-size:22rpx;
+	color:#697386;
+}
+.detail-score {
+	margin-left:auto;
+	font-size:24rpx;
+	color:#b78200;
+	font-weight:800;
+}
+.detail-record {
+	display:flex;
+	align-items:center;
+	margin-top:12rpx;
+	padding:14rpx;
+	border-radius:10rpx;
+	background:#f8fafc;
+	font-size:22rpx;
+	color:#596272;
+}
+.record-name {
+	width:130rpx;
+	color:#222;
+	font-weight:700;
+}
+.record-result {
+	flex:1;
+	min-width:0;
+}
+.record-score {
+	margin-left:12rpx;
+	color:#1677ff;
 	font-weight:800;
 }
 .master-row {

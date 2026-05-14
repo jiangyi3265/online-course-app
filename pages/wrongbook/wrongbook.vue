@@ -1,6 +1,20 @@
 <template>
 	<view class="page">
-		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">错题本</view></view>
+		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">错题与测试</view></view>
+		<view class="test-actions">
+			<view class="test-card">
+				<view class="test-title">复习我的错题</view>
+				<view class="test-sub">浏览视频讲解、答题统计和解析</view>
+			</view>
+			<view class="test-card">
+				<view class="test-title">章节测试</view>
+				<view class="test-sub">通过章节测试巩固解题技巧</view>
+			</view>
+			<view class="test-card">
+				<view class="test-title">复习测试</view>
+				<view class="test-sub">系统匹配薄弱题型再次训练</view>
+			</view>
+		</view>
 		<view class="summary">待复盘 {{pendingCount}} 道，已掌握 {{masteredCount}} 道</view>
 		<view class="empty" v-if="list.length===0">暂无错题，先去做一次练习吧</view>
 		<view class="card" v-for="item in list" :key="item.id">
@@ -45,6 +59,10 @@ page { background:#f5f7fa; }
 .nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; font-weight:700; }
+.test-actions { padding:24rpx 24rpx 0; }
+.test-card { margin-bottom:18rpx; padding:24rpx; border-radius:16rpx; background:#eefbff; border:1rpx solid #d7f2fb; }
+.test-title { color:#222; font-size:30rpx; font-weight:800; }
+.test-sub { margin-top:10rpx; color:#697386; font-size:24rpx; line-height:1.5; }
 .summary { margin:24rpx; padding:24rpx; border-radius:16rpx; background:#fff7ed; color:#b45309; font-size:28rpx; font-weight:700; }
 .empty { padding-top:220rpx; text-align:center; color:#8a94a3; font-size:30rpx; }
 .card { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }

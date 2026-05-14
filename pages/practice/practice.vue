@@ -28,7 +28,7 @@
 			<view class="score">{{result.score}}分</view>
 			<view class="result-text">答对 {{result.correct}} / {{result.total}} 题</view>
 			<view class="result-actions">
-				<view class="ghost-btn" @click="goWrongBook">查看错题本</view>
+				<view class="ghost-btn" @click="goWrongBook">查看错题与测试</view>
 				<view class="primary-btn" @click="reload">再练一次</view>
 			</view>
 		</view>
@@ -55,7 +55,7 @@ export default {
 	},
 	computed: {
 		modeText() {
-			const map = { practice: '真题讲练', quiz: '知识扫雷', reinforce: '知识巩固' };
+			const map = { practice: '章节测试', quiz: '知识扫雷', reinforce: '复习测试' };
 			return map[this.type] || '练习测评';
 		},
 		resultMap() {

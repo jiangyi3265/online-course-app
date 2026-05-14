@@ -108,7 +108,7 @@ export default {
 			}
 		},
 		openLabel(it) {
-			return it.isTry ? '试听免费' : '卡密开通';
+			return it.isTry ? '试听免费' : '激活课程';
 		},
 		openHint(it) {
 			return it.isTry ? '直接体验' : '验证后学习';

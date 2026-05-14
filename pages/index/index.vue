@@ -88,7 +88,7 @@ export default {
 			}
 		},
 		accessLabel(it) {
-			return it.kind === 'full' || it.isTry === false ? '卡密开通' : '试听免费';
+			return it.kind === 'full' || it.isTry === false ? '激活课程' : '试听免费';
 		},
 		accessNote(it) {
 			return it.kind === 'full' || it.isTry === false ? '验证后学习' : '直接体验';

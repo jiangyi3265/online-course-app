@@ -73,7 +73,7 @@
 										</view>
 									</view>
 									<view class="child-actions">
-										<view class="child-btn go" @click.stop="goLesson(s, child)">{{child.type===2 ? '去练习' : '去学习'}}</view>
+										<view class="child-btn go" @click.stop="goLesson(c, s, child)">{{child.type===2 ? '去练习' : '去学习'}}</view>
 										<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 									</view>
 								</view>
@@ -104,9 +104,9 @@
 		</block>
 
 		<view class="minor-panel" v-if="tab===2">
-			<view class="minor-title">错题本</view>
+			<view class="minor-title">错题与测试</view>
 			<view class="minor-text">当前课程错题共25道，可继续巩固薄弱题型。</view>
-			<view class="minor-btn" @click="goWrongBook">进入错题本</view>
+			<view class="minor-btn" @click="goWrongBook">进入错题与测试</view>
 		</view>
 
 		<view class="minor-panel" v-if="tab===3">
@@ -119,15 +119,20 @@
 
 		<!-- 底部开通栏 -->
 		<view class="footer" v-if="showFooter">
-			<view class="apply" @click="goActivate('apply')">
+			<view class="apply" @click="showApplyAuth">
 				<view class="apply-ico">📦</view>
 				<text class="apply-text">申请授权</text>
 			</view>
-			<view class="card-open" @click="goActivate('card')">
-				<view class="card-title">卡密开通</view>
-				<view class="card-text">输入卡密验证</view>
+			<view class="active" @click="goActivate">激活课程</view>
+		</view>
+
+		<view class="auth-mask" v-if="showAuth">
+			<view class="auth-modal">
+				<view class="auth-title">请联系下方微信申请</view>
+				<view class="auth-wechat">微信号：<text>{{wechatId}}</text></view>
+				<view class="auth-copy" @click="copyWechat">一键复制微信号</view>
+				<view class="auth-close" @click="showAuth=false">关闭</view>
 			</view>
-			<view class="active" @click="goActivate('active')">扫码/卡密</view>
 		</view>
 	</view>
 </template>
@@ -149,11 +154,13 @@ export default {
 			learntDuration: '00小时00分',
 			cover: '',
 			tab: 0,
-			projectTabs: ['技巧干货','知识扫雷','错题本','知识巩固'],
+			projectTabs: ['技巧干货','知识扫雷','错题与测试','知识巩固'],
 			versionIndex: 0,
 			versions: [{ name:'2026版' }, { name:'绝招课' }],
 			locked: true,
 			showFooter: true,
+			showAuth: false,
+			wechatId: 'DYR7314',
 			courseId: 'gk-math-full',
 			chapters: [
 				{ title:'一、基础运用提升系列', open:true, items:[
@@ -250,12 +257,19 @@ export default {
 		goWrongBook() { uni.navigateTo({ url:'/pages/wrongbook/wrongbook' }); },
 		goReinforce() { uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goActivate() { uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}` }); },
-		goLesson(lesson, child) {
+		showApplyAuth() { this.showAuth = true; },
+		copyWechat() {
+			uni.setClipboardData({
+				data: this.wechatId,
+				success: () => uni.showToast({ title:'微信号已复制', icon:'success' })
+			});
+		},
+		goLesson(chapter, lesson, child) {
 			if (child.type === 2) {
 				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(lesson.title || lesson)}` });
 				return;
 			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); }
 	}
@@ -515,4 +529,44 @@ page { background:#f5f7fa; }
 	font-size:30rpx; font-weight:700;
 	cursor:pointer;
 }
+.auth-mask {
+	position:fixed;
+	inset:0;
+	background:rgba(0,0,0,.45);
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	z-index:300;
+}
+.auth-modal {
+	width:560rpx;
+	background:#fff;
+	border-radius:18rpx;
+	overflow:hidden;
+	text-align:center;
+}
+.auth-title {
+	padding:42rpx 28rpx 22rpx;
+	color:#222;
+	font-size:34rpx;
+	font-weight:800;
+}
+.auth-wechat {
+	color:#333;
+	font-size:30rpx;
+}
+.auth-wechat text {
+	color:#39a8d8;
+	text-decoration:underline;
+	font-weight:800;
+}
+.auth-copy, .auth-close {
+	height:88rpx;
+	line-height:88rpx;
+	border-top:1rpx solid #eef0f3;
+	font-size:28rpx;
+	font-weight:700;
+}
+.auth-copy { color:#39a8d8; margin-top:34rpx; }
+.auth-close { color:#596272; }
 </style>

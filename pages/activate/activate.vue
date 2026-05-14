@@ -2,10 +2,14 @@
 	<view class="page">
 		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">课程开通</view></view>
 		<view class="panel">
-			<view class="title">卡密验证开通</view>
-			<view class="hint">输入老师或后台发放的卡密，验证成功后课程会立即加入“我的课程”。</view>
-			<input class="input" v-model="code" placeholder="输入卡密，例如 GK-MATH-2026" confirm-type="done" @confirm="activate" />
-			<view class="primary" :class="{disabled: loading}" @click="activate">{{loading ? '验证中...' : '验证卡密并开通'}}</view>
+			<view class="title">激活课程</view>
+			<view class="hint">请填写激活码和学生信息，全部为必填。验证成功后课程会加入“我的课程”。</view>
+			<input class="input" v-model="code" placeholder="输入激活码，例如 GK-MATH-2026" confirm-type="next" />
+			<input class="input" v-model="studentName" placeholder="输入学生名字" confirm-type="next" />
+			<input class="input" v-model="grade" placeholder="输入年级" confirm-type="next" />
+			<input class="input" v-model="schoolName" placeholder="输入学校名字" confirm-type="next" />
+			<input class="input" v-model="region" placeholder="输入所在地区" confirm-type="done" @confirm="activate" />
+			<view class="primary" :class="{disabled: loading}" @click="activate">{{loading ? '验证中...' : '提交激活并开通'}}</view>
 			<view class="success" v-if="activatedCourse">
 				<view class="success-title">已开通</view>
 				<view class="success-text">{{activatedCourse}}</view>
@@ -13,53 +17,71 @@
 			</view>
 		</view>
 		<view class="panel">
-			<view class="title">当前课程</view>
+			<view class="title small">申请授权</view>
 			<view class="course">{{courseId}}</view>
-			<view class="ghost" :class="{disabled: loading}" @click="apply">没有卡密，申请人工授权</view>
+			<view class="ghost" @click="showAuth=true">没有激活码，申请人工授权</view>
 		</view>
-		<view class="tip-panel">
-			<view class="tip-title">可测试卡密</view>
-			<view class="tip-code" @click="useCode('GK-MATH-2026')">GK-MATH-2026</view>
-			<view class="tip-code" @click="useCode('ZK-ENG-2026')">ZK-ENG-2026</view>
+		<view class="auth-mask" v-if="showAuth">
+			<view class="auth-modal">
+				<view class="auth-title">请联系下方微信申请</view>
+				<view class="auth-wechat">微信号：<text>{{wechatId}}</text></view>
+				<view class="auth-copy" @click="copyWechat">一键复制微信号</view>
+				<view class="auth-close" @click="showAuth=false">关闭</view>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { activateCourse, applyAuthorization } from '@/common/api.js'
+import { activateCourse } from '@/common/api.js'
 export default {
-	data() { return { courseId:'gk-math-full', code:'', loading:false, activatedCourse:'' } },
+	data() {
+		return {
+			courseId:'gk-math-full',
+			code:'',
+			studentName:'',
+			grade:'',
+			schoolName:'',
+			region:'',
+			wechatId:'DYR7314',
+			showAuth:false,
+			loading:false,
+			activatedCourse:''
+		}
+	},
 	onLoad(opts = {}) { this.courseId = opts.courseId || 'gk-math-full'; },
 	methods: {
 		async activate() {
 			const code = this.code.trim().toUpperCase();
-			if (!code) {
-				uni.showToast({ title:'请输入卡密', icon:'none' });
+			const studentName = this.studentName.trim();
+			const grade = this.grade.trim();
+			const schoolName = this.schoolName.trim();
+			const region = this.region.trim();
+			if (!code || !studentName || !grade || !schoolName || !region) {
+				uni.showToast({ title:'请填写全部必填信息', icon:'none' });
 				return;
 			}
 			if (this.loading) return;
 			this.loading = true;
 			try {
-				const result = await activateCourse(code);
+				const result = await activateCourse({ code, studentName, grade, schoolName, region, courseId: this.courseId });
 				this.code = code;
 				this.activatedCourse = result.courseTitle || result.courseId || '课程';
 				uni.showToast({ title:'开通成功', icon:'success' });
 			}
 			catch (err) {
-				uni.showToast({ title: err.message || '卡密无效', icon:'none' });
+				uni.showToast({ title: err.message || '激活码无效', icon:'none' });
 			}
 			finally {
 				this.loading = false;
 			}
 		},
-		async apply() {
-			if (this.loading) return;
-			this.loading = true;
-			try { await applyAuthorization(this.courseId); uni.showToast({ title:'申请已提交', icon:'success' }); }
-			catch (err) { uni.showToast({ title: err.message || '提交失败', icon:'none' }); }
-			finally { this.loading = false; }
+		copyWechat() {
+			uni.setClipboardData({
+				data: this.wechatId,
+				success: () => uni.showToast({ title:'微信号已复制', icon:'success' })
+			});
 		},
-		useCode(code) { this.code = code; },
 		goMyCourses() { uni.navigateTo({ url:'/pages/mycourse/mycourse' }); },
 		goBack() { uni.navigateBack({ fail:()=>{} }); }
 	}
@@ -74,8 +96,9 @@ page { background:#f5f7fa; }
 .nav-title { font-size:30rpx; font-weight:700; }
 .panel { margin:24rpx; padding:28rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
 .title { font-size:32rpx; font-weight:800; color:#222; margin-bottom:20rpx; }
+.title.small { font-size:30rpx; }
 .hint { color:#697386; font-size:26rpx; line-height:1.5; margin-bottom:20rpx; }
-.input { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 20rpx; font-size:28rpx; }
+.input { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 20rpx; font-size:28rpx; margin-top:16rpx; }
 .primary, .ghost { height:78rpx; line-height:78rpx; text-align:center; border-radius:12rpx; margin-top:18rpx; font-size:28rpx; font-weight:700; }
 .primary { background:#1677ff; color:#fff; }
 .ghost { background:#eef2f7; color:#222; }
@@ -85,7 +108,12 @@ page { background:#f5f7fa; }
 .success-title { color:#15803d; font-size:28rpx; font-weight:800; }
 .success-text { color:#166534; font-size:26rpx; margin-top:8rpx; }
 .success-link { margin-top:16rpx; color:#1677ff; font-size:26rpx; font-weight:700; }
-.tip-panel { margin:24rpx; padding:24rpx 28rpx; border-radius:16rpx; background:#fff7ed; border:1rpx solid #fed7aa; }
-.tip-title { color:#9a3412; font-size:26rpx; font-weight:800; margin-bottom:14rpx; }
-.tip-code { display:inline-block; margin:0 16rpx 12rpx 0; padding:10rpx 18rpx; border-radius:10rpx; background:#fff; color:#9a3412; font-size:24rpx; font-weight:700; }
+.auth-mask { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:300; }
+.auth-modal { width:560rpx; background:#fff; border-radius:18rpx; overflow:hidden; text-align:center; }
+.auth-title { padding:42rpx 28rpx 22rpx; color:#222; font-size:34rpx; font-weight:800; }
+.auth-wechat { color:#333; font-size:30rpx; }
+.auth-wechat text { color:#39a8d8; text-decoration:underline; font-weight:800; }
+.auth-copy, .auth-close { height:88rpx; line-height:88rpx; border-top:1rpx solid #eef0f3; font-size:28rpx; font-weight:700; }
+.auth-copy { color:#39a8d8; margin-top:34rpx; }
+.auth-close { color:#596272; }
 </style>

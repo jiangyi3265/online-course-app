@@ -155,10 +155,10 @@ export function getLessonRatingApi(lessonId) {
 	return request('/lesson/rating', { params: { lessonId } })
 }
 
-export function saveLessonRatingApi(lessonId, rating, lessonTitle = lessonId) {
+export function saveLessonRatingApi(lessonId, rating, lessonTitle = lessonId, meta = {}) {
 	return request('/lesson/rating', {
 		method: 'POST',
-		data: { lessonId, rating, lessonTitle }
+		data: { lessonId, rating, lessonTitle, ...meta }
 	})
 }
 
@@ -221,9 +221,10 @@ export function applyAuthorization(courseId, note = '申请授权') {
 	})
 }
 
-export function activateCourse(code) {
+export function activateCourse(payload) {
+	const data = typeof payload === 'string' ? { code: payload } : (payload || {})
 	return request('/activate', {
 		method: 'POST',
-		data: { code }
+		data
 	})
 }
