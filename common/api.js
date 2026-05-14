@@ -105,6 +105,13 @@ export function login(phone, password) {
 	})
 }
 
+export function register(name, phone, password) {
+	return request('/register', {
+		method: 'POST',
+		data: { name, phone, password }
+	})
+}
+
 export function getCourses(params = {}) {
 	return request('/courses', { params })
 }

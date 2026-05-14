@@ -66,7 +66,7 @@
 				uni.showToast({ title: '忘记密码', icon: 'none' });
 			},
 			onRegister() {
-				uni.showToast({ title: '前往注册', icon: 'none' });
+				uni.navigateTo({ url: '/pages/register/register' });
 			},
 			openProtocol() {
 				uni.showToast({ title: '用户隐私协议', icon: 'none' });
