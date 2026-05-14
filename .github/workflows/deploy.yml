@@ -15,7 +15,7 @@ env:
   DEPLOY_HOST: 101.42.94.41
   DEPLOY_USER: root
   DEPLOY_PORT: "22"
-  DEPLOY_PATH: /www/wwwroot/wk.okjsa.cn
+  DEPLOY_PATH: /www/wwwroot/wk.oksja.cn
 
 jobs:
   deploy:
