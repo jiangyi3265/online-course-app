@@ -34,6 +34,18 @@
 				</view>
 				<view class="save-state">{{progressSaved ? '进度已同步' : '学习中'}}</view>
 			</view>
+			<view class="speed-panel">
+				<text class="speed-label">倍速</text>
+				<view class="speed-options">
+					<view
+						class="speed-btn"
+						v-for="rate in playbackRates"
+						:key="rate"
+						:class="{active: playbackRate === rate}"
+						@click="setPlaybackRate(rate)"
+					>{{rateLabel(rate)}}</view>
+				</view>
+			</view>
 		</view>
 
 		<!-- 本节内容 -->
@@ -107,6 +119,9 @@ export default {
 			videoError: false,
 			progressSaved: false,
 			lastSavedAt: 0,
+			videoContext: null,
+			playbackRate: 1,
+			playbackRates: [1, 1.2, 1.5, 0.75],
 			prevTitle: '',
 			nextTitle: '',
 			lessonCard: null,
@@ -126,6 +141,10 @@ export default {
 		this.ratingSaved = !!this.currentRating;
 		await this.loadLesson();
 		if (isLoggedIn()) await this.loadRemoteRating();
+	},
+	onReady() {
+		this.videoContext = uni.createVideoContext('lessonVideo', this);
+		this.applyPlaybackRate();
 	},
 	onUnload() {
 		this.persistProgress(false);
@@ -179,6 +198,7 @@ export default {
 				this.durationSeconds = duration;
 				this.totalTime = this.formatTime(duration);
 			}
+			this.applyPlaybackRate();
 		},
 		onTimeUpdate(e) {
 			const detail = e.detail || {};
@@ -196,6 +216,26 @@ export default {
 		},
 		onVideoError() {
 			this.videoError = true;
+		},
+		setPlaybackRate(rate) {
+			this.playbackRate = Number(rate) || 1;
+			this.applyPlaybackRate();
+		},
+		applyPlaybackRate() {
+			this.$nextTick(() => {
+				const ctx = this.videoContext || uni.createVideoContext('lessonVideo', this);
+				this.videoContext = ctx;
+				if (ctx && typeof ctx.playbackRate === 'function') {
+					ctx.playbackRate(this.playbackRate);
+				}
+				if (typeof document !== 'undefined') {
+					const video = document.querySelector('#lessonVideo video') || document.querySelector('uni-video#lessonVideo video');
+					if (video) video.playbackRate = this.playbackRate;
+				}
+			});
+		},
+		rateLabel(rate) {
+			return `${rate}倍`;
 		},
 		async persistProgress(ended) {
 			if (!isLoggedIn() || !this.videoUrl) return;
@@ -339,6 +379,41 @@ page { background:#fff; }
 	background:rgba(255,255,255,.12);
 	color:#dbeafe;
 	font-size:22rpx;
+}
+.speed-panel {
+	display:flex;
+	align-items:center;
+	padding:0 28rpx 24rpx;
+	color:#dbeafe;
+}
+.speed-label {
+	font-size:24rpx;
+	color:#cbd5e1;
+	margin-right:18rpx;
+}
+.speed-options {
+	display:flex;
+	align-items:center;
+	flex-wrap:wrap;
+	gap:12rpx;
+}
+.speed-btn {
+	min-width:92rpx;
+	height:48rpx;
+	line-height:48rpx;
+	text-align:center;
+	border-radius:24rpx;
+	background:rgba(255,255,255,.1);
+	color:#dbeafe;
+	font-size:23rpx;
+	font-weight:700;
+	border:1rpx solid rgba(255,255,255,.16);
+	cursor:pointer;
+}
+.speed-btn.active {
+	background:#3aa3f5;
+	color:#fff;
+	border-color:#3aa3f5;
 }
 
 /* 本节内容 */
