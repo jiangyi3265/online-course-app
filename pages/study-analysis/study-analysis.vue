@@ -49,7 +49,7 @@
 			<view class="admin-head">
 				<view>
 					<view class="admin-title">课程打分评价统计</view>
-					<view class="admin-sub">按学生成绩阶段查看本节课反馈情况</view>
+					<view class="admin-sub">按激活时科目最近考试分数阶段查看本节课反馈情况</view>
 				</view>
 				<view class="admin-avg">{{adminStats.average}}星</view>
 			</view>

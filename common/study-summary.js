@@ -115,10 +115,10 @@ const PLATE_SCORES = [
 ];
 
 const ADMIN_RATING_BASE = [
-	{ range: '30以内', students: 18, counts: { 1: 8, 2: 5, 3: 3, 4: 1, 5: 1 } },
-	{ range: '30-50', students: 26, counts: { 1: 4, 2: 8, 3: 9, 4: 4, 5: 1 } },
-	{ range: '50-70', students: 32, counts: { 1: 2, 2: 4, 3: 12, 4: 10, 5: 4 } },
-	{ range: '70+', students: 41, counts: { 1: 1, 2: 2, 3: 8, 4: 16, 5: 14 } }
+	{ range: '30以内', students: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
+	{ range: '30-50', students: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
+	{ range: '50-70', students: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
+	{ range: '70+', students: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } }
 ];
 
 export function getMasteryLevel(score = 0) {
@@ -139,14 +139,18 @@ export function getStudySummary() {
 export function getAdminRatingStats() {
 	const localRatings = getLessonRatings();
 	const totalCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-	ADMIN_RATING_BASE.forEach(group => {
-		Object.keys(totalCounts).forEach(star => {
-			totalCounts[star] += group.counts[star] || 0;
-		});
-	});
+	const groups = ADMIN_RATING_BASE.map(group => ({ ...group, counts: { ...group.counts } }));
+	const missingScoreGroup = { range: '未填写分数', students: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
 	Object.values(localRatings).forEach(rating => {
-		if (totalCounts[rating] !== undefined) totalCounts[rating] += 1;
+		if (totalCounts[rating] !== undefined) {
+			totalCounts[rating] += 1;
+			missingScoreGroup.counts[rating] += 1;
+		}
 	});
+	if (Object.keys(localRatings).length) {
+		missingScoreGroup.students = 1;
+		groups.push(missingScoreGroup);
+	}
 	const chapterTotal = Object.values(totalCounts).reduce((sum, count) => sum + count, 0);
 	const weightedTotal = Object.keys(totalCounts).reduce((sum, star) => sum + Number(star) * totalCounts[star], 0);
 	const average = chapterTotal ? (weightedTotal / chapterTotal).toFixed(1) : '0.0';
@@ -156,6 +160,7 @@ export function getAdminRatingStats() {
 		chapterTotal,
 		totalCounts,
 		localRatings,
-		groups: ADMIN_RATING_BASE
+		groupBasis: 'activationRecentExamScore',
+		groups
 	};
 }
