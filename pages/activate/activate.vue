@@ -6,6 +6,7 @@
 			<view class="hint">请填写激活码和学生信息，全部为必填。验证成功后课程会加入“我的课程”。</view>
 			<input class="input" v-model="code" placeholder="输入激活码，例如 GK-MATH-2026" confirm-type="next" />
 			<input class="input" v-model="studentName" placeholder="输入学生名字" confirm-type="next" />
+			<input class="input" v-model="recentExamScore" placeholder="输入科目最近考试分数" confirm-type="next" />
 			<input class="input" v-model="grade" placeholder="输入年级" confirm-type="next" />
 			<input class="input" v-model="schoolName" placeholder="输入学校名字" confirm-type="next" />
 			<input class="input" v-model="region" placeholder="输入所在地区" confirm-type="done" @confirm="activate" />
@@ -40,6 +41,7 @@ export default {
 			courseId:'gk-math-full',
 			code:'',
 			studentName:'',
+			recentExamScore:'',
 			grade:'',
 			schoolName:'',
 			region:'',
@@ -54,17 +56,18 @@ export default {
 		async activate() {
 			const code = this.code.trim().toUpperCase();
 			const studentName = this.studentName.trim();
+			const recentExamScore = this.recentExamScore.trim();
 			const grade = this.grade.trim();
 			const schoolName = this.schoolName.trim();
 			const region = this.region.trim();
-			if (!code || !studentName || !grade || !schoolName || !region) {
+			if (!code || !studentName || !recentExamScore || !grade || !schoolName || !region) {
 				uni.showToast({ title:'请填写全部必填信息', icon:'none' });
 				return;
 			}
 			if (this.loading) return;
 			this.loading = true;
 			try {
-				const result = await activateCourse({ code, studentName, grade, schoolName, region, courseId: this.courseId });
+				const result = await activateCourse({ code, studentName, recentExamScore, grade, schoolName, region, courseId: this.courseId });
 				this.code = code;
 				this.activatedCourse = result.courseTitle || result.courseId || '课程';
 				uni.showToast({ title:'开通成功', icon:'success' });
