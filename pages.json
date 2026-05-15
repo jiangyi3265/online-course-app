@@ -110,9 +110,16 @@
 			}
 		},
 		{
+			"path": "pages/study-analysis/study-analysis",
+			"style": {
+				"navigationBarTitleText": "学情分析",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/activate/activate",
 			"style": {
-				"navigationBarTitleText": "扫码激活",
+				"navigationBarTitleText": "激活课程",
 				"navigationStyle": "custom"
 			}
 		}
