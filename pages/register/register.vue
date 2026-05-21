@@ -23,6 +23,12 @@
 			</view>
 
 			<view class="input-row">
+				<text class="input-icon">🔑</text>
+				<input class="input" type="number" maxlength="6" placeholder="验证码" v-model.trim="smsCode" placeholder-class="ph" />
+				<text class="code-btn" @click="getCode">获取验证码</text>
+			</view>
+
+			<view class="input-row">
 				<text class="input-icon">🔒</text>
 				<input class="input" type="password" maxlength="32" placeholder="请输入密码" v-model="password" placeholder-class="ph" />
 			</view>
@@ -30,6 +36,14 @@
 			<view class="input-row">
 				<text class="input-icon">✓</text>
 				<input class="input" type="password" maxlength="32" placeholder="请再次输入密码" v-model="confirmPassword" placeholder-class="ph" />
+			</view>
+
+			<view class="agree-row">
+				<view class="checkbox" :class="{checked: agree}" @click="agree = !agree"><text v-if="agree">✓</text></view>
+				<text class="agree-text">我已阅读并同意</text>
+				<text class="link">用户隐私协议</text>
+				<text class="agree-text">和</text>
+				<text class="link">用户隐私政策</text>
 			</view>
 
 			<button class="register-btn" :loading="loading" @click="onSubmit">注册并登录</button>
@@ -43,15 +57,17 @@
 </template>
 
 <script>
-	import { register, saveSession } from '@/common/api.js'
+	import { register, saveSession, sendSmsCode } from '@/common/api.js'
 
 	export default {
 		data() {
 			return {
 				name: '',
 				phone: '',
+				smsCode: '',
 				password: '',
 				confirmPassword: '',
+				agree: true,
 				loading: false
 			}
 		},
@@ -68,6 +84,10 @@
 					uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
 					return false
 				}
+				if (!this.smsCode) {
+					uni.showToast({ title: '请输入验证码', icon: 'none' })
+					return false
+				}
 				if (this.password.length < 6) {
 					uni.showToast({ title: '密码至少 6 位', icon: 'none' })
 					return false
@@ -76,13 +96,30 @@
 					uni.showToast({ title: '两次密码不一致', icon: 'none' })
 					return false
 				}
+				if (!this.agree) {
+					uni.showToast({ title: '请先同意协议', icon: 'none' })
+					return false
+				}
 				return true
+			},
+			async getCode() {
+				if (!/^1\d{10}$/.test(this.phone)) {
+					uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+					return
+				}
+				try {
+					const res = await sendSmsCode(this.phone)
+					uni.showToast({ title: res.message || '验证码已发送', icon: 'none' })
+					if (res.code) this.smsCode = res.code
+				} catch (err) {
+					uni.showToast({ title: err.message || '发送失败', icon: 'none' })
+				}
 			},
 			async onSubmit() {
 				if (this.loading || !this.validate()) return
 				this.loading = true
 				try {
-					const session = await register(this.name, this.phone, this.password)
+					const session = await register({ name: this.name, phone: this.phone, password: this.password, smsCode: this.smsCode })
 					saveSession(session)
 					uni.showToast({ title: '注册成功', icon: 'success' })
 					setTimeout(() => {
@@ -189,6 +226,41 @@ page {
 	margin-left: 18rpx;
 	font-size: 30rpx;
 	color: #16233a;
+}
+.code-btn {
+	flex-shrink:0;
+	margin-left:18rpx;
+	color:#1677ff;
+	font-size:26rpx;
+	font-weight:700;
+}
+.agree-row {
+	display:flex;
+	align-items:center;
+	flex-wrap:wrap;
+	margin:4rpx 0 22rpx;
+	font-size:23rpx;
+	color:#687386;
+}
+.checkbox {
+	width:34rpx;
+	height:34rpx;
+	border-radius:50%;
+	margin-right:10rpx;
+	border:2rpx solid #9eb3c8;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	color:#fff;
+	font-size:22rpx;
+}
+.checkbox.checked {
+	background:#1677ff;
+	border-color:#1677ff;
+}
+.link {
+	color:#1677ff;
+	margin:0 4rpx;
 }
 
 .ph {

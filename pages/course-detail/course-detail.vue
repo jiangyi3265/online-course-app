@@ -93,8 +93,14 @@
 		</block>
 
 		<view class="quiz-list" v-else-if="activeTab===1">
-			<view class="trial-tip">试听课仅开放部分知识扫雷内容，完整测评请开通课程。</view>
-			<view class="quiz" v-for="(q,i) in trialQuizzes" :key="i">
+			<view class="minor-panel" v-if="isChineseTrial">
+				<view class="minor-title">知识扫雷</view>
+				<view class="minor-text">权限未开通，请联系授权。</view>
+				<view class="minor-btn locked" @click="requestPermission">申请授权</view>
+			</view>
+			<template v-else>
+				<view class="trial-tip">试听课仅开放部分知识扫雷内容，完整测评请开通课程。</view>
+				<view class="quiz" v-for="(q,i) in trialQuizzes" :key="i">
 				<view class="quiz-left">
 					<view class="q-mark">测</view>
 					<view>
@@ -103,7 +109,8 @@
 					</view>
 				</view>
 				<view class="q-btn" @click="goQuiz(q)">{{q.action || '去测评'}}</view>
-			</view>
+				</view>
+			</template>
 		</view>
 
 		<view class="minor-panel" v-else-if="activeTab===2">
@@ -154,6 +161,9 @@ export default {
 	computed: {
 		trialQuizzes() {
 			return (this.quizzes || []).slice(0, 1);
+		},
+		isChineseTrial() {
+			return /中考语文|高考语文|初中语文|高中语文/.test(`${this.title}${this.courseName}`);
 		}
 	},
 	async onLoad(opts) {

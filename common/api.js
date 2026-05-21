@@ -108,7 +108,21 @@ export function login(phone, password) {
 export function register(name, phone, password) {
 	return request('/register', {
 		method: 'POST',
-		data: { name, phone, password }
+		data: typeof name === 'object' ? name : { name, phone, password }
+	})
+}
+
+export function sendSmsCode(phone) {
+	return request('/sms-code', {
+		method: 'POST',
+		data: { phone }
+	})
+}
+
+export function resetPassword(payload) {
+	return request('/password/reset', {
+		method: 'POST',
+		data: payload
 	})
 }
 
@@ -140,8 +154,8 @@ export function getStudyPlan(courseId = '') {
 	return request('/study/plan', { params: { courseId } })
 }
 
-export function getLessonVideo(lessonId) {
-	return request('/lesson/video', { params: { lessonId } })
+export function getLessonVideo(lessonId, courseId = '') {
+	return request('/lesson/video', { params: { lessonId, courseId } })
 }
 
 export function saveLessonProgress(lessonId, payload) {
@@ -226,5 +240,34 @@ export function activateCourse(payload) {
 	return request('/activate', {
 		method: 'POST',
 		data
+	})
+}
+
+export function getFavorites() {
+	return request('/favorites')
+}
+
+export function toggleFavorite(payload) {
+	return request('/favorites/toggle', {
+		method: 'POST',
+		data: payload
+	})
+}
+
+export function answerFavoriteQuestion(payload) {
+	return request('/favorites/question/answer', {
+		method: 'POST',
+		data: payload
+	})
+}
+
+export function getMyStudents() {
+	return request('/my/students')
+}
+
+export function bindStudent(payload) {
+	return request('/my/students/bind', {
+		method: 'POST',
+		data: payload
 	})
 }

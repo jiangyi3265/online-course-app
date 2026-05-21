@@ -7,12 +7,19 @@
 				<view class="label">{{item.label}}</view>
 			</view>
 		</view>
+		<view class="panel" v-if="report.learningStats">
+			<view class="panel-title">学习记录汇总</view>
+			<view class="stat-line"><text>累计学习</text><text>{{report.learningStats.days}}天</text></view>
+			<view class="stat-line"><text>今日学习</text><text>{{report.learningStats.todayText}}</text></view>
+			<view class="stat-line"><text>本周学习</text><text>{{report.learningStats.weekText}}</text></view>
+			<view class="stat-line"><text>总学习</text><text>{{report.learningStats.totalText}}</text></view>
+		</view>
 		<view class="panel">
 			<view class="panel-title">最近练习</view>
-			<view class="row" v-for="item in report.attempts" :key="item.id">
-				<text>{{item.title}}</text><text>{{item.score}}分</text>
+			<view class="row" v-for="item in recentRows" :key="item.id || item.createdAt">
+				<text>{{item.title}}</text><text>平均{{item.averageScore || item.score}}分，错题{{item.wrongCount || 0}}道</text>
 			</view>
-			<view class="empty" v-if="!report.attempts || !report.attempts.length">暂无练习记录</view>
+			<view class="empty" v-if="!recentRows.length">暂无练习记录</view>
 		</view>
 		<view class="panel">
 			<view class="panel-title">学习建议</view>
@@ -24,7 +31,12 @@
 <script>
 import { getStudyReport } from '@/common/api.js'
 export default {
-	data() { return { report: { overview:[], attempts:[], suggestions:[] } } },
+	data() { return { report: { overview:[], attempts:[], recentPractice:[], suggestions:[] } } },
+	computed: {
+		recentRows() {
+			return this.report.recentPractice && this.report.recentPractice.length ? this.report.recentPractice : (this.report.attempts || []);
+		}
+	},
 	onLoad(opts = {}) { this.loadData(opts.courseId || 'gk-math-full'); },
 	methods: {
 		async loadData(courseId) {
@@ -51,6 +63,8 @@ page { background:#f5f7fa; }
 .panel-title { font-size:32rpx; color:#222; font-weight:800; margin-bottom:18rpx; }
 .row { display:flex; justify-content:space-between; padding:18rpx 0; border-bottom:1rpx solid #eef0f3; font-size:28rpx; color:#333; }
 .row:last-child { border-bottom:0; }
+.stat-line { display:flex; justify-content:space-between; padding:14rpx 0; border-bottom:1rpx solid #eef0f3; font-size:27rpx; color:#333; }
+.stat-line:last-child { border-bottom:0; }
 .suggest { padding:16rpx 0; color:#596272; font-size:28rpx; line-height:1.5; }
 .empty { color:#8a94a3; font-size:26rpx; padding:20rpx 0; }
 </style>

@@ -6,6 +6,12 @@
 		</view>
 
 		<view class="section-title">学习情况总结</view>
+		<view class="time-summary" v-if="learningStats">
+			<view class="time-card"><text class="time-value">{{learningStats.totalText}}</text><text class="time-label">学习时长汇总</text></view>
+			<view class="time-card"><text class="time-value">{{learningStats.days}}天</text><text class="time-label">累计学习</text></view>
+			<view class="time-card"><text class="time-value">{{learningStats.weekText}}</text><text class="time-label">本周学习</text></view>
+			<view class="time-card"><text class="time-value">{{learningStats.todayText}}</text><text class="time-label">今日学习</text></view>
+		</view>
 		<view class="summary" v-if="studySummary">
 			<view class="summary-card" v-for="section in studySummary.sections" :key="section.title">
 				<view class="summary-title">{{section.title}}</view>
@@ -85,18 +91,19 @@
 </template>
 
 <script>
-import { RATING_OPTIONS, getAdminRatingStats, getStudySummary, isAdminUser } from '@/common/study-summary.js'
-import { getAdminDashboard, getStudySummaryApi, isLoggedIn } from '@/common/api.js'
+import { getStudySummary } from '@/common/study-summary.js'
+import { getStudyReport, getStudySummaryApi, isLoggedIn } from '@/common/api.js'
 
 export default {
 	data() {
 		return {
 			studySummary: null,
+			learningStats: null,
 			adminStats: null,
 			isAdmin: false,
 			userInfo: {},
 			expandedSummary: {},
-			ratingOptions: RATING_OPTIONS
+			ratingOptions: []
 		}
 	},
 	async onShow() {
@@ -106,8 +113,8 @@ export default {
 		}
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		this.studySummary = getStudySummary();
-		this.isAdmin = isAdminUser(this.userInfo);
-		this.adminStats = this.isAdmin ? getAdminRatingStats() : null;
+		this.isAdmin = false;
+		this.adminStats = null;
 		await this.loadRemoteData();
 	},
 	methods: {
@@ -117,13 +124,11 @@ export default {
 			} catch (err) {
 				console.warn('学习统计接口不可用，使用本地统计', err);
 			}
-			if (this.isAdmin) {
-				try {
-					const dashboard = await getAdminDashboard();
-					this.adminStats = dashboard.ratingStats;
-				} catch (err) {
-					console.warn('管理员统计接口不可用，使用本地统计', err);
-				}
+			try {
+				const report = await getStudyReport('');
+				this.learningStats = report.learningStats;
+			} catch (err) {
+				console.warn('学习报告接口不可用', err);
 			}
 		},
 		toggleSummary(title) {
@@ -170,6 +175,31 @@ page { background:#f5f7fa; }
 }
 .nav-title { font-size:30rpx; color:#222; font-weight:700; }
 .section-title { margin: 32rpx 30rpx 20rpx; font-size:32rpx; font-weight:800; color:#222; }
+.time-summary {
+	display:grid;
+	grid-template-columns:1fr 1fr;
+	gap:16rpx;
+	padding:0 24rpx 20rpx;
+}
+.time-card {
+	background:#fff;
+	border:1rpx solid #eef0f3;
+	border-radius:16rpx;
+	padding:22rpx;
+	display:flex;
+	flex-direction:column;
+	box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04);
+}
+.time-value {
+	color:#1677ff;
+	font-size:30rpx;
+	font-weight:900;
+}
+.time-label {
+	margin-top:8rpx;
+	color:#8a929c;
+	font-size:22rpx;
+}
 .summary { padding: 0 24rpx; }
 .summary-card, .master-card, .admin-panel {
 	background:#fff;

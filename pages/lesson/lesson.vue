@@ -27,6 +27,7 @@
 				<view class="video-error-title">视频暂时无法加载</view>
 				<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
 			</view>
+			<view class="moving-watermark" v-if="watermarkText">{{watermarkText}}</view>
 			<view class="video-info">
 				<view>
 					<view class="video-title">{{title}}</view>
@@ -56,20 +57,11 @@
 
 		<view class="rating-panel">
 			<view class="rating-head">
-				<text class="rating-title">本节课程给你带来的收获</text>
-				<text class="rating-state">{{ratingSaved ? '已评价' : (canRate ? '可打分' : '学习90%后可打分')}}</text>
+				<text class="rating-title">收藏课程</text>
+				<text class="rating-state">{{favoriteSaved ? '已收藏' : '未收藏'}}</text>
 			</view>
-			<view class="star-row">
-				<view class="star-item" v-for="option in ratingOptions" :key="option.value" :class="{active: currentRating >= option.value, disabled: !canRate}" @click="rateLesson(option.value)">
-					<text class="star-icon">{{currentRating >= option.value ? '★' : '☆'}}</text>
-					<text class="star-label">{{option.label}}</text>
-				</view>
-			</view>
-			<view class="rating-desc">{{ratingText}}</view>
-			<view class="rating-options">
-				<view class="rating-option" v-for="option in ratingOptions" :key="option.label">{{option.label}}（{{option.text}}）</view>
-			</view>
-			<view class="rating-btn" :class="{disabled: !canRate}" @click="submitRating">{{ratingSaved ? '更新评价' : '提交评价'}}</view>
+			<view class="favorite-desc">收藏后可在会员中心的“我的收藏”查看。课程权限到期或被关闭后，收藏记录仍保留，但不能继续观看。</view>
+			<view class="rating-btn" :class="{saved: favoriteSaved, disabled: favoriteLoading}" @click="toggleCourseFavorite">{{favoriteSaved ? '取消收藏' : '收藏课程'}}</view>
 		</view>
 
 		<view class="content">
@@ -99,8 +91,7 @@
 </template>
 
 <script>
-import { RATING_OPTIONS, getLessonRating, saveLessonRating } from '@/common/study-summary.js'
-import { getLessonRatingApi, getLessonVideo, isLoggedIn, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
+import { getFavorites, getLessonVideo, isLoggedIn, saveLessonProgress, toggleFavorite } from '@/common/api.js'
 export default {
 	data() {
 		return {
@@ -127,9 +118,9 @@ export default {
 			lessonCard: null,
 			page: 1,
 			pageTotal: 1,
-			ratingOptions: RATING_OPTIONS,
-			currentRating: 0,
-			ratingSaved: false
+			favoriteSaved: false,
+			favoriteLoading: false,
+			userInfo: {}
 		}
 	},
 	async onLoad(opts) {
@@ -137,10 +128,9 @@ export default {
 		if (opts && opts.courseId) this.courseId = decodeURIComponent(opts.courseId);
 		if (opts && opts.courseTitle) this.courseTitle = decodeURIComponent(opts.courseTitle);
 		if (opts && opts.chapterTitle) this.chapterTitle = decodeURIComponent(opts.chapterTitle);
-		this.currentRating = getLessonRating(this.title);
-		this.ratingSaved = !!this.currentRating;
+		this.userInfo = uni.getStorageSync('userInfo') || {};
 		await this.loadLesson();
-		if (isLoggedIn()) await this.loadRemoteRating();
+		if (isLoggedIn()) await this.loadFavoriteState();
 	},
 	onReady() {
 		this.videoContext = uni.createVideoContext('lessonVideo', this);
@@ -150,19 +140,15 @@ export default {
 		this.persistProgress(false);
 	},
 	computed: {
-		canRate() {
-			return Number(this.percent) >= 90;
-		},
-		ratingText() {
-			const matched = this.ratingOptions.find(item => item.value === this.currentRating);
-			if (!this.canRate) return '学习进度达到90%后才可以评价本节课';
-			return matched ? `${matched.label}（${matched.text}）` : '请选择本节课的收获程度';
+		watermarkText() {
+			const id = this.userInfo && this.userInfo.id;
+			return id ? `ID:${id}` : '';
 		}
 	},
 	methods: {
 		async loadLesson() {
 			try {
-				const data = await getLessonVideo(this.title);
+				const data = await getLessonVideo(this.title, this.courseId);
 				this.videoUrl = data.videoUrl || '';
 				this.poster = data.poster || '';
 				this.pageTotal = data.pageTotal || 1;
@@ -182,13 +168,12 @@ export default {
 				console.warn('视频接口不可用', err);
 			}
 		},
-		async loadRemoteRating() {
+		async loadFavoriteState() {
 			try {
-				const data = await getLessonRatingApi(this.title);
-				this.currentRating = data.rating || 0;
-				this.ratingSaved = !!this.currentRating;
+				const data = await getFavorites();
+				this.favoriteSaved = (data.courses || []).some(item => item.targetId === this.courseId);
 			} catch (err) {
-				console.warn('评价接口不可用，使用本地评价', err);
+				console.warn('收藏接口不可用', err);
 			}
 		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); },
@@ -243,6 +228,8 @@ export default {
 			try {
 				await saveLessonProgress(this.title, {
 					lessonTitle: this.title,
+					courseId: this.courseId,
+					courseTitle: this.courseTitle,
 					currentTime: this.currentSeconds,
 					duration: this.durationSeconds,
 					percent: this.percent,
@@ -278,41 +265,26 @@ export default {
 			uni.redirectTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(this.prevTitle)}` });
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); },
-		rateLesson(value) {
-			if (!this.canRate) {
-				uni.showToast({ title:'学习进度达到90%后才可以打分', icon:'none' });
+		async toggleCourseFavorite() {
+			if (!isLoggedIn()) {
+				uni.showToast({ title:'请先登录', icon:'none' });
 				return;
 			}
-			this.currentRating = value;
-			this.ratingSaved = false;
-		},
-		async submitRating() {
-			if (!this.canRate) {
-				uni.showToast({ title:'学习进度达到90%后才可以打分', icon:'none' });
-				return;
-			}
-			if (!this.currentRating) {
-				uni.showToast({ title:'请选择星级', icon:'none' });
-				return;
-			}
-			if (isLoggedIn()) {
-				try {
-					await saveLessonRatingApi(this.title, this.currentRating, this.title, {
-						courseId: this.courseId,
-						courseTitle: this.courseTitle,
-						chapterTitle: this.chapterTitle
-					});
-					saveLessonRating(this.title, this.currentRating);
-					this.ratingSaved = true;
-					uni.showToast({ title:'评价已保存', icon:'success' });
-					return;
-				} catch (err) {
-					console.warn('评价接口不可用，保存到本地', err);
-				}
-			}
-			if (saveLessonRating(this.title, this.currentRating)) {
-				this.ratingSaved = true;
-				uni.showToast({ title:'评价已保存', icon:'success' });
+			if (this.favoriteLoading) return;
+			this.favoriteLoading = true;
+			try {
+				const result = await toggleFavorite({
+					type: 'course',
+					targetId: this.courseId,
+					title: this.courseTitle || this.title,
+					courseId: this.courseId
+				});
+				this.favoriteSaved = !!result.favorited;
+				uni.showToast({ title:this.favoriteSaved ? '已收藏' : '已取消收藏', icon:'success' });
+			} catch (err) {
+				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
+			} finally {
+				this.favoriteLoading = false;
 			}
 		}
 	}
@@ -334,6 +306,7 @@ page { background:#fff; }
 
 /* 视频 */
 .video-wrap {
+	position:relative;
 	background:#111827;
 }
 .video-player {
@@ -341,6 +314,26 @@ page { background:#fff; }
 	height:420rpx;
 	background:#000;
 	display:block;
+}
+.moving-watermark {
+	position:absolute;
+	left:8%;
+	top:120rpx;
+	z-index:5;
+	padding:8rpx 18rpx;
+	border-radius:8rpx;
+	background:rgba(0,0,0,.22);
+	color:rgba(255,255,255,.72);
+	font-size:24rpx;
+	letter-spacing:0;
+	pointer-events:none;
+	animation: watermarkMove 12s linear infinite alternate;
+}
+@keyframes watermarkMove {
+	0% { transform:translate(0, 0); }
+	35% { transform:translate(48vw, 42rpx); }
+	70% { transform:translate(18vw, 180rpx); }
+	100% { transform:translate(62vw, 118rpx); }
 }
 .video-error {
 	padding:24rpx 30rpx;
@@ -539,6 +532,15 @@ page { background:#fff; }
 	padding:16rpx 18rpx;
 	border-radius:12rpx;
 }
+.favorite-desc {
+	margin-top:20rpx;
+	background:#f8fafc;
+	color:#596272;
+	font-size:24rpx;
+	line-height:1.5;
+	padding:16rpx 18rpx;
+	border-radius:12rpx;
+}
 .rating-options {
 	display:flex;
 	flex-wrap:wrap;
@@ -563,6 +565,10 @@ page { background:#fff; }
 	font-weight:700;
 	border-radius:36rpx;
 	cursor:pointer;
+}
+.rating-btn.saved {
+	background:#eef2f7;
+	color:#475569;
 }
 .rating-btn.disabled {
 	background:#d8dde5;

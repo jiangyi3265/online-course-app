@@ -81,7 +81,8 @@ export default {
 		},
 		openFunc(f) {
 			if (f.text === '学情统计') uni.navigateTo({ url:'/pages/study-analysis/study-analysis' });
-			else if (f.text === '我的收藏') uni.navigateTo({ url:'/pages/wrongbook/wrongbook' });
+			else if (f.text === '我的收藏') uni.navigateTo({ url:'/pages/favorites/favorites' });
+			else if (f.text === '我的学生') uni.navigateTo({ url:'/pages/students/students' });
 			else uni.showToast({ title:f.text, icon:'none' });
 		}
 	}

@@ -15,6 +15,7 @@
 		<view class="form">
 			<view class="title">库学君</view>
 
+			<template v-if="!resetMode">
 			<view class="input-row">
 				<text class="iconfont icon-phone">📱</text>
 				<input class="input" type="number" maxlength="11" placeholder="请输入手机号" v-model="phone" placeholder-class="ph" />
@@ -43,19 +44,53 @@
 				<text class="agree-text">和</text>
 				<text class="link" @click="openPolicy">用户隐私政策</text>
 			</view>
+			</template>
+
+			<template v-else>
+				<view class="reset-tip">忘记密码后，输入注册手机号、验证码和新密码即可重置。</view>
+				<view class="input-row">
+					<text class="iconfont icon-phone">📱</text>
+					<input class="input" type="number" maxlength="11" placeholder="请输入手机号" v-model="reset.phone" placeholder-class="ph" />
+				</view>
+				<view class="input-row">
+					<text class="iconfont icon-lock">🔑</text>
+					<input class="input" type="number" maxlength="6" placeholder="验证码" v-model="reset.smsCode" placeholder-class="ph" />
+					<text class="code-btn" @click="getResetCode">获取验证码</text>
+				</view>
+				<view class="input-row">
+					<text class="iconfont icon-lock">🔒</text>
+					<input class="input" type="password" placeholder="请输入新密码" v-model="reset.password" placeholder-class="ph" />
+				</view>
+				<view class="input-row">
+					<text class="iconfont icon-lock">✓</text>
+					<input class="input" type="password" placeholder="请再次输入新密码" v-model="reset.confirmPassword" placeholder-class="ph" />
+				</view>
+				<button class="login-btn" @click="submitReset">确定设置</button>
+				<view class="register-row">
+					<text class="register-tip">想起密码？</text>
+					<text class="register-link" @click="resetMode=false">返回登录</text>
+				</view>
+			</template>
 		</view>
 	</view>
 </template>
 
 <script>
 	import { OFFICIAL_USER } from '@/common/course-data.js'
-	import { login, saveSession } from '@/common/api.js'
+	import { login, resetPassword, saveSession, sendSmsCode } from '@/common/api.js'
 	export default {
 		data() {
 			return {
 				phone: '',
 				password: '',
-				agree: true
+				agree: true,
+				resetMode: false,
+				reset: {
+					phone: '',
+					smsCode: '',
+					password: '',
+					confirmPassword: ''
+				}
 			}
 		},
 		methods: {
@@ -63,7 +98,8 @@
 				uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index', fail: () => {} }) });
 			},
 			onForget() {
-				uni.showToast({ title: '忘记密码', icon: 'none' });
+				this.reset.phone = this.phone;
+				this.resetMode = true;
 			},
 			onRegister() {
 				uni.navigateTo({ url: '/pages/register/register' });
@@ -73,6 +109,42 @@
 			},
 			openPolicy() {
 				uni.showToast({ title: '用户隐私政策', icon: 'none' });
+			},
+			async getResetCode() {
+				if (!/^1\d{10}$/.test(this.reset.phone)) {
+					uni.showToast({ title: '请输入正确的手机号', icon: 'none' });
+					return;
+				}
+				try {
+					const res = await sendSmsCode(this.reset.phone);
+					uni.showToast({ title: res.message || '验证码已发送', icon: 'none' });
+					if (res.code) this.reset.smsCode = res.code;
+				} catch (err) {
+					uni.showToast({ title: err.message || '发送失败', icon:'none' });
+				}
+			},
+			async submitReset() {
+				if (!/^1\d{10}$/.test(this.reset.phone)) {
+					uni.showToast({ title: '请输入正确的手机号', icon: 'none' });
+					return;
+				}
+				if (!this.reset.smsCode) {
+					uni.showToast({ title: '请输入验证码', icon: 'none' });
+					return;
+				}
+				if (this.reset.password.length < 6 || this.reset.password !== this.reset.confirmPassword) {
+					uni.showToast({ title: '请确认两次新密码一致且不少于6位', icon: 'none' });
+					return;
+				}
+				try {
+					await resetPassword({ phone: this.reset.phone, smsCode: this.reset.smsCode, password: this.reset.password });
+					this.phone = this.reset.phone;
+					this.password = this.reset.password;
+					this.resetMode = false;
+					uni.showToast({ title: '密码已重置', icon:'success' });
+				} catch (err) {
+					uni.showToast({ title: err.message || '重置失败', icon:'none' });
+				}
 			},
 			async onLogin() {
 				if (!this.agree) {
@@ -406,6 +478,20 @@ page {
 	font-size: 28rpx;
 	color: #333;
 	background: transparent;
+}
+.reset-tip {
+	margin: 12rpx 0 26rpx;
+	color:#d45b5b;
+	font-size:26rpx;
+	line-height:1.5;
+	text-align:center;
+}
+.code-btn {
+	flex-shrink:0;
+	margin-left:18rpx;
+	color:#1296db;
+	font-size:26rpx;
+	font-weight:700;
 }
 .ph {
 	color: #9bb6cf;

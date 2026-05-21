@@ -11,7 +11,10 @@
 		</view>
 
 		<view class="question" v-for="(q, i) in questions" :key="q.id">
-			<view class="q-title">{{i + 1}}. {{q.stem}}</view>
+			<view class="q-head">
+				<view class="q-title">{{i + 1}}. {{q.stem}}</view>
+				<view class="collect-btn" @click="collectQuestion(q)">收藏</view>
+			</view>
 			<view class="option" v-for="(opt, idx) in q.options" :key="opt" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
 				<text class="radio">{{answers[q.id] === idx ? '●' : '○'}}</text>
 				<text>{{opt}}</text>
@@ -40,7 +43,7 @@
 </template>
 
 <script>
-import { getPractice, getQuiz, getReinforcePractice, submitPractice, submitQuiz } from '@/common/api.js'
+import { getPractice, getQuiz, getReinforcePractice, submitPractice, submitQuiz, toggleFavorite } from '@/common/api.js'
 
 export default {
 	data() {
@@ -105,6 +108,19 @@ export default {
 				uni.showToast({ title: err.message || '提交失败', icon: 'none' });
 			}
 		},
+		async collectQuestion(q) {
+			try {
+				const result = await toggleFavorite({
+					type: 'question',
+					targetId: q.id,
+					title: q.stem,
+					courseId: ''
+				});
+				uni.showToast({ title: result.favorited ? '已收藏' : '已取消收藏', icon:'success' });
+			} catch (err) {
+				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
+			}
+		},
 		reload() { this.loadData(); },
 		goWrongBook() { uni.navigateTo({ url: '/pages/wrongbook/wrongbook' }); },
 		goBack() { uni.navigateBack({ fail:()=>{} }); }
@@ -122,7 +138,9 @@ page { background:#f5f7fa; }
 .hero-title { font-size:36rpx; font-weight:800; }
 .hero-sub { margin-top:10rpx; font-size:24rpx; opacity:.9; }
 .question { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
-.q-title { font-size:30rpx; color:#222; font-weight:700; line-height:1.5; margin-bottom:18rpx; }
+.q-head { display:flex; align-items:flex-start; gap:16rpx; margin-bottom:18rpx; }
+.q-title { flex:1; min-width:0; font-size:30rpx; color:#222; font-weight:700; line-height:1.5; }
+.collect-btn { flex-shrink:0; padding:8rpx 18rpx; border-radius:24rpx; background:#eef6ff; color:#1677ff; font-size:24rpx; font-weight:700; }
 .option { display:flex; align-items:center; min-height:72rpx; padding:0 18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
 .radio { margin-right:14rpx; }

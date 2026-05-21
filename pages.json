@@ -82,6 +82,20 @@
 			}
 		},
 		{
+			"path": "pages/favorites/favorites",
+			"style": {
+				"navigationBarTitleText": "我的收藏",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/students/students",
+			"style": {
+				"navigationBarTitleText": "我的学生",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/reinforce/reinforce",
 			"style": {
 				"navigationBarTitleText": "知识巩固",
