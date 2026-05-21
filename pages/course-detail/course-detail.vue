@@ -34,13 +34,13 @@
 				<view class="info-title">{{courseName}}</view>
 				<view class="star">☆</view>
 			</view>
-			<view class="info-meta">共计{{totalLessons}}讲,技巧总时长：{{totalDuration}}<text v-if="practiceDuration">，真题讲练总时长：{{practiceDuration}}</text></view>
+			<view class="info-meta">共计{{totalLessons}}节，课程时长：{{totalDuration}}</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
 				<view class="bar"><view class="bar-inner" :style="{width: progress+'%'}"></view></view>
 				<text class="p-num">{{progress}}%</text>
 			</view>
-			<view class="learnt">已学讲点数{{learntCount}},已学时长：{{learntDuration}}</view>
+			<view class="learnt">已学课程节数{{learntCount}}节，已学时长：{{learntDuration}}</view>
 		</view>
 
 		<!-- 三个功能 -->
@@ -51,7 +51,7 @@
 			</view>
 			<view class="func" @click="goPlan">
 				<view class="f-ico pink">📋</view>
-				<text class="f-text">我的学案</text>
+				<text class="f-text">学习计划</text>
 			</view>
 			<view class="func" @click="goReport">
 				<view class="f-ico green">📊</view>
@@ -94,12 +94,12 @@
 
 		<view class="quiz-list" v-else-if="activeTab===1">
 			<view class="minor-panel" v-if="isChineseTrial">
-				<view class="minor-title">知识扫雷</view>
+				<view class="minor-title">章节扫雷</view>
 				<view class="minor-text">权限未开通，请联系授权。</view>
 				<view class="minor-btn locked" @click="requestPermission">申请授权</view>
 			</view>
 			<template v-else>
-				<view class="trial-tip">试听课仅开放部分知识扫雷内容，完整测评请开通课程。</view>
+				<view class="trial-tip">试听课仅开放部分章节扫雷内容，完整测评请开通课程。</view>
 				<view class="quiz" v-for="(q,i) in trialQuizzes" :key="i">
 				<view class="quiz-left">
 					<view class="q-mark">测</view>
@@ -114,13 +114,13 @@
 		</view>
 
 		<view class="minor-panel" v-else-if="activeTab===2">
-			<view class="minor-title">错题与测试</view>
+			<view class="minor-title">错题与巩固</view>
 			<view class="minor-text">权限未开通，请联系授权。</view>
 			<view class="minor-btn locked" @click="requestPermission">申请授权</view>
 		</view>
 
 		<view class="minor-panel" v-else>
-			<view class="minor-title">知识巩固</view>
+			<view class="minor-title">复习加强</view>
 			<view class="minor-text">权限未开通，请联系授权。</view>
 			<view class="minor-btn locked" @click="requestPermission">申请授权</view>
 		</view>
@@ -146,7 +146,7 @@ export default {
 			learntCount: 0,
 			learntDuration: '00小时00分',
 			activeTab: 0,
-			detailTabs: ['技巧干货','知识扫雷','错题与测试','知识巩固'],
+			detailTabs: ['技巧干货','章节扫雷','错题与巩固','复习加强'],
 			chapters: [
 				{ title:'选材与加工高分技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
 				{ title:'课外文言文做题技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
@@ -192,8 +192,9 @@ export default {
 			this.title = course.title || this.title;
 			this.courseName = course.courseName || this.courseName;
 			this.cover = course.detailCover || course.cover || this.cover;
-			this.totalLessons = course.totalLessons || this.totalLessons;
-			this.totalDuration = course.totalDuration || this.totalDuration;
+			const stats = this.resolveCourseStats(course);
+			this.totalLessons = stats.totalLessons || this.totalLessons;
+			this.totalDuration = stats.totalDuration || this.totalDuration;
 			this.practiceDuration = course.practiceDuration || this.practiceDuration;
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
@@ -209,8 +210,9 @@ export default {
 			this.title = course.title;
 			this.courseName = course.courseName;
 			this.cover = course.detailCover || course.cover;
-			this.totalLessons = course.totalLessons;
-			this.totalDuration = course.totalDuration;
+			const stats = this.resolveCourseStats(course);
+			this.totalLessons = stats.totalLessons || course.totalLessons;
+			this.totalDuration = stats.totalDuration || course.totalDuration;
 			this.practiceDuration = course.practiceDuration;
 			this.progress = course.progress;
 			this.learntCount = course.readStudyCount;
@@ -219,6 +221,29 @@ export default {
 			this.quizzes = course.quizzes;
 		},
 		toggle(i) { this.chapters[i].open = !this.chapters[i].open; },
+		resolveCourseStats(course = {}) {
+			const totalLessons = this.countCourseLessons(course) || course.totalLessons || 0;
+			return {
+				totalLessons,
+				totalDuration: course.totalDuration || ''
+			};
+		},
+		countCourseLessons(course = {}) {
+			const version = course.versions && course.versions[0];
+			const chapters = version && version.chapters ? version.chapters : (course.chapters || []);
+			return this.countChapters(chapters);
+		},
+		countChapters(chapters = []) {
+			return chapters.reduce((total, chapter) => {
+				const items = chapter.items || chapter.children || [];
+				return total + items.reduce((sum, item) => {
+					if (item.children && item.children.length) {
+						return sum + item.children.filter(child => child.type !== 2).length;
+					}
+					return sum + (item.type === 2 ? 0 : 1);
+				}, 0);
+			}, 0);
+		},
 		goDocs() { uni.navigateTo({ url:'/pages/my-docs/my-docs' }); },
 		goPlan() { uni.navigateTo({ url:`/pages/study-plan/study-plan?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goReport() { uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` }); },

@@ -102,9 +102,15 @@ export default {
 			adminStats: null,
 			isAdmin: false,
 			userInfo: {},
+			courseId: '',
+			studentId: '',
 			expandedSummary: {},
 			ratingOptions: []
 		}
+	},
+	onLoad(opts = {}) {
+		this.courseId = opts.courseId || '';
+		this.studentId = opts.studentId || opts.userId || '';
 	},
 	async onShow() {
 		if (!isLoggedIn()) {
@@ -125,7 +131,7 @@ export default {
 				console.warn('学习统计接口不可用，使用本地统计', err);
 			}
 			try {
-				const report = await getStudyReport('');
+				const report = await getStudyReport(this.courseId, this.studentId);
 				this.learningStats = report.learningStats;
 			} catch (err) {
 				console.warn('学习报告接口不可用', err);

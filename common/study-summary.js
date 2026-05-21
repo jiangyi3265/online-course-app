@@ -33,7 +33,7 @@ export function saveLessonRating(title = '', rating = 0) {
 
 const STUDY_SUMMARY = {
 	knowledge: {
-		title: '知识点扫雷',
+		title: '章节扫雷',
 		items: [
 			{ label: '刷题数', value: '186道' },
 			{ label: '正确', value: '142道' },
@@ -69,7 +69,7 @@ const STUDY_SUMMARY = {
 		]
 	},
 	review: {
-		title: '复习情况统计',
+		title: '复习加强统计',
 		items: [
 			{ label: '复习课程完成情况', value: '68%' },
 			{ label: '测评统计', value: '完成6次，平均72分' }
@@ -107,7 +107,7 @@ export const MASTERY_LEVELS = [
 ];
 
 const PLATE_SCORES = [
-	{ name: '知识点扫雷', score: 78 },
+	{ name: '章节扫雷', score: 78 },
 	{ name: '章节测评', score: 74 },
 	{ name: '复习情况', score: 62 },
 	{ name: '思维技巧', score: 86 },

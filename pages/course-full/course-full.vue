@@ -20,19 +20,19 @@
 				<view class="info-title">{{courseName}}</view>
 				<view class="star">☆</view>
 			</view>
-			<view class="info-meta">共计{{total}}讲, 技巧总时长：{{duration}}, 真题讲练总时长：{{realDuration}}</view>
+			<view class="info-meta">共计{{total}}节，课程时长：{{duration}}</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
 				<view class="bar"><view class="bar-inner" :style="{width: progress+'%'}"></view></view>
 				<text class="p-num">{{progress}}%</text>
-				<text class="p-extra">已学讲点数{{learntCount}},已学时长：{{learntDuration}}</text>
+				<text class="p-extra">已学课程节数{{learntCount}}节，已学时长：{{learntDuration}}</text>
 			</view>
 		</view>
 
 		<!-- 三功能 -->
 		<view class="funcs">
 			<view class="func" @click="goDocs"><view class="f-ico blue">📄</view><text class="f-text">我的文档</text></view>
-			<view class="func" @click="goPlan"><view class="f-ico pink">📋</view><text class="f-text">我的学案</text></view>
+			<view class="func" @click="goPlan"><view class="f-ico pink">📋</view><text class="f-text">学习计划</text></view>
 			<view class="func" @click="goReport"><view class="f-ico green">📊</view><text class="f-text">学习报告</text></view>
 		</view>
 
@@ -84,7 +84,7 @@
 			</view>
 		</block>
 
-		<!-- 知识扫雷 -->
+		<!-- 章节扫雷 -->
 		<block v-if="tab===1">
 			<view class="quiz-list">
 				<view class="quiz" v-for="(q,i) in quizzes" :key="i">
@@ -104,15 +104,15 @@
 		</block>
 
 		<view class="minor-panel" v-if="tab===2">
-			<view class="minor-title">错题与测试</view>
+			<view class="minor-title">错题与巩固</view>
 			<view class="minor-text">当前课程错题共25道，可继续巩固薄弱题型。</view>
-			<view class="minor-btn" @click="goWrongBook">进入错题与测试</view>
+			<view class="minor-btn" @click="goWrongBook">进入错题与巩固</view>
 		</view>
 
 		<view class="minor-panel" v-if="tab===3">
-			<view class="minor-title">知识巩固</view>
+			<view class="minor-title">复习加强</view>
 			<view class="minor-text">当前课程有17个知识点可强化练习。</view>
-			<view class="minor-btn" @click="goReinforce">开始巩固</view>
+			<view class="minor-btn" @click="goReinforce">开始复习</view>
 		</view>
 
 		<view style="height:160rpx"></view>
@@ -154,7 +154,7 @@ export default {
 			learntDuration: '00小时00分',
 			cover: '',
 			tab: 0,
-			projectTabs: ['技巧干货','知识扫雷','错题与测试','知识巩固'],
+			projectTabs: ['技巧干货','章节扫雷','错题与巩固','复习加强'],
 			versionIndex: 0,
 			versions: [{ name:'2026版' }, { name:'绝招课' }],
 			locked: true,
@@ -209,8 +209,9 @@ export default {
 			this.title = course.title || this.title;
 			this.courseName = course.courseName || this.courseName;
 			this.cover = course.detailCover || course.cover || this.cover;
-			this.total = course.totalLessons || this.total;
-			this.duration = course.totalDuration || this.duration;
+			const stats = this.resolveCourseStats(course);
+			this.total = stats.totalLessons || this.total;
+			this.duration = stats.totalDuration || this.duration;
 			this.realDuration = course.practiceDuration || this.realDuration;
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
@@ -229,8 +230,9 @@ export default {
 			this.title = course.title;
 			this.courseName = course.courseName;
 			this.cover = course.detailCover || course.cover;
-			this.total = course.totalLessons;
-			this.duration = course.totalDuration;
+			const stats = this.resolveCourseStats(course);
+			this.total = stats.totalLessons || course.totalLessons;
+			this.duration = stats.totalDuration || course.totalDuration;
 			this.realDuration = course.practiceDuration;
 			this.progress = course.progress;
 			this.learntCount = course.readStudyCount;
@@ -244,6 +246,29 @@ export default {
 		setVersion(i) {
 			this.versionIndex = i;
 			if (this.versions[i] && this.versions[i].chapters) this.chapters = this.versions[i].chapters;
+		},
+		resolveCourseStats(course = {}) {
+			const totalLessons = this.countCourseLessons(course) || course.totalLessons || 0;
+			return {
+				totalLessons,
+				totalDuration: course.totalDuration || ''
+			};
+		},
+		countCourseLessons(course = {}) {
+			const version = course.versions && course.versions[0];
+			const chapters = version && version.chapters ? version.chapters : (course.chapters || []);
+			return this.countChapters(chapters);
+		},
+		countChapters(chapters = []) {
+			return chapters.reduce((total, chapter) => {
+				const items = chapter.items || chapter.children || [];
+				return total + items.reduce((sum, item) => {
+					if (item.children && item.children.length) {
+						return sum + item.children.filter(child => child.type !== 2).length;
+					}
+					return sum + (item.type === 2 ? 0 : 1);
+				}, 0);
+			}, 0);
 		},
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
@@ -436,7 +461,7 @@ page { background:#f5f7fa; }
 .child-btn.go { background:#3aa3f5; }
 .child-btn.ai { background:#2bb673; }
 
-/* 知识扫雷 */
+/* 章节扫雷 */
 .quiz-list { padding: 16rpx 24rpx; }
 .quiz {
 	background:#fff;

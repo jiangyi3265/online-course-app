@@ -77,7 +77,7 @@
 		{
 			"path": "pages/wrongbook/wrongbook",
 			"style": {
-				"navigationBarTitleText": "错题本",
+				"navigationBarTitleText": "错题与巩固",
 				"navigationStyle": "custom"
 			}
 		},
@@ -96,9 +96,23 @@
 			}
 		},
 		{
+			"path": "pages/referrer/referrer",
+			"style": {
+				"navigationBarTitleText": "我的推荐人",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/vocabulary/vocabulary",
+			"style": {
+				"navigationBarTitleText": "外语词汇",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/reinforce/reinforce",
 			"style": {
-				"navigationBarTitleText": "知识巩固",
+				"navigationBarTitleText": "复习加强",
 				"navigationStyle": "custom"
 			}
 		},
@@ -119,7 +133,7 @@
 		{
 			"path": "pages/study-plan/study-plan",
 			"style": {
-				"navigationBarTitleText": "我的学案",
+				"navigationBarTitleText": "学习计划与打卡",
 				"navigationStyle": "custom"
 			}
 		},

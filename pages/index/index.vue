@@ -13,6 +13,17 @@
 			</view>
 		</view>
 
+		<view class="tool-strip">
+			<view class="tool-card" @click="goVocabulary">
+				<view class="tool-mark">Aa</view>
+				<view class="tool-info">
+					<view class="tool-title">外语词汇</view>
+					<view class="tool-sub">英语单词工具</view>
+				</view>
+				<view class="tool-arrow">›</view>
+			</view>
+		</view>
+
 		<!-- 课程网格 -->
 		<view class="grid">
 			<view class="card" v-for="(it,i) in list" :key="i" @click="goDetail(it)">
@@ -93,6 +104,7 @@ export default {
 		accessNote(it) {
 			return it.kind === 'full' || it.isTry === false ? '验证后学习' : '直接体验';
 		},
+		goVocabulary() { uni.navigateTo({ url:'/pages/vocabulary/vocabulary' }); },
 		goTab(i) { uni.navigateTo({ url:`/pages/index/testIndex?tab=${i+1}` }); },
 		goDetail(it) {
 			const idPart = it.id ? `id=${encodeURIComponent(it.id)}&` : '';
@@ -114,6 +126,13 @@ page { background:#f7f8fa; }
 .cat { display:flex; flex-direction:column; align-items:center; cursor:pointer; }
 .cat-img { width:96rpx; height:96rpx; margin-bottom:14rpx; }
 .cat-text { font-size:30rpx; color:rgba(0,0,0,0.9); font-weight:700; }
+.tool-strip { padding:12rpx 20rpx 0; }
+.tool-card { min-height:118rpx; background:#fff; border:1rpx solid #edf0f4; border-radius:16rpx; display:flex; align-items:center; padding:0 24rpx; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
+.tool-mark { width:74rpx; height:74rpx; border-radius:16rpx; background:#eaf4ff; color:#0d7cfe; display:flex; align-items:center; justify-content:center; font-size:28rpx; font-weight:900; margin-right:18rpx; }
+.tool-info { flex:1; min-width:0; }
+.tool-title { color:#222; font-size:30rpx; font-weight:800; }
+.tool-sub { margin-top:6rpx; color:#697386; font-size:24rpx; }
+.tool-arrow { color:#b5bdc8; font-size:42rpx; }
 
 .grid { display:flex; flex-wrap:wrap; justify-content:space-between; padding:20rpx; }
 .card { width:48.5%; background:#fff; border-radius:16rpx; margin-bottom:24rpx; overflow:hidden; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }

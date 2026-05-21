@@ -146,12 +146,12 @@ export function getStudySummaryApi() {
 	return request('/study/summary')
 }
 
-export function getStudyReport(courseId = '') {
-	return request('/study/report', { params: { courseId } })
+export function getStudyReport(courseId = '', userId = '') {
+	return request('/study/report', { params: { courseId, userId } })
 }
 
-export function getStudyPlan(courseId = '') {
-	return request('/study/plan', { params: { courseId } })
+export function getStudyPlan(courseId = '', userId = '') {
+	return request('/study/plan', { params: { courseId, userId } })
 }
 
 export function getLessonVideo(lessonId, courseId = '') {
@@ -267,6 +267,24 @@ export function getMyStudents() {
 
 export function bindStudent(payload) {
 	return request('/my/students/bind', {
+		method: 'POST',
+		data: payload
+	})
+}
+
+export function unbindStudent(studentUserId) {
+	return request('/my/students/unbind', {
+		method: 'POST',
+		data: { studentUserId }
+	})
+}
+
+export function getMyReferrer() {
+	return request('/my/referrer')
+}
+
+export function bindReferrer(payload) {
+	return request('/my/referrer/bind', {
 		method: 'POST',
 		data: payload
 	})

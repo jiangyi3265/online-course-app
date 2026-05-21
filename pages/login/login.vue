@@ -63,9 +63,9 @@
 				</view>
 				<view class="input-row">
 					<text class="iconfont icon-lock">✓</text>
-					<input class="input" type="password" placeholder="请再次输入新密码" v-model="reset.confirmPassword" placeholder-class="ph" />
+					<input class="input" type="password" placeholder="确认新密码" v-model="reset.confirmPassword" placeholder-class="ph" />
 				</view>
-				<button class="login-btn" @click="submitReset">确定设置</button>
+				<button class="login-btn" @click="submitReset">保存</button>
 				<view class="register-row">
 					<text class="register-tip">想起密码？</text>
 					<text class="register-link" @click="resetMode=false">返回登录</text>

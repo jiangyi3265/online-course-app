@@ -1,6 +1,6 @@
 <template>
 	<view class="page">
-		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">错题与测试</view></view>
+		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">错题与巩固</view></view>
 		<view class="test-actions">
 			<view class="test-card">
 				<view class="test-title">复习我的错题</view>
