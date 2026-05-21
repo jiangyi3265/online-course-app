@@ -56,8 +56,8 @@ jobs:
         run: |
           set -euo pipefail
           test -d dist/build/h5
-          SSH_OPTS="-i ~/.ssh/deploy_key -p $DEPLOY_PORT -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=60 -o ConnectionAttempts=6 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
-          SCP_OPTS="-O -i ~/.ssh/deploy_key -P $DEPLOY_PORT -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=60 -o ConnectionAttempts=6 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+          SSH_OPTS="-i ~/.ssh/deploy_key -p $DEPLOY_PORT -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+          SCP_OPTS="-O -i ~/.ssh/deploy_key -P $DEPLOY_PORT -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
           ARCHIVE="wk-h5.tar.gz"
 
           retry() {
@@ -74,6 +74,10 @@ jobs:
           }
 
           tar -C dist/build/h5 -czf "$ARCHIVE" .
-          retry 5 ssh $SSH_OPTS "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH' '$DEPLOY_PATH/.deploy'"
-          retry 5 scp $SCP_OPTS "$ARCHIVE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.deploy/$ARCHIVE"
-          retry 5 ssh $SSH_OPTS "$DEPLOY_USER@$DEPLOY_HOST" "tar -xzf '$DEPLOY_PATH/.deploy/$ARCHIVE' -C '$DEPLOY_PATH' && if id www >/dev/null 2>&1; then chown -R www:www '$DEPLOY_PATH' 2>/dev/null || true; fi"
+          du -h "$ARCHIVE"
+          echo "Creating remote H5 deploy directory..."
+          retry 6 timeout 90s ssh $SSH_OPTS "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH' '$DEPLOY_PATH/.deploy'"
+          echo "Uploading H5 archive..."
+          retry 4 timeout 8m scp $SCP_OPTS "$ARCHIVE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.deploy/$ARCHIVE"
+          echo "Extracting H5 archive..."
+          retry 6 timeout 2m ssh $SSH_OPTS "$DEPLOY_USER@$DEPLOY_HOST" "tar -xzf '$DEPLOY_PATH/.deploy/$ARCHIVE' -C '$DEPLOY_PATH' && if id www >/dev/null 2>&1; then chown -R www:www '$DEPLOY_PATH' 2>/dev/null || true; fi"
