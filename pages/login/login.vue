@@ -13,7 +13,7 @@
 
 		<!-- 表单 -->
 		<view class="form">
-			<view class="title">库学君</view>
+			<view class="title">元知智学</view>
 
 			<template v-if="!resetMode">
 			<view class="input-row">
