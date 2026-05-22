@@ -19,6 +19,8 @@
 				:show-play-btn="true"
 				:enable-progress-gesture="true"
 				@loadedmetadata="onLoadedMeta"
+				@play="onPlay"
+				@pause="onPause"
 				@timeupdate="onTimeUpdate"
 				@ended="onEnded"
 				@error="onVideoError"
@@ -27,7 +29,7 @@
 				<view class="video-error-title">视频暂时无法加载</view>
 				<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
 			</view>
-			<view class="moving-watermark" v-if="watermarkText">{{watermarkText}}</view>
+			<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
 			<view class="video-info">
 				<view>
 					<view class="video-title">{{title}}</view>
@@ -108,6 +110,7 @@ export default {
 			durationSeconds: 0,
 			percent: 0,
 			videoError: false,
+			videoPlaying: false,
 			progressSaved: false,
 			lastSavedAt: 0,
 			videoContext: null,
@@ -141,8 +144,11 @@ export default {
 	},
 	computed: {
 		watermarkText() {
-			const id = this.userInfo && this.userInfo.id;
+			const id = this.userInfo && (this.userInfo.phone || this.userInfo.id);
 			return id ? `ID:${id}` : '';
+		},
+		showWatermark() {
+			return this.videoPlaying && !!this.watermarkText && !this.videoError;
 		}
 	},
 	methods: {
@@ -185,6 +191,12 @@ export default {
 			}
 			this.applyPlaybackRate();
 		},
+		onPlay() {
+			this.videoPlaying = true;
+		},
+		onPause() {
+			this.videoPlaying = false;
+		},
 		onTimeUpdate(e) {
 			const detail = e.detail || {};
 			this.currentSeconds = Number(detail.currentTime) || 0;
@@ -197,10 +209,12 @@ export default {
 		},
 		onEnded() {
 			this.percent = 100;
+			this.videoPlaying = false;
 			this.persistProgress(true);
 		},
 		onVideoError() {
 			this.videoError = true;
+			this.videoPlaying = false;
 		},
 		setPlaybackRate(rate) {
 			this.playbackRate = Number(rate) || 1;
@@ -308,6 +322,7 @@ page { background:#fff; }
 .video-wrap {
 	position:relative;
 	background:#111827;
+	overflow:hidden;
 }
 .video-player {
 	width:100%;
@@ -317,8 +332,8 @@ page { background:#fff; }
 }
 .moving-watermark {
 	position:absolute;
-	left:8%;
-	top:120rpx;
+	left:0;
+	top:142rpx;
 	z-index:5;
 	padding:8rpx 18rpx;
 	border-radius:8rpx;
@@ -326,14 +341,17 @@ page { background:#fff; }
 	color:rgba(255,255,255,.72);
 	font-size:24rpx;
 	letter-spacing:0;
+	white-space:nowrap;
 	pointer-events:none;
-	animation: watermarkMove 12s linear infinite alternate;
+	animation: watermarkSweep 15s linear infinite;
+	transform:translateX(100vw);
 }
-@keyframes watermarkMove {
-	0% { transform:translate(0, 0); }
-	35% { transform:translate(48vw, 42rpx); }
-	70% { transform:translate(18vw, 180rpx); }
-	100% { transform:translate(62vw, 118rpx); }
+@keyframes watermarkSweep {
+	0% { transform:translateX(100vw); opacity:0; }
+	6% { opacity:.72; }
+	58% { transform:translateX(-100%); opacity:.72; }
+	59% { transform:translateX(-100%); opacity:0; }
+	100% { transform:translateX(-100%); opacity:0; }
 }
 .video-error {
 	padding:24rpx 30rpx;
