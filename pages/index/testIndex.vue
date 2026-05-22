@@ -42,7 +42,9 @@ const ZK = {
 const GK = {
 	yuwen:'/static/courses/gk-yuwen.jpg', shuxue:'/static/courses/gk-shuxue.jpg',
 	yingyu:'/static/courses/gk-yingyu.jpg', wuli:'/static/courses/gk-wuli.jpg',
-	huaxue:'/static/courses/gk-huaxue.jpg'
+	huaxue:'/static/courses/gk-huaxue.jpg', shengwu:'/static/courses/gk-huaxue.jpg',
+	lishi:'/static/courses/gk-dili-full.jpg', zhengzhi:'/static/courses/gk-dili-full.jpg',
+	dili:'/static/courses/gk-dili-full.jpg'
 };
 export default {
 	components: { TabBar },
@@ -70,14 +72,22 @@ export default {
 					{ full:'高考数学2026', suffix:'试…', sub:GAOKAO_MATH_TRIAL.courseName, cover: GAOKAO_MATH_TRIAL.cover, isTry:true, subject:'gaokao-math', kind:'trial' },
 					{ full:'高考英语2026', suffix:'试…', sub:'《高考英语2026》试听课', cover: GK.yingyu, isTry:true },
 					{ full:'高考物理2026', suffix:'试…', sub:'《高考物理2026》试听课', cover: GK.wuli, isTry:true },
-					{ full:'高考化学2026', suffix:'试…', sub:'《高考化学2026》试听课', cover: GK.huaxue, isTry:true }
+					{ full:'高考化学2026', suffix:'试…', sub:'《高考化学2026》试听课', cover: GK.huaxue, isTry:true },
+					{ full:'高考生物2026', suffix:'试…', sub:'《高考生物2026》试听课', cover: GK.shengwu, isTry:true },
+					{ full:'高考历史2026', suffix:'试…', sub:'《高考历史2026》试听课', cover: GK.lishi, isTry:true },
+					{ full:'高考政治2026', suffix:'试…', sub:'《高考政治2026》试听课', cover: GK.zhengzhi, isTry:true },
+					{ full:'高考地理2026', suffix:'试…', sub:'《高考地理2026》试听课', cover: GK.dili, isTry:true }
 				],
 				3: [
 					{ full:'高考语文2026', suffix:'', sub:'《高考语文》2026', cover: GK.yuwen },
 					{ full:'高考数学2026', suffix:'', sub:GAOKAO_MATH_FULL.introduction, cover: GAOKAO_MATH_FULL.cover, subject:'gaokao-math', kind:'full' },
 					{ full:'高考英语2026', suffix:'', sub:'《高考英语》2026', cover: GK.yingyu },
 					{ full:'高考物理2026', suffix:'', sub:'《高考物理》2026', cover: GK.wuli },
-					{ full:'高考化学2026', suffix:'', sub:'《高考化学》2026', cover: GK.huaxue }
+					{ full:'高考化学2026', suffix:'', sub:'《高考化学》2026', cover: GK.huaxue },
+					{ full:'高考生物2026', suffix:'', sub:'《高考生物》2026', cover: GK.shengwu },
+					{ full:'高考历史2026', suffix:'', sub:'《高考历史》2026', cover: GK.lishi },
+					{ full:'高考政治2026', suffix:'', sub:'《高考政治》2026', cover: GK.zhengzhi },
+					{ full:'高考地理2026', suffix:'', sub:'《高考地理》2026', cover: GK.dili }
 				]
 			}
 		}

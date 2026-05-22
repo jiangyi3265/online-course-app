@@ -73,7 +73,11 @@ export default {
 				{ full:'高考数学2026', learn:GAOKAO_MATH_TRIAL.studyCount, cover:GAOKAO_MATH_TRIAL.cover, subject:'gaokao-math', kind:'trial', isTry:true },
 				{ full:'高考英语2026', learn:1360, cover:'/static/courses/gk-yingyu.jpg', kind:'trial', isTry:true },
 				{ full:'高考物理2026', learn:1121, cover:'/static/courses/gk-wuli.jpg', kind:'trial', isTry:true },
-				{ full:'高考化学2026', learn:980,  cover:'/static/courses/gk-huaxue.jpg', kind:'trial', isTry:true }
+				{ full:'高考化学2026', learn:980,  cover:'/static/courses/gk-huaxue.jpg', kind:'trial', isTry:true },
+				{ full:'高考生物2026', learn:926,  cover:'/static/courses/gk-huaxue.jpg', kind:'trial', isTry:true },
+				{ full:'高考历史2026', learn:884,  cover:'/static/courses/gk-dili-full.jpg', kind:'trial', isTry:true },
+				{ full:'高考政治2026', learn:862,  cover:'/static/courses/gk-dili-full.jpg', kind:'trial', isTry:true },
+				{ full:'高考地理2026', learn:901,  cover:'/static/courses/gk-dili-full.jpg', kind:'trial', isTry:true }
 			]
 		}
 	},
