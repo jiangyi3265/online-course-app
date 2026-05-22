@@ -36,6 +36,16 @@
 			</view>
 		</view>
 
+		<view class="overview" v-if="result">
+			<view class="overview-title">题目总览</view>
+			<view class="overview-row" v-for="(item, index) in resultDetails" :key="item.id">
+				<view class="overview-count">题目数：{{index + 1}}/{{resultDetails.length}}</view>
+				<view>我的答案：{{answerLetter(item.selected)}}</view>
+				<view>正确答案：{{answerLetter(item.answer)}}</view>
+				<view class="overview-analysis">解析：{{item.analysis || '暂无解析'}}</view>
+			</view>
+		</view>
+
 		<view class="footer">
 			<view class="submit" @click="submit">{{result ? '已提交' : '提交答案'}}</view>
 		</view>
@@ -43,7 +53,7 @@
 </template>
 
 <script>
-import { getPractice, getQuiz, getReinforcePractice, submitPractice, submitQuiz, toggleFavorite } from '@/common/api.js'
+import { getPractice, getQuiz, getReinforcePractice, getWrongRetry, submitPractice, submitQuiz, toggleFavorite } from '@/common/api.js'
 
 export default {
 	data() {
@@ -51,6 +61,10 @@ export default {
 			type: 'practice',
 			title: '真题讲练',
 			pointId: '',
+			count: 5,
+			source: '全部',
+			courseId: 'gk-math-full',
+			sourceWrongIds: [],
 			questions: [],
 			answers: {},
 			result: null
@@ -58,19 +72,25 @@ export default {
 	},
 	computed: {
 		modeText() {
-			const map = { practice: '章节测试', quiz: '章节扫雷', reinforce: '复习测试' };
+			const map = { practice: '真题讲练', quiz: '章节扫雷', reinforce: '复习测试', wrongRetry: '错题重练' };
 			return map[this.type] || '练习测评';
 		},
 		resultMap() {
 			const map = {};
 			(this.result && this.result.details || []).forEach(item => { map[item.id] = item; });
 			return map;
+		},
+		resultDetails() {
+			return (this.result && this.result.details) || [];
 		}
 	},
 	onLoad(opts = {}) {
 		this.type = opts.type || 'practice';
 		this.title = decodeURIComponent(opts.title || opts.quizId || '真题讲练');
 		this.pointId = opts.pointId || '';
+		this.count = Number(opts.count || 5);
+		this.source = decodeURIComponent(opts.source || '全部');
+		this.courseId = opts.courseId || 'gk-math-full';
 		this.loadData();
 	},
 	methods: {
@@ -80,17 +100,27 @@ export default {
 					? await getQuiz(this.title)
 					: this.type === 'reinforce'
 						? await getReinforcePractice(this.pointId)
-						: await getPractice(this.title);
+						: this.type === 'wrongRetry'
+							? await getWrongRetry(this.count, this.source)
+							: await getPractice(this.title);
 				this.title = data.title || this.title;
 				this.questions = data.questions || [];
+				this.sourceWrongIds = data.sourceWrongIds || [];
 				this.answers = {};
 				this.result = null;
+				if (this.type === 'wrongRetry' && this.questions.length === 0) {
+					uni.showToast({ title: '当前没有可重练的错题', icon: 'none' });
+				}
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' });
 			}
 		},
 		async submit() {
 			if (this.result) return;
+			if (this.questions.length === 0) {
+				uni.showToast({ title: '当前没有可提交的题目', icon: 'none' });
+				return;
+			}
 			if (this.questions.some(q => this.answers[q.id] === undefined)) {
 				uni.showToast({ title: '请完成全部题目', icon: 'none' });
 				return;
@@ -101,6 +131,8 @@ export default {
 					type: this.type,
 					answers: this.answers,
 					questionIds: this.questions.map(item => item.id),
+					sourceWrongIds: this.sourceWrongIds,
+					courseId: this.courseId,
 					quizId: this.title
 				};
 				this.result = this.type === 'quiz' ? await submitQuiz(payload) : await submitPractice(payload);
@@ -120,6 +152,10 @@ export default {
 			} catch (err) {
 				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
 			}
+		},
+		answerLetter(value) {
+			const index = Number(value);
+			return Number.isFinite(index) && index >= 0 ? String.fromCharCode(65 + index) : '--';
 		},
 		reload() { this.loadData(); },
 		goWrongBook() { uni.navigateTo({ url: '/pages/wrongbook/wrongbook' }); },
@@ -155,6 +191,12 @@ page { background:#f5f7fa; }
 .ghost-btn, .primary-btn { flex:1; height:74rpx; line-height:74rpx; border-radius:12rpx; font-size:28rpx; }
 .ghost-btn { background:#eef2f7; color:#222; }
 .primary-btn { background:#1677ff; color:#fff; }
+.overview { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
+.overview-title { color:#222; font-size:30rpx; font-weight:800; }
+.overview-row { padding:18rpx 0; border-bottom:1rpx solid #edf0f4; color:#334155; font-size:26rpx; line-height:1.6; }
+.overview-row:last-child { border-bottom:0; padding-bottom:0; }
+.overview-count { font-weight:800; color:#222; }
+.overview-analysis { margin-top:8rpx; color:#596272; }
 .footer { position:fixed; left:0; right:0; bottom:0; padding:20rpx 24rpx 34rpx; background:#fff; box-shadow:0 -4rpx 16rpx rgba(0,0,0,.05); }
 .submit { height:88rpx; line-height:88rpx; text-align:center; border-radius:44rpx; background:#1677ff; color:#fff; font-size:30rpx; font-weight:800; }
 </style>

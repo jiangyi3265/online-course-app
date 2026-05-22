@@ -202,8 +202,8 @@ export function submitQuiz(payload) {
 	})
 }
 
-export function getWrongBook() {
-	return request('/wrongbook')
+export function getWrongBook(source = '') {
+	return request('/wrongbook', { params: { source } })
 }
 
 export function markWrongMastered(id) {
@@ -211,6 +211,22 @@ export function markWrongMastered(id) {
 		method: 'POST',
 		data: { id }
 	})
+}
+
+export function getWrongBookSummary(courseId = 'gk-math-full') {
+	return request('/wrongbook/summary', { params: { courseId } })
+}
+
+export function getWrongBookRecords(source = '') {
+	return request('/wrongbook/records', { params: { source } })
+}
+
+export function getWeakWrongBook(source = '') {
+	return request('/wrongbook/weak', { params: { source } })
+}
+
+export function getWrongRetry(count = 5, source = '') {
+	return request('/wrongbook/retry', { params: { count, source } })
 }
 
 export function getReinforce(courseId = 'gk-math-full') {
