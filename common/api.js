@@ -88,7 +88,11 @@ export function isLoggedIn() {
 
 export function saveSession(session = {}) {
 	if (session.token) uni.setStorageSync(TOKEN_KEY, session.token)
-	if (session.user) uni.setStorageSync('userInfo', session.user)
+	if (session.user) {
+		const user = { ...session.user }
+		if (!user.id) user.id = user.userId || user.user_id || user.uid || user.accountId || ''
+		uni.setStorageSync('userInfo', user)
+	}
 	uni.setStorageSync('logined', true)
 }
 

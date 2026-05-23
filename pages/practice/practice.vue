@@ -23,7 +23,7 @@
 				<view :class="resultMap[q.id] && resultMap[q.id].correct ? 'ok' : 'bad'">
 					{{resultMap[q.id] && resultMap[q.id].correct ? '回答正确' : '回答错误'}}
 				</view>
-				<view class="ana-text">解析：{{resultMap[q.id] && resultMap[q.id].analysis}}</view>
+				<analysis-viewer :item="resultMap[q.id]" :text="resultMap[q.id] && resultMap[q.id].analysis" />
 			</view>
 		</view>
 
@@ -42,7 +42,7 @@
 				<view class="overview-count">题目数：{{index + 1}}/{{resultDetails.length}}</view>
 				<view>我的答案：{{answerLetter(item.selected)}}</view>
 				<view>正确答案：{{answerLetter(item.answer)}}</view>
-				<view class="overview-analysis">解析：{{item.analysis || '暂无解析'}}</view>
+				<analysis-viewer :item="item" :text="item.analysis" />
 			</view>
 		</view>
 
@@ -54,8 +54,10 @@
 
 <script>
 import { getPractice, getQuiz, getReinforcePractice, getWrongRetry, submitPractice, submitQuiz, toggleFavorite } from '@/common/api.js'
+import AnalysisViewer from '@/components/analysis-viewer.vue'
 
 export default {
+	components: { AnalysisViewer },
 	data() {
 		return {
 			type: 'practice',

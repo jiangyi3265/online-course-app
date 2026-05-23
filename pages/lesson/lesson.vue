@@ -144,7 +144,8 @@ export default {
 	},
 	computed: {
 		watermarkText() {
-			const id = this.userInfo && (this.userInfo.phone || this.userInfo.id);
+			const user = this.userInfo || {};
+			const id = user.id || user.userId || user.user_id || user.uid || user.accountId;
 			return id ? `ID:${id}` : '';
 		},
 		showWatermark() {

@@ -37,8 +37,7 @@
 				<view class="question" v-for="detail in selectedPractice.details || []" :key="detail.id || detail.stem">
 					<view class="question-stem">{{detail.stem}}</view>
 					<view class="question-result" :class="{wrong: !detail.correct}">{{detail.correct ? '正确' : '错误'}}</view>
-					<view class="question-line">解析：{{detail.analysis || '--'}}</view>
-					<view class="question-line">视频解析：{{detail.videoAnalysis || '随课程视频解析开放'}}</view>
+					<analysis-viewer :item="detail" :text="detail.analysis" />
 				</view>
 			</view>
 		</view>
@@ -82,8 +81,10 @@
 
 <script>
 import { getStudyReport } from '@/common/api.js'
+import AnalysisViewer from '@/components/analysis-viewer.vue'
 
 export default {
+	components: { AnalysisViewer },
 	data() {
 		return {
 			report: { overview:[], attempts:[], recentPractice:[], suggestions:[] },

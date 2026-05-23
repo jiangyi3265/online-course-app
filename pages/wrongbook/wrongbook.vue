@@ -59,7 +59,7 @@
 				<view class="stem">{{item.stem}}</view>
 				<view class="answer ok">正确答案：{{item.answerText || optionText(item, item.answer)}}</view>
 				<view class="answer bad">我的答案：{{item.selectedText || optionText(item, item.selected)}}</view>
-				<view class="analysis">解析：{{item.analysis || '暂无解析'}}</view>
+				<analysis-viewer :item="item" :text="item.analysis" />
 				<view class="row-actions">
 					<view class="state" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
 					<view class="mark-btn" :class="{done:item.mastered}" @click="mark(item)">{{item.mastered ? '已标记' : '标记掌握'}}</view>
@@ -87,7 +87,7 @@
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
 						<view>我的答案：{{detail.myAnswer}}</view>
 						<view>正确答案：{{detail.correctAnswer}}</view>
-						<view class="detail-analysis">解析：{{detail.analysis || '暂无解析'}}</view>
+						<analysis-viewer :item="detail" :text="detail.analysis" />
 					</view>
 				</view>
 			</view>
@@ -126,7 +126,7 @@
 				</view>
 				<view class="stem">{{item.stem}}</view>
 				<view class="weak-status" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
-				<view class="analysis">解析：{{item.analysis || '暂无解析'}}</view>
+				<analysis-viewer :item="item" :text="item.analysis" />
 			</view>
 		</view>
 	</view>
@@ -141,8 +141,10 @@ import {
 	getWeakWrongBook,
 	getWrongRetry
 } from '@/common/api.js'
+import AnalysisViewer from '@/components/analysis-viewer.vue'
 
 export default {
+	components: { AnalysisViewer },
 	data() {
 		return {
 			mode: 'review',

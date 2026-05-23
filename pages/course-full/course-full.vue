@@ -44,7 +44,7 @@
 		<!-- 技巧干货 -->
 		<block v-if="tab===0">
 			<view class="chip-row">
-				<view class="chip" v-for="(v,i) in versions" :key="v.name || v" :class="{active: versionIndex===i}" @click="setVersion(i)">{{v.name || v}}</view>
+				<view class="chip" v-for="(v,i) in versions" :key="v.name || v" :class="{active: versionIndex===i}" @click="setVersion(i)">{{versionLabel(v, i)}}</view>
 			</view>
 
 			<view class="chap-list">
@@ -68,7 +68,7 @@
 									<view class="child-left">
 										<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
 										<view>
-											<view class="child-name">{{child.name}}</view>
+											<view class="child-name">{{childName(child)}}</view>
 											<view class="child-progress">已学习：{{progressText(child)}}</view>
 										</view>
 									</view>
@@ -274,6 +274,12 @@ export default {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
+		versionLabel(version, index) {
+			return index === 0 ? '复习加强课' : '技巧绝招课';
+		},
+		childName(child) {
+			return child.type === 2 ? '真题讲练' : (this.versionIndex === 0 ? '复习加强课' : '技巧绝招课');
+		},
 		goDocs() { uni.navigateTo({ url:'/pages/my-docs/my-docs' }); },
 		goPlan() { uni.navigateTo({ url:`/pages/study-plan/study-plan?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goReport() { uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` }); },
@@ -363,35 +369,47 @@ page { background:#f5f7fa; }
 .tabs {
 	background:#fff;
 	display:flex;
-	padding: 24rpx 0;
+	padding: 18rpx 24rpx 14rpx;
 	border-top:1rpx solid #f1f3f6;
+	gap:10rpx;
 }
 .tab {
-	flex:1; text-align:center;
-	font-size:28rpx; color:#666; font-weight:500;
+	flex:1;
+	height:64rpx;
+	line-height:64rpx;
+	text-align:center;
+	font-size:28rpx; color:#555; font-weight:600;
 	position:relative;
-	padding: 8rpx 0;
+	padding:0;
+	border-radius:8rpx;
 	cursor:pointer;
 }
-.tab.active { color:#3aa3f5; font-weight:700; }
+.tab.active { background:#eaf8f1; color:#24b873; font-weight:800; }
 .tab.active::after {
 	content:''; position:absolute;
-	left:50%; bottom:-6rpx; transform:translateX(-50%);
-	width:80rpx; height:3rpx; background:#3aa3f5;
+	left:50%; bottom:-8rpx; transform:translateX(-50%);
+	width:72rpx; height:4rpx; border-radius:4rpx; background:#39a8d8;
 }
 
 /* Chips */
-.chip-row { padding: 24rpx 30rpx 10rpx; display:flex; }
+.chip-row { padding: 22rpx 30rpx 8rpx; display:flex; gap:16rpx; }
 .chip {
+	min-width:170rpx;
+	height:58rpx;
+	line-height:58rpx;
+	text-align:center;
 	font-size:24rpx;
-	padding: 6rpx 22rpx;
+	padding:0 22rpx;
 	border-radius:30rpx;
 	background:#f0f2f5;
-	color:#888;
-	margin-right:14rpx;
+	color:#777;
+	font-weight:700;
+	box-sizing:border-box;
 }
 .chip.active {
-	background:#3aa3f5; color:#fff;
+	background:#3aa3f5;
+	color:#fff;
+	box-shadow:0 6rpx 14rpx rgba(58,163,245,.18);
 }
 
 /* 章节 */
@@ -545,7 +563,7 @@ page { background:#f5f7fa; }
 }
 .card-title { font-size:30rpx; font-weight:800; }
 .card-text { font-size:22rpx; margin-top:2rpx; }
-.active {
+.footer .active {
 	flex:1;
 	background:#2bb673;
 	color:#fff;

@@ -32,7 +32,7 @@
 				<view class="analysis" v-if="results[item.id]">
 					<view :class="results[item.id].correct ? 'ok' : 'bad'">{{results[item.id].correct ? '回答正确' : '回答错误'}}</view>
 					<view class="ana-text">正确答案：{{optionText(item, results[item.id].answer)}}</view>
-					<view class="ana-text">解析：{{results[item.id].analysis}}</view>
+					<analysis-viewer :item="results[item.id]" :text="results[item.id].analysis" />
 				</view>
 				<view class="answer-btn" @click="submitQuestion(item)">提交作答</view>
 			</view>
@@ -42,8 +42,10 @@
 
 <script>
 import { answerFavoriteQuestion, getFavorites } from '@/common/api.js'
+import AnalysisViewer from '@/components/analysis-viewer.vue'
 
 export default {
+	components: { AnalysisViewer },
 	data() {
 		return {
 			tab: 'course',
