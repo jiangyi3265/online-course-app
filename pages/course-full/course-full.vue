@@ -76,6 +76,16 @@
 										<view class="child-btn go" @click.stop="goLesson(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
 										<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 									</view>
+									<view class="knowledge-panel" v-if="isKnowledgeChild(child)">
+										<view class="knowledge-item" @click.stop="goLesson(c, s, child, j)">
+											<text class="knowledge-type video">视频</text>
+											<text class="knowledge-name">视频课程</text>
+										</view>
+										<view class="knowledge-item" @click.stop="goDocs">
+											<text class="knowledge-type doc">讲义</text>
+											<text class="knowledge-name">文字讲义</text>
+										</view>
+									</view>
 								</view>
 							</view>
 						</view>
@@ -283,6 +293,9 @@ export default {
 			}
 			return child.type === 2 ? '真题讲练' : '技巧绝招课';
 		},
+		isKnowledgeChild(child) {
+			return this.versionIndex === 0 && child.type !== 2;
+		},
 		reinforceTestName(chapter, lesson, lessonIndex) {
 			return `复习测试【${this.chapterShortName(chapter)}】${this.lessonNo(lesson, lessonIndex)}`;
 		},
@@ -464,6 +477,7 @@ page { background:#f5f7fa; }
 	display:flex;
 	justify-content:space-between;
 	align-items:center;
+	flex-wrap:wrap;
 	padding:14rpx 0;
 	border-top:1rpx dashed #edf0f3;
 }
@@ -496,6 +510,38 @@ page { background:#f5f7fa; }
 }
 .child-btn.go { background:#3aa3f5; }
 .child-btn.ai { background:#2bb673; }
+.knowledge-panel {
+	width:calc(100% - 56rpx);
+	margin:14rpx 0 2rpx 56rpx;
+	padding:14rpx 16rpx;
+	background:#f8fafc;
+	border:1rpx solid #edf0f3;
+	border-radius:10rpx;
+	display:flex;
+	gap:14rpx;
+}
+.knowledge-item {
+	flex:1;
+	min-width:0;
+	height:56rpx;
+	padding:0 14rpx;
+	border-radius:8rpx;
+	background:#fff;
+	display:flex;
+	align-items:center;
+	cursor:pointer;
+}
+.knowledge-type {
+	flex-shrink:0;
+	margin-right:10rpx;
+	padding:4rpx 8rpx;
+	border-radius:6rpx;
+	font-size:20rpx;
+	font-weight:800;
+}
+.knowledge-type.video { background:#eaf3fc; color:#3aa3f5; }
+.knowledge-type.doc { background:#eafbe6; color:#2bb673; }
+.knowledge-name { color:#333; font-size:24rpx; font-weight:700; }
 
 /* 章节扫雷 */
 .quiz-list { padding: 16rpx 24rpx; }
