@@ -72,11 +72,7 @@ export default {
 					{ full:'高考数学2026', suffix:'试…', sub:GAOKAO_MATH_TRIAL.courseName, cover: GAOKAO_MATH_TRIAL.cover, isTry:true, subject:'gaokao-math', kind:'trial' },
 					{ full:'高考英语2026', suffix:'试…', sub:'《高考英语2026》试听课', cover: GK.yingyu, isTry:true },
 					{ full:'高考物理2026', suffix:'试…', sub:'《高考物理2026》试听课', cover: GK.wuli, isTry:true },
-					{ full:'高考化学2026', suffix:'试…', sub:'《高考化学2026》试听课', cover: GK.huaxue, isTry:true },
-					{ full:'高考生物2026', suffix:'试…', sub:'《高考生物2026》试听课', cover: GK.shengwu, isTry:true },
-					{ full:'高考历史2026', suffix:'试…', sub:'《高考历史2026》试听课', cover: GK.lishi, isTry:true },
-					{ full:'高考政治2026', suffix:'试…', sub:'《高考政治2026》试听课', cover: GK.zhengzhi, isTry:true },
-					{ full:'高考地理2026', suffix:'试…', sub:'《高考地理2026》试听课', cover: GK.dili, isTry:true }
+					{ full:'高考化学2026', suffix:'试…', sub:'《高考化学2026》试听课', cover: GK.huaxue, isTry:true }
 				],
 				3: [
 					{ full:'高考语文2026', suffix:'', sub:'《高考语文》2026', cover: GK.yuwen },
@@ -149,11 +145,11 @@ page { background:#f5f7fa; }
 .info { flex:1; margin-left:24rpx; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
 .title { font-size:26rpx; font-weight:700; color:rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sub { font-size:24rpx; color:#666; margin-top:6rpx; }
-.bottom { display:flex; align-items:center; justify-content:space-between; margin-top:auto; }
+.bottom { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-right:32rpx; }
 .access { display:flex; flex-direction:column; justify-content:center; min-width:128rpx; }
 .access-title { color:#0d7cfe; font-weight:700; font-size:25rpx; line-height:1.2; }
 .access.full .access-title { color:#2bb673; }
 .access-sub { color:#8a94a3; font-size:21rpx; margin-top:5rpx; }
-.go-btn { background:#1890e1; color:#fff; font-size:24rpx; padding:10rpx 28rpx; border-radius:30rpx; box-shadow:0 4rpx 10rpx rgba(24,144,225,0.35); cursor:pointer; }
+.go-btn { flex-shrink:0; min-width:112rpx; box-sizing:border-box; text-align:center; background:#1890e1; color:#fff; font-size:24rpx; padding:10rpx 28rpx; border-radius:30rpx; box-shadow:0 4rpx 10rpx rgba(24,144,225,0.35); cursor:pointer; }
 .end-tip { text-align:center; color:#bcc1c8; font-size:24rpx; padding:50rpx 0 20rpx; }
 </style>
