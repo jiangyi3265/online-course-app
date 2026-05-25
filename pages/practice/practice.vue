@@ -62,6 +62,7 @@ export default {
 		return {
 			type: 'practice',
 			title: '真题讲练',
+			practiceTitle: '',
 			pointId: '',
 			count: 5,
 			source: '全部',
@@ -89,6 +90,7 @@ export default {
 	onLoad(opts = {}) {
 		this.type = opts.type || 'practice';
 		this.title = decodeURIComponent(opts.title || opts.quizId || '真题讲练');
+		this.practiceTitle = decodeURIComponent(opts.practiceTitle || '');
 		this.pointId = opts.pointId || '';
 		this.count = Number(opts.count || 5);
 		this.source = decodeURIComponent(opts.source || '全部');
@@ -98,14 +100,16 @@ export default {
 	methods: {
 		async loadData() {
 			try {
+				const practiceLookupTitle = this.practiceTitle || this.title;
+				const usePracticeLookup = this.type === 'reinforce' && !this.pointId;
 				const data = this.type === 'quiz'
 					? await getQuiz(this.title)
-					: this.type === 'reinforce'
+					: this.type === 'reinforce' && !usePracticeLookup
 						? await getReinforcePractice(this.pointId)
 						: this.type === 'wrongRetry'
 							? await getWrongRetry(this.count, this.source)
-							: await getPractice(this.title);
-				this.title = data.title || this.title;
+							: await getPractice(practiceLookupTitle);
+				if (!usePracticeLookup) this.title = data.title || this.title;
 				this.questions = data.questions || [];
 				this.sourceWrongIds = data.sourceWrongIds || [];
 				this.answers = {};

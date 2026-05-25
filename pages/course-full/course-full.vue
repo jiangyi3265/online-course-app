@@ -68,12 +68,12 @@
 									<view class="child-left">
 										<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
 										<view>
-											<view class="child-name">{{childName(child)}}</view>
+											<view class="child-name">{{childName(child, c, s, j)}}</view>
 											<view class="child-progress">已学习：{{progressText(child)}}</view>
 										</view>
 									</view>
 									<view class="child-actions">
-										<view class="child-btn go" @click.stop="goLesson(c, s, child)">{{child.type===2 ? '去练习' : '去学习'}}</view>
+										<view class="child-btn go" @click.stop="goLesson(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
 										<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 									</view>
 								</view>
@@ -277,8 +277,23 @@ export default {
 		versionLabel(version, index) {
 			return index === 0 ? '复习加强课' : '技巧绝招课';
 		},
-		childName(child) {
-			return child.type === 2 ? '真题讲练' : (this.versionIndex === 0 ? '复习加强课' : '技巧绝招课');
+		childName(child, chapter, lesson, lessonIndex) {
+			if (this.versionIndex === 0) {
+				return child.type === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex) : '知识点巩固';
+			}
+			return child.type === 2 ? '真题讲练' : '技巧绝招课';
+		},
+		reinforceTestName(chapter, lesson, lessonIndex) {
+			return `复习测试【${this.chapterShortName(chapter)}】${this.lessonNo(lesson, lessonIndex)}`;
+		},
+		chapterShortName(chapter) {
+			const raw = String((chapter && chapter.title) || '');
+			return raw.replace(/^\s*[一二三四五六七八九十百千万\d]+[、.．]\s*/, '').trim() || raw || '复习';
+		},
+		lessonNo(lesson, lessonIndex) {
+			const raw = String((lesson && lesson.title) || lesson || '');
+			const match = raw.match(/^\s*(\d+)[.．、]/);
+			return match ? match[1] : String((lessonIndex || 0) + 1);
 		},
 		goDocs() { uni.navigateTo({ url:'/pages/my-docs/my-docs' }); },
 		goPlan() { uni.navigateTo({ url:`/pages/study-plan/study-plan?courseId=${encodeURIComponent(this.courseId)}` }); },
@@ -295,9 +310,12 @@ export default {
 				success: () => uni.showToast({ title:'微信号已复制', icon:'success' })
 			});
 		},
-		goLesson(chapter, lesson, child) {
+		goLesson(chapter, lesson, child, lessonIndex) {
 			if (child.type === 2) {
-				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(lesson.title || lesson)}` });
+				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex) : (lesson.title || lesson);
+				const type = this.versionIndex === 0 ? 'reinforce' : 'practice';
+				const practiceTitle = lesson.title || lesson;
+				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}` });
 				return;
 			}
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
@@ -449,7 +467,7 @@ page { background:#f5f7fa; }
 	padding:14rpx 0;
 	border-top:1rpx dashed #edf0f3;
 }
-.child-left { display:flex; align-items:center; min-width:0; }
+.child-left { display:flex; align-items:center; flex:1; min-width:0; margin-right:16rpx; }
 .child-mark {
 	width:42rpx;
 	height:42rpx;
@@ -465,7 +483,7 @@ page { background:#f5f7fa; }
 	flex-shrink:0;
 }
 .child-mark.practice { background:#eaf3fc; color:#3aa3f5; }
-.child-name { font-size:25rpx; color:#222; font-weight:600; }
+.child-name { font-size:25rpx; color:#222; font-weight:600; line-height:1.35; word-break:break-all; }
 .child-progress { font-size:21rpx; color:#999; margin-top:4rpx; }
 .child-actions { display:flex; align-items:center; flex-shrink:0; }
 .child-btn {
