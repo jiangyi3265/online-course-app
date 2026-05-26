@@ -32,7 +32,7 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { GAOKAO_MATH_TRIAL, GAOKAO_MATH_FULL } from '@/common/course-data.js'
+import { GAOKAO_MATH_TRIAL, GAOKAO_MATH_FULL, stripCourseYear } from '@/common/course-data.js'
 import { getCourses } from '@/common/api.js'
 const ZK = {
 	yuwen:'/static/courses/zk-yuwen.jpg', shuxue:'/static/courses/zk-shuxue.jpg',
@@ -54,36 +54,36 @@ export default {
 			tabs: ['中考试听','中考课程','高考试听','高考课程'],
 			data: {
 				0: [
-					{ full:'中考语文2026', suffix:'试…', sub:'《中考语文2026》试听课', cover: ZK.yuwen, isTry:true },
-					{ full:'中考数学2026', suffix:'试…', sub:'《中考数学2026》试听课', cover: ZK.shuxue, isTry:true },
-					{ full:'中考英语2026', suffix:'试…', sub:'《中考英语2026》试听课', cover: ZK.yingyu, isTry:true },
-					{ full:'中考物理2026', suffix:'试…', sub:'《中考物理2026》试听课', cover: ZK.wuli,   isTry:true },
-					{ full:'中考化学2026', suffix:'试…', sub:'《中考化学2026》试听课', cover: ZK.huaxue, isTry:true }
+					{ full:'中考语文', suffix:'试…', sub:'《中考语文》试听课', cover: ZK.yuwen, isTry:true },
+					{ full:'中考数学', suffix:'试…', sub:'《中考数学》试听课', cover: ZK.shuxue, isTry:true },
+					{ full:'中考英语', suffix:'试…', sub:'《中考英语》试听课', cover: ZK.yingyu, isTry:true },
+					{ full:'中考物理', suffix:'试…', sub:'《中考物理》试听课', cover: ZK.wuli,   isTry:true },
+					{ full:'中考化学', suffix:'试…', sub:'《中考化学》试听课', cover: ZK.huaxue, isTry:true }
 				],
 				1: [
-					{ full:'中考语文2026', suffix:'', sub:'《中考语文》2026', cover: ZK.yuwen },
-					{ full:'中考数学2026', suffix:'', sub:'《中考数学》2026', cover: ZK.shuxue },
-					{ full:'中考英语2026', suffix:'', sub:'《中考英语》2026', cover: ZK.yingyu },
-					{ full:'中考物理2026', suffix:'', sub:'《中考物理》2026', cover: ZK.wuli },
-					{ full:'中考化学2026', suffix:'', sub:'《中考化学》2026', cover: ZK.huaxue }
+					{ full:'中考语文', suffix:'', sub:'《中考语文》', cover: ZK.yuwen },
+					{ full:'中考数学', suffix:'', sub:'《中考数学》', cover: ZK.shuxue },
+					{ full:'中考英语', suffix:'', sub:'《中考英语》', cover: ZK.yingyu },
+					{ full:'中考物理', suffix:'', sub:'《中考物理》', cover: ZK.wuli },
+					{ full:'中考化学', suffix:'', sub:'《中考化学》', cover: ZK.huaxue }
 				],
 				2: [
-					{ full:'高考语文2026', suffix:'试…', sub:'《高考语文2026》试听课', cover: GK.yuwen, isTry:true },
-					{ full:'高考数学2026', suffix:'试…', sub:GAOKAO_MATH_TRIAL.courseName, cover: GAOKAO_MATH_TRIAL.cover, isTry:true, subject:'gaokao-math', kind:'trial' },
-					{ full:'高考英语2026', suffix:'试…', sub:'《高考英语2026》试听课', cover: GK.yingyu, isTry:true },
-					{ full:'高考物理2026', suffix:'试…', sub:'《高考物理2026》试听课', cover: GK.wuli, isTry:true },
-					{ full:'高考化学2026', suffix:'试…', sub:'《高考化学2026》试听课', cover: GK.huaxue, isTry:true }
+					{ full:'高考语文', suffix:'试…', sub:'《高考语文》试听课', cover: GK.yuwen, isTry:true },
+					{ full:'高考数学', suffix:'试…', sub:GAOKAO_MATH_TRIAL.courseName, cover: GAOKAO_MATH_TRIAL.cover, isTry:true, subject:'gaokao-math', kind:'trial' },
+					{ full:'高考英语', suffix:'试…', sub:'《高考英语》试听课', cover: GK.yingyu, isTry:true },
+					{ full:'高考物理', suffix:'试…', sub:'《高考物理》试听课', cover: GK.wuli, isTry:true },
+					{ full:'高考化学', suffix:'试…', sub:'《高考化学》试听课', cover: GK.huaxue, isTry:true }
 				],
 				3: [
-					{ full:'高考语文2026', suffix:'', sub:'《高考语文》2026', cover: GK.yuwen },
-					{ full:'高考数学2026', suffix:'', sub:GAOKAO_MATH_FULL.introduction, cover: GAOKAO_MATH_FULL.cover, subject:'gaokao-math', kind:'full' },
-					{ full:'高考英语2026', suffix:'', sub:'《高考英语》2026', cover: GK.yingyu },
-					{ full:'高考物理2026', suffix:'', sub:'《高考物理》2026', cover: GK.wuli },
-					{ full:'高考化学2026', suffix:'', sub:'《高考化学》2026', cover: GK.huaxue },
-					{ full:'高考生物2026', suffix:'', sub:'《高考生物》2026', cover: GK.shengwu },
-					{ full:'高考历史2026', suffix:'', sub:'《高考历史》2026', cover: GK.lishi },
-					{ full:'高考政治2026', suffix:'', sub:'《高考政治》2026', cover: GK.zhengzhi },
-					{ full:'高考地理2026', suffix:'', sub:'《高考地理》2026', cover: GK.dili }
+					{ full:'高考语文', suffix:'', sub:'《高考语文》', cover: GK.yuwen },
+					{ full:'高考数学', suffix:'', sub:GAOKAO_MATH_FULL.introduction, cover: GAOKAO_MATH_FULL.cover, subject:'gaokao-math', kind:'full' },
+					{ full:'高考英语', suffix:'', sub:'《高考英语》', cover: GK.yingyu },
+					{ full:'高考物理', suffix:'', sub:'《高考物理》', cover: GK.wuli },
+					{ full:'高考化学', suffix:'', sub:'《高考化学》', cover: GK.huaxue },
+					{ full:'高考生物', suffix:'', sub:'《高考生物》', cover: GK.shengwu },
+					{ full:'高考历史', suffix:'', sub:'《高考历史》', cover: GK.lishi },
+					{ full:'高考政治', suffix:'', sub:'《高考政治》', cover: GK.zhengzhi },
+					{ full:'高考地理', suffix:'', sub:'《高考地理》', cover: GK.dili }
 				]
 			}
 		}
@@ -100,9 +100,9 @@ export default {
 				tabs.forEach((list, tab) => {
 					this.data[tab] = list.map(item => ({
 						id: item.id,
-						full: item.full,
+						full: stripCourseYear(item.full),
 						suffix: item.isTry ? '试听课' : '',
-						sub: item.sub,
+						sub: stripCourseYear(item.sub),
 						cover: item.cover,
 						isTry: item.isTry,
 						subject: item.subject,
@@ -123,8 +123,8 @@ export default {
 			const idPart = it.id ? `id=${encodeURIComponent(it.id)}&` : '';
 			const extra = it.subject ? `&subject=${it.subject}&kind=${it.kind || (it.isTry ? 'trial' : 'full')}` : '';
 			const url = it.isTry
-				? `/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(it.full.replace('2026',''))}&cover=${encodeURIComponent(it.cover)}${extra}`
-				: `/pages/course-full/course-full?${idPart}title=${encodeURIComponent(it.full.replace('2026',''))}&cover=${encodeURIComponent(it.cover)}${extra}`;
+				? `/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover)}${extra}`
+				: `/pages/course-full/course-full?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover)}${extra}`;
 			uni.navigateTo({ url });
 		}
 	}

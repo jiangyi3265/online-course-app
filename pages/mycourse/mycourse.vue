@@ -40,7 +40,7 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { AUTHORIZED_COURSES } from '@/common/course-data.js'
+import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
 import { getMyCourses, isLoggedIn } from '@/common/api.js'
 export default {
 	components: { TabBar },
@@ -56,8 +56,8 @@ export default {
 				const list = await getMyCourses();
 				this.courses = list.map(item => ({
 					id: item.id,
-					title: item.courseName || item.sub || `《${item.full}》`,
-					sub: item.sub,
+					title: stripCourseYear(item.courseName || item.sub || `《${item.full}》`),
+					sub: stripCourseYear(item.sub),
 					expiry: item.expiry,
 					cover: item.cover,
 					subject: item.subject,

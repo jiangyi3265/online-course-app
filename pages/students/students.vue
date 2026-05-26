@@ -12,7 +12,7 @@
 			</view>
 			<view class="bind-actions">
 				<view class="primary" @click="submitBind">绑定学生</view>
-				<view class="secondary" @click="goStudyPlan()">学习计划与打卡</view>
+			<view class="secondary" @click="goStudyPlan()">学习打卡</view>
 			</view>
 		</view>
 
@@ -27,7 +27,7 @@
 					<view class="link-btn warn" @click="removeBinding(item)">【解除绑定】</view>
 				</view>
 				<view class="action-row">
-					<view class="link-btn full" @click="goStudyPlan(item)">查看【学习计划与打卡】</view>
+						<view class="link-btn full" @click="goStudyPlan(item)">查看【学习打卡】</view>
 				</view>
 			</view>
 		</view>

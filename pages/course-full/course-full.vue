@@ -3,7 +3,7 @@
 		<!-- 导航 -->
 		<view class="nav">
 			<view class="back" @click="goBack">‹</view>
-			<view class="nav-title">{{courseName}}</view>
+			<view class="nav-title">{{displayCourseName}}</view>
 		</view>
 
 		<!-- 封面 -->
@@ -17,10 +17,11 @@
 		<!-- 信息块 -->
 		<view class="info-block">
 			<view class="info-top">
-				<view class="info-title">{{courseName}}</view>
+				<view class="info-title">{{displayCourseName}}</view>
 				<view class="star">☆</view>
 			</view>
 			<view class="info-meta">共计{{total}}节，课程时长：{{duration}}</view>
+			<view class="update-meta">课程最近更新时间：{{displayUpdateDate}}</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
 				<view class="bar"><view class="bar-inner" :style="{width: progress+'%'}"></view></view>
@@ -32,9 +33,11 @@
 		<!-- 三功能 -->
 		<view class="funcs">
 			<view class="func" @click="goDocs"><view class="f-ico blue">📄</view><text class="f-text">我的文档</text></view>
-			<view class="func" @click="goPlan"><view class="f-ico pink">📋</view><text class="f-text">学习计划</text></view>
+			<view class="func" @click="goPlan"><view class="f-ico pink">📋</view><text class="f-text">学习打卡</text></view>
 			<view class="func" @click="goReport"><view class="f-ico green">📊</view><text class="f-text">学习报告</text></view>
 		</view>
+
+		<study-checkin-card v-if="showCheckinPanel" :course-id="courseId" />
 
 		<!-- Tabs -->
 		<view class="tabs">
@@ -161,13 +164,16 @@
 </template>
 
 <script>
-import { getGaokaoMathCourse, isGaokaoMath } from '@/common/course-data.js'
+import { getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, getReinforce } from '@/common/api.js'
+import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
+	components: { StudyCheckinCard },
 	data() {
 		return {
 			title: '中考语文',
-			courseName: '《中考语文2026》',
+			courseName: '《中考语文》',
+			updatedAt: '2026-05-26T10:15:00',
 			bg: 'linear-gradient(135deg,#c94f7c 0%,#7e3a6b 100%)',
 			total: 105,
 			duration: '20小时37分',
@@ -177,6 +183,7 @@ export default {
 			learntDuration: '00小时00分',
 			cover: '',
 			tab: 0,
+			showCheckinPanel: false,
 			projectTabs: ['技巧干货','章节扫雷','错题与巩固','复习加强'],
 			versionIndex: 0,
 			versions: [{ name:'2026版' }, { name:'绝招课' }],
@@ -209,6 +216,14 @@ export default {
 			]
 		}
 	},
+	computed: {
+		displayCourseName() {
+			return stripCourseYear(this.courseName);
+		},
+		displayUpdateDate() {
+			return this.formatCourseDate(this.updatedAt);
+		}
+	},
 	async onLoad(opts) {
 		if (opts && opts.title) this.title = opts.title;
 		if (opts && opts.bg) this.bg = decodeURIComponent(opts.bg);
@@ -234,7 +249,8 @@ export default {
 			this.reinforceLoaded = false;
 			this.reinforceList = [];
 			this.title = course.title || this.title;
-			this.courseName = course.courseName || this.courseName;
+			this.courseName = stripCourseYear(course.courseName || this.courseName);
+			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
 			this.cover = course.detailCover || course.cover || this.cover;
 			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons || this.total;
@@ -257,7 +273,8 @@ export default {
 			this.reinforceLoaded = false;
 			this.reinforceList = [];
 			this.title = course.title;
-			this.courseName = course.courseName;
+			this.courseName = stripCourseYear(course.courseName);
+			this.updatedAt = course.updatedAt || this.updatedAt;
 			this.cover = course.detailCover || course.cover;
 			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons || course.totalLessons;
@@ -341,13 +358,16 @@ export default {
 			return match ? match[1] : String((lessonIndex || 0) + 1);
 		},
 		goDocs() { uni.navigateTo({ url:'/pages/my-docs/my-docs' }); },
-		goPlan() { uni.navigateTo({ url:`/pages/study-plan/study-plan?courseId=${encodeURIComponent(this.courseId)}` }); },
+		goPlan() {
+			this.showCheckinPanel = !this.showCheckinPanel;
+			if (this.showCheckinPanel) this.tab = 0;
+		},
 		goReport() { uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goAi(context) { uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` }); },
 		goQuiz(q) { uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` }); },
 		goWrongBook() { uni.navigateTo({ url:'/pages/wrongbook/wrongbook' }); },
 		goReinforce() { uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` }); },
-		startReinforce(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseName)}&chapterTitle=${encodeURIComponent('复习加强')}` }); },
+		startReinforce(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}` }); },
 		goActivate() { uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}` }); },
 		showApplyAuth() { this.showAuth = true; },
 		copyWechat() {
@@ -364,7 +384,13 @@ export default {
 				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}` });
 				return;
 			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
+		},
+		formatCourseDate(value) {
+			const raw = value ? String(value) : '2026-05-26';
+			const match = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+			if (!match) return raw;
+			return `${match[1]}年${match[2].padStart(2, '0')}月${match[3].padStart(2, '0')}日`;
 		},
 		formatDateTime(value) {
 			return value ? String(value).replace('T', ' ').slice(0, 19) : '2026-01-25 19:57:51';
@@ -405,6 +431,16 @@ page { background:#f5f7fa; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
 .star { font-size:42rpx; color:#cfd3da; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
+.update-meta {
+	display:inline-flex;
+	margin-top:14rpx;
+	padding:8rpx 16rpx;
+	border:2rpx solid #e25555;
+	color:#c74444;
+	font-size:24rpx;
+	font-weight:700;
+	background:#fffafa;
+}
 .progress-row {
 	display:flex; align-items:center;
 	margin-top: 18rpx;

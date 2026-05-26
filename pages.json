@@ -133,7 +133,7 @@
 		{
 			"path": "pages/study-plan/study-plan",
 			"style": {
-				"navigationBarTitleText": "学习计划与打卡",
+				"navigationBarTitleText": "学习打卡",
 				"navigationStyle": "custom"
 			}
 		},

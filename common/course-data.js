@@ -28,6 +28,14 @@ const makeTrialChapter = (title, practiceTotal) => ({
 
 const makeQuiz = (name, status, action = '去测评') => ({ name, status, action });
 
+export function stripCourseYear(value = '') {
+	return String(value)
+		.replace(/((?:中考|高考)(?:语文|数学|英语|物理|化学|生物|历史|政治|地理))20\d{2}/g, '$1')
+		.replace(/(《[^》]*?)20\d{2}(》)/g, '$1$2')
+		.replace(/(《[^》]+》)\s*20\d{2}/g, '$1')
+		.trim();
+}
+
 export const OFFICIAL_USER = {
 	phone: '15585827319',
 	password: 'dyr594200',
@@ -41,10 +49,11 @@ export const GAOKAO_MATH_TRIAL = {
 	subject: 'gaokao-math',
 	id: '1935625152757805057',
 	title: '高考数学',
-	courseName: '《高考数学2026》试听课',
-	introduction: '《高考数学2026》试听课',
+	courseName: '《高考数学》试听课',
+	introduction: '《高考数学》试听课',
 	cover: '/static/courses/gk-shuxue.jpg',
 	detailCover: '/static/courses/gk-shuxue-trial-detail.jpg',
+	updatedAt: '2026-05-26T10:11:00',
 	studyCount: 1450,
 	totalLessons: 6,
 	totalDuration: '02小时13分',
@@ -72,10 +81,11 @@ export const GAOKAO_MATH_FULL = {
 	subject: 'gaokao-math',
 	id: '1934443028361191426',
 	title: '高考数学',
-	courseName: '《高考数学2026》',
-	introduction: '《高考数学》2026',
+	courseName: '《高考数学》',
+	introduction: '《高考数学》',
 	cover: '/static/courses/gk-shuxue-full.jpg',
 	detailCover: '/static/courses/gk-shuxue-full-detail.jpg',
+	updatedAt: '2026-05-26T10:15:00',
 	studyCount: 117,
 	totalLessons: 76,
 	totalDuration: '04小时53分',
@@ -261,11 +271,11 @@ export const GAOKAO_MATH_FULL = {
 };
 
 export const AUTHORIZED_COURSES = [
-	{ title: '《中考英语2026》', sub: '《中考英语》2026', expiry: '2026-02-15', cover: '/static/courses/zk-yingyu.jpg' },
-	{ title: '《中考数学2026》', sub: '《中考数学》2026', expiry: '2026-02-14', cover: '/static/courses/zk-shuxue.jpg' },
+	{ title: '《中考英语》', sub: '《中考英语》', expiry: '2026-02-15', cover: '/static/courses/zk-yingyu.jpg' },
+	{ title: '《中考数学》', sub: '《中考数学》', expiry: '2026-02-14', cover: '/static/courses/zk-shuxue.jpg' },
 	{ title: GAOKAO_MATH_FULL.courseName, sub: GAOKAO_MATH_FULL.introduction, expiry: '2026-05-07', cover: GAOKAO_MATH_FULL.cover, subject: 'gaokao-math' },
-	{ title: '《高考英语2026》', sub: '《高考英语》2026', expiry: '2026-01-27', cover: '/static/courses/gk-yingyu-full.jpg' },
-	{ title: '《高考物理2026》', sub: '《高考物理》2026', expiry: '2026-02-05', cover: '/static/courses/gk-wuli-full.jpg' }
+	{ title: '《高考英语》', sub: '《高考英语》', expiry: '2026-01-27', cover: '/static/courses/gk-yingyu-full.jpg' },
+	{ title: '《高考物理》', sub: '《高考物理》', expiry: '2026-02-05', cover: '/static/courses/gk-wuli-full.jpg' }
 ];
 
 export function cloneData(data) {

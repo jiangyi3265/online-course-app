@@ -51,7 +51,7 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { GAOKAO_MATH_TRIAL } from '@/common/course-data.js'
+import { GAOKAO_MATH_TRIAL, stripCourseYear } from '@/common/course-data.js'
 import { getCourses } from '@/common/api.js'
 export default {
 	components: { TabBar },
@@ -64,16 +64,16 @@ export default {
 				{ icon:'/static/cats/4.png', text:'高考课程' }
 			],
 			list: [
-				{ full:'中考语文2026', learn:1086, cover:'/static/courses/zk-yuwen.jpg', kind:'trial', isTry:true },
-				{ full:'中考数学2026', learn:1456, cover:'/static/courses/zk-shuxue.jpg', kind:'trial', isTry:true },
-				{ full:'中考英语2026', learn:1289, cover:'/static/courses/zk-yingyu.jpg', kind:'trial', isTry:true },
-				{ full:'中考物理2026', learn:1176, cover:'/static/courses/zk-wuli.jpg', kind:'trial', isTry:true },
-				{ full:'中考化学2026', learn:1237, cover:'/static/courses/zk-huaxue.jpg', kind:'trial', isTry:true },
-				{ full:'高考语文2026', learn:1078, cover:'/static/courses/gk-yuwen.jpg', kind:'trial', isTry:true },
-				{ full:'高考数学2026', learn:GAOKAO_MATH_TRIAL.studyCount, cover:GAOKAO_MATH_TRIAL.cover, subject:'gaokao-math', kind:'trial', isTry:true },
-				{ full:'高考英语2026', learn:1360, cover:'/static/courses/gk-yingyu.jpg', kind:'trial', isTry:true },
-				{ full:'高考物理2026', learn:1121, cover:'/static/courses/gk-wuli.jpg', kind:'trial', isTry:true },
-				{ full:'高考化学2026', learn:980,  cover:'/static/courses/gk-huaxue.jpg', kind:'trial', isTry:true }
+				{ full:'中考语文', learn:1086, cover:'/static/courses/zk-yuwen.jpg', kind:'trial', isTry:true },
+				{ full:'中考数学', learn:1456, cover:'/static/courses/zk-shuxue.jpg', kind:'trial', isTry:true },
+				{ full:'中考英语', learn:1289, cover:'/static/courses/zk-yingyu.jpg', kind:'trial', isTry:true },
+				{ full:'中考物理', learn:1176, cover:'/static/courses/zk-wuli.jpg', kind:'trial', isTry:true },
+				{ full:'中考化学', learn:1237, cover:'/static/courses/zk-huaxue.jpg', kind:'trial', isTry:true },
+				{ full:'高考语文', learn:1078, cover:'/static/courses/gk-yuwen.jpg', kind:'trial', isTry:true },
+				{ full:'高考数学', learn:GAOKAO_MATH_TRIAL.studyCount, cover:GAOKAO_MATH_TRIAL.cover, subject:'gaokao-math', kind:'trial', isTry:true },
+				{ full:'高考英语', learn:1360, cover:'/static/courses/gk-yingyu.jpg', kind:'trial', isTry:true },
+				{ full:'高考物理', learn:1121, cover:'/static/courses/gk-wuli.jpg', kind:'trial', isTry:true },
+				{ full:'高考化学', learn:980,  cover:'/static/courses/gk-huaxue.jpg', kind:'trial', isTry:true }
 			]
 		}
 	},
@@ -87,7 +87,7 @@ export default {
 				if (!courses || !courses.length) return;
 				this.list = courses.map(item => ({
 					id: item.id,
-					full: item.full,
+					full: stripCourseYear(item.full),
 					learn: item.studyCount || item.learn || 0,
 					cover: item.cover,
 					subject: item.subject,
@@ -109,7 +109,7 @@ export default {
 		goDetail(it) {
 			const idPart = it.id ? `id=${encodeURIComponent(it.id)}&` : '';
 			const extra = it.subject ? `&subject=${it.subject}&kind=${it.kind || 'trial'}` : '';
-			uni.navigateTo({ url:`/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(it.full.replace('2026',''))}&cover=${encodeURIComponent(it.cover)}${extra}` });
+			uni.navigateTo({ url:`/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover)}${extra}` });
 		}
 	}
 }

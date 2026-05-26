@@ -76,12 +76,35 @@
 			</view>
 			<view class="empty" v-if="!recentRows.length">暂无练习统计</view>
 		</view>
+
+		<view class="panel" v-if="offlineRows.length">
+			<view class="panel-title">线下试卷自评</view>
+			<view class="row" v-for="item in offlineRows" :key="item.id">
+				<text>{{item.title}}</text><text>{{item.score}}/{{item.totalScore}}分，错题{{item.wrongCount}}道</text>
+			</view>
+		</view>
+
+		<view class="panel" v-if="plateRows.length">
+			<view class="panel-title">学习报告细节</view>
+			<view class="plate-row" v-for="item in plateRows" :key="item.name">
+				<text>{{item.name}}</text>
+				<view class="plate-score"><text>{{item.score}}分</text><small>{{item.level && item.level.label}}</small></view>
+			</view>
+		</view>
+
+		<view class="panel" v-if="suggestions.length">
+			<view class="panel-title">学习建议</view>
+			<view class="suggestion" v-for="item in suggestions" :key="item">{{item}}</view>
+		</view>
 	</view>
 </template>
 
 <script>
 import { getStudyReport } from '@/common/api.js'
+import { stripCourseYear } from '@/common/course-data.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
+
+const REVIEW_KEY = 'offlineExamReviews';
 
 export default {
 	components: { AnalysisViewer },
@@ -91,15 +114,27 @@ export default {
 			courseId: 'gk-math-full',
 			userId: '',
 			showPractice: false,
-			selectedPractice: null
+			selectedPractice: null,
+			offlineReviews: []
 		}
 	},
 	computed: {
 		courseTitle() {
-			return this.report.courseTitle || this.report.courseName || '高考数学';
+			return stripCourseYear(this.report.courseTitle || this.report.courseName || '高考数学');
 		},
 		recentRows() {
-			return this.report.recentPractice && this.report.recentPractice.length ? this.report.recentPractice : (this.report.attempts || []);
+			const rows = this.report.recentPractice && this.report.recentPractice.length ? this.report.recentPractice : (this.report.attempts || []);
+			return rows.concat(this.offlineRows);
+		},
+		offlineRows() {
+			return this.offlineReviews
+				.filter(item => !item.courseId || item.courseId === this.courseId)
+				.map(item => ({
+					...item,
+					averageScore: item.totalScore ? Math.round(Number(item.score) * 100 / Number(item.totalScore)) : item.score,
+					total: item.totalScore,
+					correct: item.score
+				}));
 		},
 		practiceRows() {
 			return (this.report.practiceRows && this.report.practiceRows.length ? this.report.practiceRows : (this.report.attempts || [])).filter(item => item.type !== 'quiz');
@@ -115,27 +150,35 @@ export default {
 			return this.practiceRows.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
 		},
 		wrongCount() {
-			if (this.report.wrongCount !== undefined) return this.report.wrongCount;
+			const offlineWrong = this.offlineRows.reduce((sum, item) => sum + (Number(item.wrongCount) || 0), 0);
+			if (this.report.wrongCount !== undefined) return this.report.wrongCount + offlineWrong;
 			return this.recentRows.reduce((sum, item) => sum + (Number(item.wrongCount) || 0), 0);
 		},
 		averageScore() {
 			const value = Number(this.report.averageScore);
-			if (!Number.isNaN(value) && value > 0) return Math.min(100, value);
+			if (!Number.isNaN(value) && value > 0 && !this.offlineRows.length) return Math.min(100, value);
 			const rows = this.recentRows;
 			if (!rows.length) return 0;
 			return Math.round(rows.reduce((sum, item) => sum + (Number(item.averageScore || item.score) || 0), 0) / rows.length);
 		},
 		accuracyText() {
-			if (this.report.accuracy !== undefined) return `${this.report.accuracy}%`;
-			const rows = this.report.attempts || [];
+			if (this.report.accuracy !== undefined && !this.offlineRows.length) return `${this.report.accuracy}%`;
+			const rows = (this.report.attempts || []).concat(this.offlineRows);
 			const total = rows.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
 			const correct = rows.reduce((sum, item) => sum + (Number(item.correct) || 0), 0);
 			return total ? `${Math.round(correct / total * 100)}%` : '0%';
+		},
+		plateRows() {
+			return (this.report.summary && this.report.summary.plateScores) || [];
+		},
+		suggestions() {
+			return this.report.suggestions || [];
 		}
 	},
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || 'gk-math-full';
 		this.userId = opts.studentId || opts.userId || '';
+		this.offlineReviews = uni.getStorageSync(REVIEW_KEY) || [];
 		this.loadData();
 	},
 	methods: {
@@ -185,5 +228,11 @@ page { background:#f5f7fa; }
 .score-line { display:flex; align-items:center; gap:18rpx; color:#1677ff; font-size:40rpx; font-weight:900; }
 .score-bar { flex:1; height:14rpx; background:#edf0f3; border-radius:10rpx; overflow:hidden; }
 .score-bar view { height:100%; background:#20b486; border-radius:10rpx; }
+.plate-row { display:flex; align-items:center; justify-content:space-between; padding:18rpx 0; border-bottom:1rpx solid #eef0f3; color:#333; font-size:27rpx; }
+.plate-row:last-child { border-bottom:0; }
+.plate-score { display:flex; align-items:center; gap:12rpx; color:#1677ff; font-weight:900; }
+.plate-score small { color:#697386; font-size:22rpx; font-weight:700; }
+.suggestion { padding:16rpx 0; border-bottom:1rpx solid #eef0f3; color:#333; font-size:27rpx; line-height:1.5; }
+.suggestion:last-child { border-bottom:0; }
 .empty { color:#8a94a3; font-size:26rpx; padding:20rpx 0; }
 </style>
