@@ -11,7 +11,10 @@
 					<view class="band-label">共计 {{course.totalLessons || 0}} 节，总时长：{{course.totalDuration || '--'}}</view>
 					<view class="band-sub">已学节数：{{course.readStudyCount || 0}} 节，已学时长：{{course.readDuration || '00小时00分'}}</view>
 				</view>
-				<view class="band-score">{{summary.pending || 0}}<text>待巩固</text></view>
+				<view class="band-stats">
+					<view class="band-total">共收录错题：{{summary.total || 0}}道</view>
+					<view class="band-score">{{summary.pending || 0}}<text>待巩固</text></view>
+				</view>
 			</view>
 		</view>
 
@@ -22,7 +25,7 @@
 			</view>
 			<view class="action-card" :class="{active: mode === 'records'}" @click="setMode('records')">
 				<view class="action-title">查看测试记录</view>
-				<view class="action-sub">章节扫雷、复习测试、错题重练记录</view>
+				<view class="action-sub">章节扫雷、复习测试、真题讲练、错题重练记录</view>
 			</view>
 			<view class="action-card" :class="{active: mode === 'retry'}" @click="setMode('retry')">
 				<view class="action-title">错题重练</view>
@@ -55,6 +58,7 @@
 				<view class="source-title">错题来源：</view>
 				<view class="tag-row">
 					<view class="tag" v-for="tag in item.sourceTags" :key="tag">【{{tag}}】</view>
+					<view class="tag latest-tag">最新收录时间：{{formatFullTime(item.updatedAt)}}</view>
 				</view>
 				<view class="stem">{{item.stem}}</view>
 				<view class="answer ok">正确答案：{{item.answerText || optionText(item, item.answer)}}</view>
@@ -63,6 +67,7 @@
 				<view class="row-actions">
 					<view class="state" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
 					<view class="mark-btn" :class="{done:item.mastered}" @click="mark(item)">{{item.mastered ? '已标记' : '标记掌握'}}</view>
+					<view class="fav-btn" @click="favoriteWrong(item)">加入我的收藏</view>
 				</view>
 			</view>
 		</view>
@@ -102,7 +107,7 @@
 					<view class="count-btn" :class="{active: retryCount === 5}" @click="setRetryCount(5)">随机 5 道题</view>
 					<view class="count-btn" :class="{active: retryCount === 20}" @click="setRetryCount(20)">随机 20 题</view>
 				</view>
-				<view class="notice">错题库数量不够的话以最多量来分配</view>
+				<view class="notice">当前错题库数量不足时，按照最多数量进行分配。</view>
 				<view class="retry-meta">当前可练：{{retryPaper.availableCount || 0}} 道，实际组卷：{{retryPaper.count || 0}} 道</view>
 				<view class="start-btn" @click="startRetry">开始错题重练</view>
 			</view>
@@ -139,7 +144,8 @@ import {
 	getWrongBookSummary,
 	getWrongBookRecords,
 	getWeakWrongBook,
-	getWrongRetry
+	getWrongRetry,
+	toggleFavorite
 } from '@/common/api.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 
@@ -149,7 +155,7 @@ export default {
 		return {
 			mode: 'review',
 			source: '全部',
-			sources: ['全部', '章节扫雷', '复习测试', '真题讲练', '错题重练'],
+			sources: ['全部', '最新错题', '章节扫雷', '复习测试', '真题讲练', '错题重练'],
 			summary: {},
 			course: {},
 			wrongList: [],
@@ -256,6 +262,20 @@ export default {
 				uni.showToast({ title: err.message || '标记失败', icon: 'none' })
 			}
 		},
+		async favoriteWrong(item) {
+			try {
+				await toggleFavorite({
+					type: 'question',
+					targetId: item.questionId || item.id,
+					title: item.stem,
+					courseId: item.courseId || 'gk-math-full',
+					action: 'add'
+				})
+				uni.showToast({ title: '已加入我的收藏', icon: 'success' })
+			} catch (err) {
+				uni.showToast({ title: err.message || '收藏失败', icon: 'none' })
+			}
+		},
 		toggleRecord(id) {
 			this.activeRecordId = this.activeRecordId === id ? '' : id
 		},
@@ -264,6 +284,9 @@ export default {
 			return options[index] !== undefined ? `${String.fromCharCode(65 + Number(index))}. ${options[index]}` : '--'
 		},
 		formatTime(value) {
+			return value ? String(value).replace('T', ' ').slice(0, 16) : '--'
+		},
+		formatFullTime(value) {
 			return value ? String(value).replace('T', ' ').slice(0, 16) : '--'
 		},
 		goBack() {
@@ -283,6 +306,8 @@ page { background:#f4f6f8; }
 .band-row { display:flex; align-items:center; justify-content:space-between; gap:24rpx; padding:24rpx; border-radius:8rpx; background:#eaf6f3; border:1rpx solid #cce9e1; }
 .band-label { font-size:27rpx; font-weight:800; color:#143b35; line-height:1.5; }
 .band-sub { margin-top:8rpx; font-size:24rpx; color:#526b66; line-height:1.5; }
+.band-stats { flex-shrink:0; display:flex; align-items:center; gap:26rpx; }
+.band-total { color:#143b35; font-size:27rpx; font-weight:900; white-space:nowrap; }
 .band-score { min-width:116rpx; text-align:center; color:#0f766e; font-size:42rpx; font-weight:900; }
 .band-score text { display:block; margin-top:4rpx; font-size:21rpx; font-weight:700; }
 .action-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:24rpx; }
@@ -300,16 +325,19 @@ page { background:#f4f6f8; }
 .source-title { font-size:24rpx; color:#667085; font-weight:800; }
 .tag-row { display:flex; flex-wrap:wrap; gap:10rpx; margin-top:10rpx; }
 .tag { padding:6rpx 12rpx; border-radius:6rpx; background:#eef5ff; color:#1d4ed8; font-size:22rpx; }
+.tag.latest-tag { background:#fff1f2; color:#be123c; }
 .stem { margin-top:18rpx; font-size:29rpx; line-height:1.55; font-weight:800; color:#1f2933; }
 .answer { margin-top:12rpx; font-size:26rpx; line-height:1.45; }
 .answer.ok { color:#047857; }
 .answer.bad { color:#dc2626; }
 .analysis, .detail-analysis { margin-top:14rpx; color:#5f6b7a; font-size:25rpx; line-height:1.55; }
-.row-actions { display:flex; align-items:center; gap:16rpx; margin-top:20rpx; }
-.state, .weak-status { padding:8rpx 16rpx; border-radius:6rpx; background:#fff1f2; color:#be123c; font-size:23rpx; font-weight:800; }
+.row-actions { display:grid; grid-template-columns:120rpx 1fr 1fr; align-items:center; gap:16rpx; margin-top:20rpx; }
+.state, .weak-status { height:64rpx; line-height:64rpx; text-align:center; border-radius:8rpx; background:#fff1f2; color:#be123c; font-size:23rpx; font-weight:800; }
 .state.done, .weak-status.done { background:#ecfdf5; color:#047857; }
-.mark-btn { flex:1; height:68rpx; line-height:68rpx; text-align:center; border-radius:8rpx; background:#2563eb; color:#fff; font-size:27rpx; font-weight:800; }
+.mark-btn, .fav-btn { height:68rpx; line-height:68rpx; text-align:center; border-radius:8rpx; color:#fff; font-size:27rpx; font-weight:800; }
+.mark-btn { background:#2563eb; }
 .mark-btn.done { background:#edf1f5; color:#667085; }
+.fav-btn { background:#0f766e; }
 .record-total { font-size:30rpx; font-weight:900; color:#1f2933; }
 .record-subjects { display:flex; flex-wrap:wrap; gap:16rpx; margin-top:12rpx; color:#667085; font-size:24rpx; }
 .record-time { font-size:23rpx; color:#8a94a3; }

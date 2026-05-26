@@ -130,6 +130,24 @@ export function resetPassword(payload) {
 	})
 }
 
+export function getProfile() {
+	return request('/profile')
+}
+
+export function updateProfile(payload) {
+	return request('/profile', {
+		method: 'POST',
+		data: payload
+	})
+}
+
+export function submitFeedback(payload) {
+	return request('/feedback', {
+		method: 'POST',
+		data: payload
+	})
+}
+
 export function getCourses(params = {}) {
 	return request('/courses', { params })
 }

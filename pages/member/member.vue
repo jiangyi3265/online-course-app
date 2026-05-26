@@ -16,7 +16,10 @@
 		<!-- 已登录内容 -->
 		<block v-if="logined">
 			<view class="user">
-				<view class="avatar">👤</view>
+				<view class="avatar" @click="goProfile">
+					<image v-if="userInfo.avatar" class="avatar-img" :src="userInfo.avatar" mode="aspectFill" />
+					<text v-else>👤</text>
+				</view>
 				<view class="u-info">
 					<view class="u-name">{{userInfo.name || '用户'}}</view>
 					<view class="u-id">ID:{{userInfo.id || '--'}}</view>
@@ -57,7 +60,7 @@ export default {
 			funcs: [
 				{ ico:'👥', text:'我的推荐人' },
 				{ ico:'🔖', text:'我的收藏' },
-				{ ico:'❓', text:'常见问题' },
+				{ ico:'❓', text:'意见反馈' },
 				{ ico:'🎓', text:'我的学生' },
 				{ ico:'📄', text:'隐私政策' },
 				{ ico:'📑', text:'用户协议' },
@@ -84,8 +87,10 @@ export default {
 			else if (f.text === '我的收藏') uni.navigateTo({ url:'/pages/favorites/favorites' });
 			else if (f.text === '我的学生') uni.navigateTo({ url:'/pages/students/students' });
 			else if (f.text === '我的推荐人') uni.navigateTo({ url:'/pages/referrer/referrer' });
+			else if (f.text === '意见反馈') uni.navigateTo({ url:'/pages/feedback/feedback' });
 			else uni.showToast({ title:f.text, icon:'none' });
-		}
+		},
+		goProfile() { uni.navigateTo({ url:'/pages/profile/profile' }); }
 	}
 }
 </script>
@@ -105,7 +110,8 @@ page { background:#fff; }
 .m-divider { width:1rpx; background:#ececec; }
 
 .user { display:flex; align-items:center; padding: 60rpx 40rpx 30rpx; }
-.avatar { width:120rpx; height:120rpx; border-radius:50%; background:#e3edf7; display:flex; align-items:center; justify-content:center; font-size:60rpx; color:#7aa6d6; }
+.avatar { width:120rpx; height:120rpx; border-radius:50%; background:#e3edf7; display:flex; align-items:center; justify-content:center; font-size:60rpx; color:#7aa6d6; overflow:hidden; cursor:pointer; }
+.avatar-img { width:100%; height:100%; display:block; }
 .u-info { margin-left:24rpx; }
 .u-name { font-size:36rpx; font-weight:800; color:#222; }
 .u-id { font-size:24rpx; color:#888; margin-top:8rpx; }

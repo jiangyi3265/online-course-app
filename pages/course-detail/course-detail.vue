@@ -64,7 +64,10 @@
 		</view>
 
 		<block v-if="activeTab===0">
-			<view class="ver-tag">2026版</view>
+			<view class="version-chips">
+				<view class="version-chip active">复习加强课</view>
+				<view class="version-chip">技巧绝招课</view>
+			</view>
 
 			<view class="chapter" v-for="(c,i) in chapters" :key="i">
 				<view class="ch-head" @click="toggle(i)">
@@ -390,16 +393,18 @@ page { background:#f5f7fa; }
 }
 
 /* 版本标签 */
-.ver-tag {
-	display:inline-block;
-	margin: 24rpx 30rpx 12rpx;
-	padding: 6rpx 22rpx;
-	background:#eaf4ff;
-	color:#0d7cfe;
-	font-size:24rpx;
+.version-chips { display:flex; gap:16rpx; padding: 20rpx 24rpx 8rpx; background:#f5f7fa; }
+.version-chip {
+	height:58rpx;
+	line-height:58rpx;
+	padding:0 24rpx;
 	border-radius:30rpx;
-	border:1rpx solid #b9defc;
+	background:#eef2f7;
+	color:#5d6673;
+	font-size:24rpx;
+	font-weight:800;
 }
+.version-chip.active { background:#3aa3f5; color:#fff; }
 
 /* 章节卡片 */
 .chapter {

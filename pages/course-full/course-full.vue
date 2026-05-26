@@ -38,7 +38,7 @@
 
 		<!-- Tabs -->
 		<view class="tabs">
-			<view class="tab" v-for="(t,i) in projectTabs" :key="t" :class="{active: tab===i}" @click="tab=i">{{t}}</view>
+			<view class="tab" v-for="(t,i) in projectTabs" :key="t" :class="{active: tab===i}" @click="setTab(i)">{{t}}</view>
 		</view>
 
 		<!-- 技巧干货 -->
@@ -119,10 +119,23 @@
 			<view class="minor-btn" @click="goWrongBook">进入错题与巩固</view>
 		</view>
 
-		<view class="minor-panel" v-if="tab===3">
-			<view class="minor-title">复习加强</view>
-			<view class="minor-text">当前课程有17个知识点可强化练习。</view>
-			<view class="minor-btn" @click="goReinforce">开始复习</view>
+		<view class="reinforce-section" v-if="tab===3">
+			<view class="reinforce-head">
+				<view>
+					<view class="reinforce-title">高中数学</view>
+					<view class="reinforce-sub">共{{reinforceList.length || 17}}个知识点</view>
+				</view>
+				<view class="reinforce-time">共xx小时xx分钟</view>
+			</view>
+			<view class="reinforce-empty" v-if="!reinforceList.length">暂无复习加强内容</view>
+			<view class="reinforce-row" v-for="item in reinforceList" :key="item.id">
+				<view class="point-badge">知</view>
+				<view class="point-main">
+					<view class="point-title">{{item.title}}</view>
+					<view class="point-status">{{item.status || '未学'}}-添加日期：{{formatDateTime(item.createdAt)}}</view>
+				</view>
+				<view class="point-btn" @click="startReinforce(item)">去学习</view>
+			</view>
 		</view>
 
 		<view style="height:160rpx"></view>
@@ -149,7 +162,7 @@
 
 <script>
 import { getGaokaoMathCourse, isGaokaoMath } from '@/common/course-data.js'
-import { getCourse } from '@/common/api.js'
+import { getCourse, getReinforce } from '@/common/api.js'
 export default {
 	data() {
 		return {
@@ -172,6 +185,8 @@ export default {
 			showAuth: false,
 			wechatId: 'DYR7314',
 			courseId: 'gk-math-full',
+			reinforceList: [],
+			reinforceLoaded: false,
 			chapters: [
 				{ title:'一、基础运用提升系列', open:true, items:[
 					'巧辨字音字形','词语理解运用','病句辨析解题技巧','文学文化常识突破','句子的连贯得体',
@@ -216,6 +231,8 @@ export default {
 		},
 		applyRemoteCourse(course) {
 			this.courseId = course.id || this.courseId;
+			this.reinforceLoaded = false;
+			this.reinforceList = [];
 			this.title = course.title || this.title;
 			this.courseName = course.courseName || this.courseName;
 			this.cover = course.detailCover || course.cover || this.cover;
@@ -237,6 +254,8 @@ export default {
 		applyMathCourse() {
 			const course = getGaokaoMathCourse('full');
 			this.courseId = 'gk-math-full';
+			this.reinforceLoaded = false;
+			this.reinforceList = [];
 			this.title = course.title;
 			this.courseName = course.courseName;
 			this.cover = course.detailCover || course.cover;
@@ -256,6 +275,19 @@ export default {
 		setVersion(i) {
 			this.versionIndex = i;
 			if (this.versions[i] && this.versions[i].chapters) this.chapters = this.versions[i].chapters;
+		},
+		setTab(i) {
+			this.tab = i;
+			if (i === 3) this.loadReinforce();
+		},
+		async loadReinforce() {
+			if (this.reinforceLoaded) return;
+			try {
+				this.reinforceList = await getReinforce(this.courseId);
+				this.reinforceLoaded = true;
+			} catch (err) {
+				uni.showToast({ title: err.message || '加载失败', icon: 'none' });
+			}
 		},
 		resolveCourseStats(course = {}) {
 			const totalLessons = this.countCourseLessons(course) || course.totalLessons || 0;
@@ -315,6 +347,7 @@ export default {
 		goQuiz(q) { uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` }); },
 		goWrongBook() { uni.navigateTo({ url:'/pages/wrongbook/wrongbook' }); },
 		goReinforce() { uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` }); },
+		startReinforce(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseName)}&chapterTitle=${encodeURIComponent('复习加强')}` }); },
 		goActivate() { uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}` }); },
 		showApplyAuth() { this.showAuth = true; },
 		copyWechat() {
@@ -332,6 +365,9 @@ export default {
 				return;
 			}
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
+		},
+		formatDateTime(value) {
+			return value ? String(value).replace('T', ' ').slice(0, 19) : '2026-01-25 19:57:51';
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); }
 	}
@@ -599,6 +635,51 @@ page { background:#f5f7fa; }
 	padding:12rpx 28rpx;
 	border-radius:32rpx;
 	cursor:pointer;
+}
+.reinforce-section { background:#fff; padding:0 24rpx 28rpx; }
+.reinforce-head {
+	display:flex;
+	justify-content:space-between;
+	align-items:center;
+	padding:24rpx 6rpx 18rpx;
+	border-bottom:1rpx solid #edf0f3;
+}
+.reinforce-title { color:#222; font-size:32rpx; font-weight:900; }
+.reinforce-sub, .reinforce-time { color:#8a94a3; font-size:24rpx; margin-top:6rpx; }
+.reinforce-empty { padding:80rpx 0; text-align:center; color:#8a94a3; font-size:26rpx; }
+.reinforce-row {
+	min-height:104rpx;
+	display:flex;
+	align-items:center;
+	border-bottom:1rpx solid #edf0f3;
+	gap:18rpx;
+}
+.point-badge {
+	width:34rpx;
+	height:34rpx;
+	border-radius:6rpx;
+	border:1rpx solid #7ccfe0;
+	color:#26a3bd;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	font-size:21rpx;
+	flex-shrink:0;
+}
+.point-main { flex:1; min-width:0; }
+.point-title { color:#222; font-size:28rpx; font-weight:700; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.point-status { margin-top:8rpx; color:#8a94a3; font-size:22rpx; }
+.point-btn {
+	flex-shrink:0;
+	min-width:110rpx;
+	height:58rpx;
+	line-height:58rpx;
+	text-align:center;
+	border-radius:30rpx;
+	background:#3aa3f5;
+	color:#fff;
+	font-size:24rpx;
+	font-weight:800;
 }
 
 /* Footer */
