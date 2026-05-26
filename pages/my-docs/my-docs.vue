@@ -103,7 +103,7 @@ const LOCAL_DOCS = [
 ];
 
 export default {
-	data() { return { kw:'', list:[], showLogin:false } },
+	data() { return { kw:'', courseId:'', list:[], showLogin:false } },
 	computed: {
 		lectureDocs() {
 			return this.list.filter(doc => !this.isPaper(doc));
@@ -111,6 +111,10 @@ export default {
 		paperDocs() {
 			return this.list.filter(doc => this.isPaper(doc));
 		}
+	},
+	onLoad(opts = {}) {
+		this.courseId = opts.courseId || '';
+		if (opts.kw) this.kw = decodeURIComponent(opts.kw);
 	},
 	onShow() {
 		if (!isLoggedIn()) {
@@ -125,7 +129,7 @@ export default {
 			try {
 				const docs = await getMyDocs(this.kw);
 				const withFallbackPapers = this.ensurePaperDocs(docs || []);
-				this.list = withFallbackPapers.map(doc => ({ ...doc }));
+				this.list = this.filterDocs(withFallbackPapers).map(doc => ({ ...doc }));
 			} catch (err) {
 				console.warn('文档接口不可用，使用本地文档', err);
 				this.list = this.filterLocalDocs();
@@ -133,13 +137,21 @@ export default {
 		},
 		filterLocalDocs() {
 			const key = this.kw.trim().toLowerCase();
-			return LOCAL_DOCS.filter(doc => !key || doc.title.toLowerCase().includes(key)).map(doc => ({ ...doc }));
+			return this.filterDocs(LOCAL_DOCS, key).map(doc => ({ ...doc }));
+		},
+		filterDocs(docs = [], normalizedKey = '') {
+			const key = normalizedKey || this.kw.trim().toLowerCase();
+			return docs.filter(doc => {
+				const matchCourse = !this.courseId || !doc.courseId || doc.courseId === this.courseId;
+				const matchKeyword = !key || (doc.title || '').toLowerCase().includes(key);
+				return matchCourse && matchKeyword;
+			});
 		},
 		ensurePaperDocs(docs = []) {
 			const hasPaper = docs.some(doc => this.isPaper(doc));
 			const list = docs.length ? docs : this.filterLocalDocs();
 			if (hasPaper) return list;
-			return list.concat(LOCAL_DOCS.filter(doc => doc.category === 'paper'));
+			return list.concat(this.filterDocs(LOCAL_DOCS.filter(doc => doc.category === 'paper')));
 		},
 		isPaper(doc = {}) {
 			return doc.category === 'paper' || /试卷|测试卷|线下/i.test(doc.title || '');

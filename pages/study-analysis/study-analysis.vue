@@ -2,18 +2,88 @@
 	<view class="page">
 		<view class="nav">
 			<view class="back" @click="goBack">‹</view>
-			<view class="nav-title">学情分析</view>
+			<view class="nav-title">学情统计</view>
 		</view>
 
-		<view class="section-title">学习情况总结</view>
-		<view class="time-summary" v-if="learningStats">
-			<view class="time-card"><text class="time-value">{{learningStats.totalText}}</text><text class="time-label">学习时长汇总</text></view>
-			<view class="time-card"><text class="time-value">{{learningStats.days}}天</text><text class="time-label">累计学习</text></view>
-			<view class="time-card"><text class="time-value">{{learningStats.weekText}}</text><text class="time-label">本周学习</text></view>
-			<view class="time-card"><text class="time-value">{{learningStats.todayText}}</text><text class="time-label">今日学习</text></view>
+		<view class="section-head">
+			<view>
+				<view class="section-title">学习情况总结</view>
+				<view class="section-sub">所有已开通科目的学习情况汇总，后续绑定家长后也可同步查看。</view>
+			</view>
 		</view>
+
+		<view class="time-summary">
+			<view class="time-card">
+				<text class="time-value">{{summaryStats.totalText}}</text>
+				<text class="time-label">学习时长汇总</text>
+			</view>
+			<view class="time-card">
+				<text class="time-value">{{summaryStats.days}}天</text>
+				<text class="time-label">累计学习</text>
+			</view>
+			<view class="time-card">
+				<text class="time-value">{{summaryStats.weekText}}</text>
+				<text class="time-label">本周学习</text>
+			</view>
+			<view class="time-card">
+				<text class="time-value">{{summaryStats.todayText}}</text>
+				<text class="time-label">今日学习</text>
+			</view>
+			<view class="time-card checkin-card">
+				<view>
+					<text class="time-value">{{checkinDays}}天</text>
+					<text class="time-label">累计打卡</text>
+				</view>
+				<view class="text-action" @click="showCheckinRecords = !showCheckinRecords">{{showCheckinRecords ? '收起记录' : '查看打卡记录'}}</view>
+			</view>
+		</view>
+
+		<view class="checkin-panel" v-if="showCheckinRecords">
+			<view class="panel-title">打卡记录</view>
+			<view class="empty" v-if="!checkinRecords.length">暂无打卡记录</view>
+			<view class="checkin-row" v-for="item in checkinRecords" :key="item.id">
+				<view>
+					<view class="checkin-date">{{formatDate(item.createdAt || item.date)}}</view>
+					<view class="checkin-course">{{courseNameById(item.courseId)}}</view>
+				</view>
+				<view class="checkin-content">{{item.content || '已打卡'}}</view>
+			</view>
+		</view>
+
+		<view class="report-panel">
+			<view class="panel-title">各科目学习报告</view>
+			<view class="panel-note">科目根据已激活课程显示；未激活课程不显示。</view>
+			<view class="course-report-grid" v-if="courseReports.length">
+				<view class="course-report" v-for="course in courseReports" :key="course.id">
+					<view class="course-name" @click="goReport(course)">{{course.title}}</view>
+					<view class="course-actions">
+						<view class="outline-btn" @click="goWrongBook(course)">查看【错题与巩固】</view>
+						<view class="outline-btn" @click="goDocs(course)">查看我的文档</view>
+					</view>
+				</view>
+			</view>
+			<view class="empty" v-else>暂无已激活课程，激活课程后这里会显示对应科目的学习报告。</view>
+		</view>
+
+		<view class="english-panel" v-if="englishStats">
+			<view class="english-title">英语外语科目</view>
+			<view class="english-grid">
+				<view class="english-item" v-for="item in englishStats.items" :key="item.label">
+					<text>{{item.label}}</text>
+					<strong>{{item.value}}</strong>
+				</view>
+			</view>
+			<view class="english-daily">
+				<view>今日学习词汇名字：高考单词3500词</view>
+				<view>今日认读完成：xx个</view>
+				<view>今日听写完成：xx个</view>
+				<view>今日新学：xx个</view>
+				<view>今日复习：xx个</view>
+			</view>
+		</view>
+
 		<view class="summary" v-if="studySummary">
-			<view class="summary-card" v-for="section in studySummary.sections" :key="section.title">
+			<view class="summary-card" v-for="section in nonEnglishSections" :key="section.title">
 				<view class="summary-title">{{section.title}}</view>
 				<view class="summary-items">
 					<view class="summary-item" v-for="item in section.items" :key="item.label">
@@ -39,6 +109,7 @@
 					</view>
 				</view>
 			</view>
+
 			<view class="master-card">
 				<view class="summary-title">板块掌握评分</view>
 				<view class="master-row" v-for="item in studySummary.plateScores" :key="item.name">
@@ -50,62 +121,51 @@
 				</view>
 			</view>
 		</view>
-
-		<view class="admin-panel" v-if="isAdmin && adminStats">
-			<view class="admin-head">
-				<view>
-					<view class="admin-title">课程打分评价统计</view>
-					<view class="admin-sub">按激活时科目最近考试分数阶段查看本节课反馈情况</view>
-				</view>
-				<view class="admin-avg">{{adminStats.average}}星</view>
-			</view>
-			<view class="admin-total">
-				<text>章节总星数统计：{{adminStats.chapterTotal}}条</text>
-				<text>章节自评星数统计</text>
-			</view>
-			<view class="star-stat">
-				<view class="star-stat-item" v-for="option in ratingOptions" :key="option.value">
-					<text class="star-stat-star">{{option.label}}</text>
-					<text class="star-stat-count">{{totalStarCount(option.value)}}</text>
-				</view>
-			</view>
-			<view class="score-groups">
-				<view class="score-group" v-for="group in adminStats.groups" :key="group.range">
-					<view class="score-group-head">
-						<text class="score-range">{{group.range}}</text>
-						<text class="score-students">{{group.students}}人</text>
-					</view>
-					<view class="group-stars">
-						<view class="group-star-row" v-for="option in ratingOptions" :key="option.value">
-							<text class="group-star-label">{{option.label}}</text>
-							<view class="group-star-bar">
-								<view class="group-star-bar-inner" :style="{width: groupBarWidth(group, option.value)}"></view>
-							</view>
-							<text class="group-star-count">{{starCount(group, option.value)}}</text>
-						</view>
-					</view>
-				</view>
-			</view>
-		</view>
 	</view>
 </template>
 
 <script>
 import { getStudySummary } from '@/common/study-summary.js'
-import { getStudyReport, getStudySummaryApi, isLoggedIn } from '@/common/api.js'
+import { getStudyReport, getStudySummaryApi, getMyCourses, isLoggedIn } from '@/common/api.js'
+import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
+
+const CHECKIN_KEY = 'studyCheckins';
 
 export default {
 	data() {
 		return {
 			studySummary: null,
 			learningStats: null,
-			adminStats: null,
-			isAdmin: false,
 			userInfo: {},
 			courseId: '',
 			studentId: '',
 			expandedSummary: {},
-			ratingOptions: []
+			activeCourses: [],
+			checkinRecords: [],
+			showCheckinRecords: false
+		}
+	},
+	computed: {
+		summaryStats() {
+			const stats = this.learningStats || {};
+			return {
+				totalText: stats.totalText || '0秒',
+				days: Number(stats.days) || 0,
+				weekText: stats.weekText || '0秒',
+				todayText: stats.todayText || '0秒'
+			};
+		},
+		checkinDays() {
+			return new Set(this.checkinRecords.map(item => item.date || String(item.createdAt || '').slice(0, 10)).filter(Boolean)).size;
+		},
+		courseReports() {
+			return this.activeCourses.map(item => this.normalizeCourse(item)).filter(item => item.id && item.title);
+		},
+		englishStats() {
+			return (this.studySummary && this.studySummary.sections || []).find(section => /英语|外语/.test(section.title));
+		},
+		nonEnglishSections() {
+			return (this.studySummary && this.studySummary.sections || []).filter(section => !/英语|外语/.test(section.title));
 		}
 	},
 	onLoad(opts = {}) {
@@ -119,8 +179,7 @@ export default {
 		}
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		this.studySummary = getStudySummary();
-		this.isAdmin = false;
-		this.adminStats = null;
+		this.checkinRecords = (uni.getStorageSync(CHECKIN_KEY) || []).slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 		await this.loadRemoteData();
 	},
 	methods: {
@@ -131,28 +190,64 @@ export default {
 				console.warn('学习统计接口不可用，使用本地统计', err);
 			}
 			try {
-				const report = await getStudyReport(this.courseId, this.studentId);
-				this.learningStats = report.learningStats;
+				const report = await getStudyReport('', this.studentId);
+				this.learningStats = report.learningStats || null;
 			} catch (err) {
 				console.warn('学习报告接口不可用', err);
 			}
+			try {
+				const list = await getMyCourses();
+				this.activeCourses = (list && list.length ? list : AUTHORIZED_COURSES);
+			} catch (err) {
+				console.warn('已激活课程接口不可用，使用本地课程', err);
+				this.activeCourses = AUTHORIZED_COURSES;
+			}
+		},
+		normalizeCourse(course = {}) {
+			const title = stripCourseYear(course.courseName || course.title || course.sub || '');
+			return {
+				...course,
+				id: course.id || course.courseId || this.inferCourseId(title, course.subject),
+				title: this.cleanCourseTitle(title)
+			};
+		},
+		cleanCourseTitle(title = '') {
+			return stripCourseYear(title).replace(/[《》]/g, '').replace(/试听课/g, '').trim();
+		},
+		inferCourseId(title = '', subject = '') {
+			const text = `${title}${subject}`;
+			if (/高考数学|gaokao-math/.test(text)) return 'gk-math-full';
+			if (/高考语文/.test(text)) return 'gk-yuwen-full';
+			if (/高考英语/.test(text)) return 'gk-yingyu-full';
+			if (/高考物理/.test(text)) return 'gk-wuli-full';
+			if (/高考化学/.test(text)) return 'gk-huaxue-full';
+			if (/中考语文/.test(text)) return 'zk-yuwen-full';
+			if (/中考数学/.test(text)) return 'zk-shuxue-full';
+			if (/中考英语/.test(text)) return 'zk-yingyu-full';
+			if (/中考物理/.test(text)) return 'zk-wuli-full';
+			if (/中考化学/.test(text)) return 'zk-huaxue-full';
+			return '';
+		},
+		courseNameById(courseId = '') {
+			const found = this.courseReports.find(item => item.id === courseId);
+			return found ? found.title : (courseId || '课程学习');
+		},
+		formatDate(value) {
+			const raw = value ? String(value) : '';
+			const match = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+			return match ? `${match[1]}年${match[2].padStart(2, '0')}月${match[3].padStart(2, '0')}日` : raw;
 		},
 		toggleSummary(title) {
 			this.expandedSummary = { ...this.expandedSummary, [title]: !this.expandedSummary[title] };
 		},
-		starCount(group, star) {
-			const counts = group.counts || {};
-			return counts[star] || counts[String(star)] || 0;
+		goReport(course) {
+			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}` });
 		},
-		totalStarCount(star) {
-			const counts = (this.adminStats && this.adminStats.totalCounts) || {};
-			return counts[star] || counts[String(star)] || 0;
+		goWrongBook(course) {
+			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}` });
 		},
-		groupBarWidth(group, star) {
-			const counts = group.counts || {};
-			const max = Math.max(0, ...Object.values(counts));
-			const count = this.starCount(group, star);
-			return max ? `${Math.round((count / max) * 100)}%` : '0%';
+		goDocs(course) {
+			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(course.id)}&kw=${encodeURIComponent(course.title)}` });
 		},
 		goBack() { uni.navigateBack({ fail:()=>uni.switchTab({ url:'/pages/member/member', fail:()=>{} }) }); }
 	}
@@ -162,169 +257,59 @@ export default {
 <style lang="scss">
 page { background:#f5f7fa; }
 .page { min-height:100vh; padding-bottom:40rpx; background:#f5f7fa; }
-
-.nav {
-	position:relative;
-	height:90rpx;
-	background:#fff;
-	display:flex;
-	align-items:center;
-	justify-content:center;
-	border-bottom:1rpx solid #eef0f3;
-}
-.back {
-	position:absolute;
-	left:24rpx;
-	font-size:46rpx;
-	color:#222;
-	cursor:pointer;
-}
-.nav-title { font-size:30rpx; color:#222; font-weight:700; }
-.section-title { margin: 32rpx 30rpx 20rpx; font-size:32rpx; font-weight:800; color:#222; }
-.time-summary {
-	display:grid;
-	grid-template-columns:1fr 1fr;
-	gap:16rpx;
-	padding:0 24rpx 20rpx;
-}
-.time-card {
-	background:#fff;
-	border:1rpx solid #eef0f3;
-	border-radius:16rpx;
-	padding:22rpx;
-	display:flex;
-	flex-direction:column;
-	box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04);
-}
-.time-value {
-	color:#1677ff;
-	font-size:30rpx;
-	font-weight:900;
-}
-.time-label {
-	margin-top:8rpx;
-	color:#8a929c;
-	font-size:22rpx;
-}
-.summary { padding: 0 24rpx; }
-.summary-card, .master-card, .admin-panel {
-	background:#fff;
-	border:1rpx solid #eef0f3;
-	border-radius:16rpx;
-	padding:24rpx;
-	margin-bottom:18rpx;
-	box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04);
-}
-.summary-title {
-	font-size:28rpx;
-	color:#222;
-	font-weight:800;
-	margin-bottom:16rpx;
-}
-.summary-items {
-	display:flex;
-	flex-wrap:wrap;
-}
-.summary-item {
-	width:50%;
-	padding:10rpx 0;
-	display:flex;
-	flex-direction:column;
-}
-.summary-label {
-	font-size:22rpx;
-	color:#8a929c;
-}
-.summary-value {
-	margin-top:6rpx;
-	font-size:30rpx;
-	color:#222;
-	font-weight:800;
-}
-.summary-detail-toggle {
-	margin-top:18rpx;
-	color:#1677ff;
-	font-size:24rpx;
-	font-weight:700;
-}
-.summary-details {
-	margin-top:16rpx;
-	border-top:1rpx solid #eef0f3;
-}
+.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
+.back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
+.nav-title { font-size:30rpx; color:#222; font-weight:800; }
+.section-head { padding:28rpx 30rpx 18rpx; }
+.section-title { font-size:34rpx; font-weight:900; color:#222; }
+.section-sub { margin-top:10rpx; color:#596272; font-size:24rpx; line-height:1.5; }
+.time-summary { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:0 24rpx 20rpx; }
+.time-card { min-height:112rpx; background:#fff; border:1rpx solid #eef0f3; border-radius:8rpx; padding:22rpx; display:flex; flex-direction:column; justify-content:center; box-shadow:0 3rpx 10rpx rgba(0,0,0,0.03); box-sizing:border-box; }
+.checkin-card { grid-column:1 / -1; flex-direction:row; align-items:center; justify-content:space-between; }
+.time-value { color:#1677ff; font-size:30rpx; font-weight:900; }
+.time-label { margin-top:8rpx; color:#8a929c; font-size:22rpx; }
+.text-action { color:#1677ff; font-size:26rpx; font-weight:800; cursor:pointer; }
+.checkin-panel, .report-panel, .english-panel, .summary-card, .master-card { margin:0 24rpx 20rpx; padding:24rpx; background:#fff; border:1rpx solid #e3e8ef; border-radius:8rpx; box-sizing:border-box; }
+.panel-title { color:#222; font-size:30rpx; font-weight:900; }
+.panel-note { margin-top:8rpx; color:#697386; font-size:23rpx; line-height:1.45; }
+.course-report-grid { display:grid; grid-template-columns:1fr; gap:14rpx; margin-top:20rpx; }
+.course-report { display:flex; align-items:center; justify-content:space-between; gap:20rpx; padding:18rpx 0; border-top:1rpx solid #eef0f3; }
+.course-report:first-child { border-top:0; }
+.course-name { flex:0 0 150rpx; min-height:58rpx; display:flex; align-items:center; justify-content:center; border:2rpx solid #e34b5c; color:#b91c1c; font-size:28rpx; font-weight:800; cursor:pointer; }
+.course-actions { flex:1; display:flex; flex-wrap:wrap; gap:14rpx; }
+.outline-btn { min-height:58rpx; padding:0 18rpx; display:flex; align-items:center; justify-content:center; border:2rpx solid #e34b5c; color:#222; font-size:26rpx; font-weight:700; background:#fff; box-sizing:border-box; cursor:pointer; }
+.checkin-row { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-top:1rpx solid #eef0f3; }
+.checkin-date { color:#222; font-size:26rpx; font-weight:800; }
+.checkin-course { margin-top:6rpx; color:#697386; font-size:22rpx; }
+.checkin-content { flex:1; color:#596272; font-size:24rpx; line-height:1.45; text-align:right; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.english-title { color:#222; font-size:28rpx; font-weight:900; }
+.english-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14rpx; margin-top:18rpx; }
+.english-item { padding:18rpx; border-radius:8rpx; background:#f8fafc; }
+.english-item text { display:block; color:#697386; font-size:22rpx; }
+.english-item strong { display:block; margin-top:8rpx; color:#222; font-size:30rpx; }
+.english-daily { display:grid; grid-template-columns:1fr; gap:14rpx; margin-top:22rpx; color:#b42335; font-size:26rpx; line-height:1.45; }
+.summary { padding:0; }
+.summary-title { font-size:28rpx; color:#222; font-weight:800; margin-bottom:16rpx; }
+.summary-items { display:flex; flex-wrap:wrap; }
+.summary-item { width:50%; padding:10rpx 0; display:flex; flex-direction:column; }
+.summary-label { font-size:22rpx; color:#8a929c; }
+.summary-value { margin-top:6rpx; font-size:30rpx; color:#222; font-weight:800; }
+.summary-detail-toggle { margin-top:18rpx; color:#1677ff; font-size:24rpx; font-weight:700; cursor:pointer; }
+.summary-details { margin-top:16rpx; border-top:1rpx solid #eef0f3; }
 .summary-detail { padding:18rpx 0 4rpx; }
-.detail-head {
-	display:flex;
-	align-items:center;
-	flex-wrap:wrap;
-	gap:12rpx;
-}
-.detail-title {
-	font-size:26rpx;
-	color:#222;
-	font-weight:800;
-}
-.detail-count {
-	font-size:22rpx;
-	color:#697386;
-}
-.detail-score {
-	margin-left:auto;
-	font-size:24rpx;
-	color:#b78200;
-	font-weight:800;
-}
-.detail-record {
-	display:flex;
-	align-items:center;
-	margin-top:12rpx;
-	padding:14rpx;
-	border-radius:10rpx;
-	background:#f8fafc;
-	font-size:22rpx;
-	color:#596272;
-}
-.record-name {
-	width:130rpx;
-	color:#222;
-	font-weight:700;
-}
-.record-result {
-	flex:1;
-	min-width:0;
-}
-.record-score {
-	margin-left:12rpx;
-	color:#1677ff;
-	font-weight:800;
-}
-.master-row {
-	display:flex;
-	align-items:center;
-	margin-top:18rpx;
-}
-.master-name {
-	width:150rpx;
-	font-size:24rpx;
-	color:#333;
-}
-.master-bar {
-	flex:1;
-	height:14rpx;
-	background:#edf0f3;
-	border-radius:8rpx;
-	overflow:hidden;
-	margin:0 16rpx;
-}
-.master-bar-inner {
-	height:100%;
-	border-radius:8rpx;
-}
-.master-score {
-	width:130rpx;
-	font-size:22rpx;
-	text-align:right;
-	font-weight:700;
-}
+.detail-head { display:flex; align-items:center; flex-wrap:wrap; gap:12rpx; }
+.detail-title { font-size:26rpx; color:#222; font-weight:800; }
+.detail-count { font-size:22rpx; color:#697386; }
+.detail-score { margin-left:auto; font-size:24rpx; color:#b78200; font-weight:800; }
+.detail-record { display:flex; align-items:center; margin-top:12rpx; padding:14rpx; border-radius:8rpx; background:#f8fafc; font-size:22rpx; color:#596272; }
+.record-name { width:130rpx; color:#222; font-weight:700; }
+.record-result { flex:1; min-width:0; }
+.record-score { margin-left:12rpx; color:#1677ff; font-weight:800; }
+.master-row { display:flex; align-items:center; margin-top:18rpx; }
+.master-name { width:150rpx; font-size:24rpx; color:#333; }
+.master-bar { flex:1; height:14rpx; background:#edf0f3; border-radius:8rpx; overflow:hidden; margin:0 16rpx; }
+.master-bar-inner { height:100%; border-radius:8rpx; }
+.master-score { width:130rpx; font-size:22rpx; text-align:right; font-weight:700; }
 .level-gray { background:#a9b0b8; }
 .level-red { background:#ff4d4f; }
 .level-yellow { background:#f5b42a; }
@@ -335,118 +320,11 @@ page { background:#f5f7fa; }
 .text-yellow { color:#b78200; }
 .text-green { color:#2bb673; }
 .text-purple { color:#7c3aed; }
-.admin-panel {
-	margin: 28rpx 24rpx 0;
-	background:#fbfdff;
-}
-.admin-head {
-	display:flex;
-	justify-content:space-between;
-	align-items:center;
-}
-.admin-title {
-	font-size:30rpx;
-	color:#222;
-	font-weight:800;
-}
-.admin-sub {
-	font-size:22rpx;
-	color:#8a929c;
-	margin-top:8rpx;
-}
-.admin-avg {
-	padding:12rpx 18rpx;
-	border-radius:30rpx;
-	background:#fff8e8;
-	color:#8a6200;
-	font-size:28rpx;
-	font-weight:800;
-}
-.admin-total {
-	display:flex;
-	justify-content:space-between;
-	margin-top:20rpx;
-	font-size:22rpx;
-	color:#666;
-}
-.star-stat {
-	display:flex;
-	margin-top:16rpx;
-	background:#fff;
-	border-radius:12rpx;
-	overflow:hidden;
-	border:1rpx solid #eef0f3;
-}
-.star-stat-item {
-	flex:1;
-	display:flex;
-	flex-direction:column;
-	align-items:center;
-	padding:16rpx 0;
-	border-right:1rpx solid #eef0f3;
-}
-.star-stat-item:last-child { border-right:none; }
-.star-stat-star {
-	font-size:22rpx;
-	color:#8a6200;
-}
-.star-stat-count {
-	margin-top:6rpx;
-	font-size:30rpx;
-	color:#222;
-	font-weight:800;
-}
-.score-groups { margin-top:20rpx; }
-.score-group {
-	background:#fff;
-	border-radius:12rpx;
-	padding:18rpx;
-	margin-top:14rpx;
-	border:1rpx solid #eef0f3;
-}
-.score-group-head {
-	display:flex;
-	justify-content:space-between;
-	align-items:center;
-	margin-bottom:12rpx;
-}
-.score-range {
-	font-size:26rpx;
-	color:#222;
-	font-weight:800;
-}
-.score-students {
-	font-size:22rpx;
-	color:#8a929c;
-}
-.group-star-row {
-	display:flex;
-	align-items:center;
-	margin-top:10rpx;
-}
-.group-star-label {
-	width:58rpx;
-	font-size:22rpx;
-	color:#666;
-}
-.group-star-bar {
-	flex:1;
-	height:12rpx;
-	background:#edf0f3;
-	border-radius:8rpx;
-	overflow:hidden;
-	margin:0 12rpx;
-}
-.group-star-bar-inner {
-	height:100%;
-	background:#3aa3f5;
-	border-radius:8rpx;
-}
-.group-star-count {
-	width:36rpx;
-	text-align:right;
-	font-size:22rpx;
-	color:#222;
-	font-weight:700;
+.empty { color:#8a94a3; font-size:26rpx; padding:20rpx 0; }
+@media screen and (min-width: 768px) {
+	.time-summary { grid-template-columns:repeat(4, 1fr); }
+	.checkin-card { grid-column:auto; }
+	.course-report-grid { grid-template-columns:1fr 1fr; column-gap:44rpx; }
+	.english-daily { grid-template-columns:repeat(5, 1fr); }
 }
 </style>

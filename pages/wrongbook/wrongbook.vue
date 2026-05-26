@@ -163,6 +163,7 @@ export default {
 			records: { total: 0, courseCounts: [], records: [] },
 			retryPaper: { questions: [], sourceWrongIds: [] },
 			retryCount: 5,
+			courseId: 'gk-math-full',
 			activeRecordId: ''
 		}
 	},
@@ -180,6 +181,9 @@ export default {
 			return this.weakList.filter(item => item.mastered).length
 		}
 	},
+	onLoad(opts = {}) {
+		this.courseId = opts.courseId || 'gk-math-full'
+	},
 	onShow() {
 		this.loadSummary()
 		this.loadCurrent()
@@ -187,7 +191,7 @@ export default {
 	methods: {
 		async loadSummary() {
 			try {
-				const data = await getWrongBookSummary('gk-math-full')
+				const data = await getWrongBookSummary(this.courseId)
 				this.summary = data || {}
 				this.course = data.course || {}
 			} catch (err) {
@@ -202,28 +206,28 @@ export default {
 		},
 		async loadWrongBook() {
 			try {
-				this.wrongList = await getWrongBook(this.source)
+				this.wrongList = await getWrongBook(this.source, this.courseId)
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
 			}
 		},
 		async loadRecords() {
 			try {
-				this.records = await getWrongBookRecords(this.source)
+				this.records = await getWrongBookRecords(this.source, this.courseId)
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
 			}
 		},
 		async loadWeak() {
 			try {
-				this.weakList = await getWeakWrongBook(this.source)
+				this.weakList = await getWeakWrongBook(this.source, this.courseId)
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
 			}
 		},
 		async loadRetry() {
 			try {
-				this.retryPaper = await getWrongRetry(this.retryCount, this.source)
+				this.retryPaper = await getWrongRetry(this.retryCount, this.source, this.courseId)
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
 			}
@@ -248,7 +252,7 @@ export default {
 				return
 			}
 			uni.navigateTo({
-				url: `/pages/practice/practice?type=wrongRetry&count=${this.retryCount}&source=${encodeURIComponent(this.source)}&title=${encodeURIComponent('错题重练')}`
+				url: `/pages/practice/practice?type=wrongRetry&count=${this.retryCount}&source=${encodeURIComponent(this.source)}&courseId=${encodeURIComponent(this.courseId)}&title=${encodeURIComponent('错题重练')}`
 			})
 		},
 		async mark(item) {
