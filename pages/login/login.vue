@@ -14,6 +14,7 @@
 		<!-- 表单 -->
 		<view class="form">
 			<view class="title">元知智学</view>
+			<view class="invite-tip" v-if="inviteId || invitePhone">邀请人：{{invitePhone || '--'}} / ID {{inviteId || '--'}}</view>
 
 			<template v-if="!resetMode">
 			<view class="input-row">
@@ -90,8 +91,14 @@
 					smsCode: '',
 					password: '',
 					confirmPassword: ''
-				}
+				},
+				invitePhone: '',
+				inviteId: ''
 			}
+		},
+		onLoad(opts = {}) {
+			this.invitePhone = opts.invitePhone ? decodeURIComponent(opts.invitePhone) : '';
+			this.inviteId = opts.inviteId ? decodeURIComponent(opts.inviteId) : '';
 		},
 		methods: {
 			goHome() {
@@ -455,6 +462,15 @@ page {
 	font-size: 40rpx;
 	font-weight: 700;
 	margin: 40rpx 0 60rpx;
+}
+.invite-tip {
+	margin:-36rpx 0 34rpx;
+	padding:16rpx 20rpx;
+	border-radius:12rpx;
+	background:#eef6ff;
+	color:#2563eb;
+	font-size:25rpx;
+	text-align:center;
 }
 
 .input-row {

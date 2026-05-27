@@ -26,7 +26,7 @@
 				</view>
 				<view class="logout-btn" @click="onLogout">退出登录</view>
 			</view>
-			<view class="invite">
+			<view class="invite" @click="showInvite = true">
 				<view class="invite-l">
 					<view class="invite-t">邀请好友</view>
 					<view class="invite-s">百万课程等你解锁</view>
@@ -43,6 +43,19 @@
 			</view>
 		</block>
 
+		<view class="invite-mask" v-if="showInvite" @click="showInvite=false">
+			<view class="invite-modal" @click.stop>
+				<view class="invite-modal-title">邀请好友登录</view>
+				<view class="invite-code">
+					<image class="invite-qr" :src="inviteQrUrl" mode="aspectFit" />
+				</view>
+				<view class="invite-line">邀请人手机号：{{invitePhone}}</view>
+				<view class="invite-line">邀请人ID：{{inviteId}}</view>
+				<view class="invite-go" @click="goInviteLogin">跳转登录页</view>
+				<view class="invite-close" @click="showInvite=false">关闭</view>
+			</view>
+		</view>
+
 		<tab-bar active="member" />
 	</view>
 </template>
@@ -56,6 +69,7 @@ export default {
 		return {
 			logined: false,
 			showModal: false,
+			showInvite: false,
 			userInfo: {},
 			funcs: [
 				{ ico:'👥', text:'我的推荐人' },
@@ -66,6 +80,24 @@ export default {
 				{ ico:'📑', text:'用户协议' },
 				{ ico:'📊', text:'学情统计' }
 			]
+		}
+	},
+	computed: {
+		invitePhone() {
+			return this.userInfo.phone || '15585827319';
+		},
+		inviteId() {
+			return this.userInfo.id || '--';
+		},
+		inviteLoginUrl() {
+			const query = `invitePhone=${encodeURIComponent(this.invitePhone)}&inviteId=${encodeURIComponent(this.inviteId)}`;
+			if (typeof window !== 'undefined' && window.location) {
+				return `${window.location.origin}${window.location.pathname}#/pages/login/login?${query}`;
+			}
+			return `/pages/login/login?${query}`;
+		},
+		inviteQrUrl() {
+			return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(this.inviteLoginUrl)}`;
 		}
 	},
 	async onShow() {
@@ -89,6 +121,10 @@ export default {
 			else if (f.text === '我的推荐人') uni.navigateTo({ url:'/pages/referrer/referrer' });
 			else if (f.text === '意见反馈') uni.navigateTo({ url:'/pages/feedback/feedback' });
 			else uni.showToast({ title:f.text, icon:'none' });
+		},
+		goInviteLogin() {
+			this.showInvite = false;
+			uni.navigateTo({ url:`/pages/login/login?invitePhone=${encodeURIComponent(this.invitePhone)}&inviteId=${encodeURIComponent(this.inviteId)}` });
 		},
 		goProfile() { uni.navigateTo({ url:'/pages/profile/profile' }); }
 	}
@@ -120,6 +156,14 @@ page { background:#fff; }
 .invite-t { font-size:36rpx; font-weight:800; }
 .invite-s { font-size:24rpx; margin-top:10rpx; opacity:.95; }
 .invite-btn { background:#fff; color:#3a6f9c; padding:14rpx 26rpx; border-radius:40rpx; font-size:26rpx; font-weight:600; cursor:pointer; }
+.invite-mask { position:fixed; inset:0; background:rgba(15,23,42,.46); display:flex; align-items:center; justify-content:center; z-index:260; padding:40rpx; box-sizing:border-box; }
+.invite-modal { width:600rpx; max-width:100%; background:#fff; border-radius:16rpx; padding:30rpx; box-sizing:border-box; text-align:center; }
+.invite-modal-title { color:#1f2933; font-size:34rpx; font-weight:900; }
+.invite-code { width:260rpx; height:260rpx; margin:24rpx auto 18rpx; border-radius:12rpx; background:#f7fafc; border:1rpx solid #e5eaf1; display:flex; align-items:center; justify-content:center; }
+.invite-qr { width:230rpx; height:230rpx; }
+.invite-line { color:#475467; font-size:27rpx; line-height:1.7; }
+.invite-go { margin-top:24rpx; height:76rpx; line-height:76rpx; border-radius:10rpx; background:#1677ff; color:#fff; font-size:28rpx; font-weight:900; }
+.invite-close { margin-top:12rpx; height:68rpx; line-height:68rpx; color:#667085; font-size:26rpx; }
 .section-title { margin: 50rpx 30rpx 20rpx; font-size:32rpx; font-weight:800; color:#222; }
 .funcs { display:flex; flex-wrap:wrap; padding: 10rpx 20rpx; }
 .func { width:25%; display:flex; flex-direction:column; align-items:center; padding: 24rpx 0; cursor:pointer; }

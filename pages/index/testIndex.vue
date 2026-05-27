@@ -6,9 +6,10 @@
 
 		<scroll-view scroll-y class="list">
 			<view class="row" v-for="(it,i) in currentList" :key="i" @click="goDetail(it)">
-				<view class="cover">
+				<view class="cover" :class="{'clean-cover': !it.isTry}">
 					<image class="cover-img" :src="it.cover" mode="aspectFill" />
 					<text class="course-tag">视频+考练</text>
+					<view class="cover-clean-patch" v-if="!it.isTry"></view>
 				</view>
 				<view class="info">
 					<view class="title">《{{it.full}}》{{it.suffix}}</view>
@@ -142,6 +143,16 @@ page { background:#f5f7fa; }
 .cover { width:220rpx; height:160rpx; border-radius:12rpx; overflow:hidden; flex-shrink:0; position:relative; }
 .cover-img { width:100%; height:100%; display:block; }
 .course-tag { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.5); color:#fff; font-size:20rpx; padding:6rpx 12rpx; border-top-right-radius:8rpx; }
+.cover-clean-patch {
+	position:absolute;
+	top:0;
+	right:0;
+	width:92rpx;
+	height:44rpx;
+	background:linear-gradient(135deg, rgba(255,255,255,.78), rgba(255,255,255,.18));
+	border-bottom-left-radius:18rpx;
+	backdrop-filter: blur(2rpx);
+}
 .info { flex:1; margin-left:24rpx; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
 .title { font-size:26rpx; font-weight:700; color:rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sub { font-size:24rpx; color:#666; margin-top:6rpx; }

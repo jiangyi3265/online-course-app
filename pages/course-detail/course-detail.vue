@@ -20,7 +20,7 @@
 
 		<!-- 封面 -->
 		<view class="cover">
-			<image v-if="cover" class="cover-img" :src="cover" mode="aspectFill" />
+			<image v-if="cover" class="cover-img" :src="cover" mode="aspectFit" />
 			<template v-else>
 				<view class="cover-fallback" :style="{background: bg}">
 					<view class="cover-title">{{coverTitle}}</view>
@@ -68,8 +68,7 @@
 
 		<block v-if="activeTab===0">
 			<view class="version-chips">
-				<view class="version-chip active">复习加强课</view>
-				<view class="version-chip">技巧绝招课</view>
+				<view class="version-chip" v-for="(item, index) in versionChips" :key="item" :class="{active: versionIndex === index}" @click="versionIndex = index">{{item}}</view>
 			</view>
 
 			<view class="chapter" v-for="(c,i) in chapters" :key="i">
@@ -85,7 +84,7 @@
 						<view class="ch-left">
 							<view class="ch-mark" :class="{practice:s.type===2}">{{s.type===2 ? '练' : '学'}}</view>
 							<view>
-								<view class="ch-name">{{s.name}}</view>
+								<view class="ch-name">{{childName(s)}}</view>
 								<view class="ch-progress">已学习：{{progressText(s)}}</view>
 							</view>
 						</view>
@@ -156,7 +155,9 @@ export default {
 			learntDuration: '00小时00分',
 			activeTab: 0,
 			showCheckinPanel: false,
-			detailTabs: ['技巧干货','章节扫雷','错题与巩固','复习加强'],
+			detailTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
+			versionIndex: 0,
+			versionChips: ['复习加强课', '技巧绝招课'],
 			chapters: [
 				{ title:'选材与加工高分技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
 				{ title:'课外文言文做题技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
@@ -262,7 +263,7 @@ export default {
 				}, 0);
 			}, 0);
 		},
-		goDocs() { uni.navigateTo({ url:'/pages/my-docs/my-docs' }); },
+		goDocs() { uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` }); },
 		goPlan() {
 			this.showCheckinPanel = !this.showCheckinPanel;
 			if (this.showCheckinPanel) this.activeTab = 0;
@@ -270,7 +271,7 @@ export default {
 		goReport() { uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goAi(context) { uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` }); },
 		goQuiz(q) { uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` }); },
-		goWrongBook() { uni.navigateTo({ url:'/pages/wrongbook/wrongbook' }); },
+		goWrongBook() { uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goReinforce() { uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goLesson(chapter, item) {
 			if (item.type === 2) {
@@ -288,6 +289,10 @@ export default {
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
+		},
+		childName(item) {
+			if (this.versionIndex === 1) return item.type === 2 ? '真题讲练' : '技巧绝招课';
+			return item.name;
 		},
 		requestPermission() {
 			uni.showModal({ title:'权限未开通', content:'权限未开通，请联系授权。', showCancel:false });
@@ -321,6 +326,7 @@ page { background:#f5f7fa; }
 	position:relative;
 	height:240rpx;
 	overflow:hidden;
+	background:#f3f6fb;
 }
 .cover-img { width:100%; height:100%; display:block; }
 .cover-fallback {

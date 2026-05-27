@@ -8,7 +8,7 @@
 
 		<!-- 封面 -->
 		<view class="cover">
-			<image v-if="cover" class="cover-img" :src="cover" mode="aspectFill" />
+			<image v-if="cover" class="cover-img" :src="cover" mode="aspectFit" />
 			<view v-else class="cover-fallback" :style="{background: bg}">
 				<view class="cover-title">{{title}}</view>
 			</view>
@@ -184,7 +184,7 @@ export default {
 			cover: '',
 			tab: 0,
 			showCheckinPanel: false,
-			projectTabs: ['技巧干货','章节扫雷','错题与巩固','复习加强'],
+			projectTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
 			versions: [{ name:'2026版' }, { name:'绝招课' }],
 			locked: true,
@@ -357,7 +357,7 @@ export default {
 			const match = raw.match(/^\s*(\d+)[.．、]/);
 			return match ? match[1] : String((lessonIndex || 0) + 1);
 		},
-		goDocs() { uni.navigateTo({ url:'/pages/my-docs/my-docs' }); },
+		goDocs() { uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` }); },
 		goPlan() {
 			this.showCheckinPanel = !this.showCheckinPanel;
 			if (this.showCheckinPanel) this.tab = 0;
@@ -365,7 +365,7 @@ export default {
 		goReport() { uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` }); },
 		goAi(context) { uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` }); },
 		goQuiz(q) { uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` }); },
-		goWrongBook() { uni.navigateTo({ url:'/pages/wrongbook/wrongbook' }); },
+		goWrongBook() { uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}&title=${encodeURIComponent(this.displayCourseName)}` }); },
 		goReinforce() { uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` }); },
 		startReinforce(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}` }); },
 		goActivate() { uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}` }); },
@@ -413,7 +413,7 @@ page { background:#f5f7fa; }
 .back { position:absolute; left:24rpx; font-size:46rpx; font-weight:300; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; color:#222; font-weight:600; }
 
-.cover { position:relative; height:240rpx; overflow:hidden; }
+.cover { position:relative; height:240rpx; overflow:hidden; background:#f3f6fb; }
 .cover-img { width:100%; height:100%; display:block; }
 .cover-fallback { height:100%; display:flex; align-items:center; color:#fff; padding-left:50rpx; }
 .cover-title {

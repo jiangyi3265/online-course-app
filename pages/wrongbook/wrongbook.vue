@@ -49,18 +49,21 @@
 
 		<view v-if="mode === 'review'">
 			<view class="summary-card">
-				<view>待温习：{{summary.pending || 0}} 道</view>
-				<view>已掌握：{{summary.mastered || 0}} 道</view>
-				<view>短板：{{summary.weak || 0}} 道</view>
+				<view class="summary-stat" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">待温习：{{summary.pending || 0}} 道</view>
+				<view class="summary-stat" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">已掌握：{{summary.mastered || 0}} 道</view>
+				<view class="summary-stat" :class="{active: statusFilter === 'weak'}" @click="setStatusFilter('weak')">短板：{{summary.weak || 0}} 道</view>
 			</view>
-			<view class="empty" v-if="wrongList.length === 0">暂无错题，先完成一次测试后这里会自动收录</view>
-			<view class="question-card" v-for="item in wrongList" :key="item.id">
+			<view class="empty" v-if="visibleWrongList.length === 0">暂无错题，先完成一次测试后这里会自动收录</view>
+			<view class="question-card" v-for="item in visibleWrongList" :key="item.id">
 				<view class="source-title">错题来源：</view>
 				<view class="tag-row">
-					<view class="tag" v-for="tag in item.sourceTags" :key="tag">【{{tag}}】</view>
+					<view class="tag" v-for="tag in item.sourceTags" :key="tag">{{tag}}</view>
 					<view class="tag latest-tag">最新收录时间：{{formatFullTime(item.updatedAt)}}</view>
 				</view>
 				<view class="stem">{{item.stem}}</view>
+				<view class="option-list" v-if="showOptions(item)">
+					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">{{optionLetter(optionIndex)}}. {{option}}</view>
+				</view>
 				<view class="answer ok">正确答案：{{item.answerText || optionText(item, item.answer)}}</view>
 				<view class="answer bad">我的答案：{{item.selectedText || optionText(item, item.selected)}}</view>
 				<analysis-viewer :item="item" :text="item.analysis" />
@@ -90,8 +93,9 @@
 				<view class="detail-list" v-if="activeRecordId === record.id">
 					<view class="detail-row" v-for="detail in record.details" :key="detail.questionNo">
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
-						<view>我的答案：{{detail.myAnswer}}</view>
-						<view>正确答案：{{detail.correctAnswer}}</view>
+						<view class="detail-stem">{{detail.stem || '题目内容暂未返回'}}</view>
+						<view class="detail-answer bad">我的答案：{{detail.myAnswerText || detail.myAnswer || '--'}}</view>
+						<view class="detail-answer ok">正确答案：{{detail.correctAnswerText || detail.correctAnswer || '--'}}</view>
 						<analysis-viewer :item="detail" :text="detail.analysis" />
 					</view>
 				</view>
@@ -120,16 +124,19 @@
 
 		<view v-if="mode === 'weak'">
 			<view class="summary-card">
-				<view>未掌握：{{weakPending}} 道</view>
-				<view>已掌握：{{weakMastered}} 道</view>
+				<view class="summary-stat" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">未掌握：{{weakPending}} 道</view>
+				<view class="summary-stat" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">已掌握：{{weakMastered}} 道</view>
 			</view>
-			<view class="empty" v-if="weakList.length === 0">暂无短板题，带三个来源标签或多次重练错误后会自动加入</view>
-			<view class="question-card" v-for="item in weakList" :key="item.id">
+			<view class="empty" v-if="visibleWeakList.length === 0">暂无短板题，带三个来源标签或多次重练错误后会自动加入</view>
+			<view class="question-card" v-for="item in visibleWeakList" :key="item.id">
 				<view class="source-title">题目来源：</view>
 				<view class="tag-row">
-					<view class="tag" v-for="tag in item.sourceTags" :key="tag">【{{tag}}】</view>
+					<view class="tag" v-for="tag in item.sourceTags" :key="tag">{{tag}}</view>
 				</view>
 				<view class="stem">{{item.stem}}</view>
+				<view class="option-list" v-if="showOptions(item)">
+					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">{{optionLetter(optionIndex)}}. {{option}}</view>
+				</view>
 				<view class="weak-status" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
 				<analysis-viewer :item="item" :text="item.analysis" />
 			</view>
@@ -164,7 +171,8 @@ export default {
 			retryPaper: { questions: [], sourceWrongIds: [] },
 			retryCount: 5,
 			courseId: 'gk-math-full',
-			activeRecordId: ''
+			activeRecordId: '',
+			statusFilter: 'all'
 		}
 	},
 	computed: {
@@ -179,6 +187,12 @@ export default {
 		},
 		weakMastered() {
 			return this.weakList.filter(item => item.mastered).length
+		},
+		visibleWrongList() {
+			return this.wrongList.filter(item => this.statusMatched(item))
+		},
+		visibleWeakList() {
+			return this.weakList.filter(item => this.statusMatched(item))
 		}
 	},
 	onLoad(opts = {}) {
@@ -235,12 +249,23 @@ export default {
 		setMode(mode) {
 			this.mode = mode
 			this.activeRecordId = ''
+			this.statusFilter = 'all'
 			this.loadCurrent()
 		},
 		setSource(source) {
 			this.source = source
 			this.activeRecordId = ''
+			this.statusFilter = 'all'
 			this.loadCurrent()
+		},
+		setStatusFilter(filter) {
+			this.statusFilter = this.statusFilter === filter ? 'all' : filter
+		},
+		statusMatched(item = {}) {
+			if (this.statusFilter === 'pending') return !item.mastered
+			if (this.statusFilter === 'mastered') return !!item.mastered
+			if (this.statusFilter === 'weak') return !!item.weak
+			return true
 		},
 		setRetryCount(count) {
 			this.retryCount = count
@@ -287,6 +312,12 @@ export default {
 			const options = item.options || []
 			return options[index] !== undefined ? `${String.fromCharCode(65 + Number(index))}. ${options[index]}` : '--'
 		},
+		optionLetter(index) {
+			return String.fromCharCode(65 + Number(index))
+		},
+		showOptions(item = {}) {
+			return Array.isArray(item.options) && item.options.length > 0
+		},
 		formatTime(value) {
 			return value ? String(value).replace('T', ' ').slice(0, 16) : '--'
 		},
@@ -307,10 +338,10 @@ page { background:#f4f6f8; }
 .back { position:absolute; left:24rpx; font-size:48rpx; color:#1f2933; line-height:1; }
 .nav-title { font-size:31rpx; font-weight:800; }
 .study-band { padding:24rpx; background:#fff; }
-.band-row { display:flex; align-items:center; justify-content:space-between; gap:24rpx; padding:24rpx; border-radius:8rpx; background:#eaf6f3; border:1rpx solid #cce9e1; }
+.band-row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:20rpx; padding:26rpx 28rpx; border-radius:8rpx; background:#eaf6f3; border:1rpx solid #cce9e1; }
 .band-label { font-size:27rpx; font-weight:800; color:#143b35; line-height:1.5; }
 .band-sub { margin-top:8rpx; font-size:24rpx; color:#526b66; line-height:1.5; }
-.band-stats { flex-shrink:0; display:flex; align-items:center; gap:26rpx; }
+.band-stats { flex-shrink:0; display:flex; align-items:center; gap:24rpx; }
 .band-total { color:#143b35; font-size:27rpx; font-weight:900; white-space:nowrap; }
 .band-score { min-width:116rpx; text-align:center; color:#0f766e; font-size:42rpx; font-weight:900; }
 .band-score text { display:block; margin-top:4rpx; font-size:21rpx; font-weight:700; }
@@ -319,18 +350,22 @@ page { background:#f4f6f8; }
 .action-card.active { border-color:#2563eb; background:#eef5ff; }
 .action-title { font-size:29rpx; font-weight:800; color:#1f2933; }
 .action-sub { margin-top:10rpx; font-size:23rpx; color:#667085; line-height:1.45; }
-.source-filter { display:flex; gap:14rpx; padding:0 24rpx 20rpx; overflow-x:auto; }
+.source-filter { display:flex; gap:12rpx; padding:0 24rpx 20rpx; overflow-x:auto; }
 .source-chip { flex:0 0 auto; height:58rpx; line-height:58rpx; padding:0 22rpx; border-radius:8rpx; background:#fff; color:#52606d; border:1rpx solid #d9e0e8; font-size:24rpx; }
 .source-chip.active { background:#2563eb; border-color:#2563eb; color:#fff; font-weight:800; }
 .summary-card, .record-summary, .retry-panel { margin:0 24rpx 20rpx; padding:24rpx; border-radius:8rpx; background:#fff; border:1rpx solid #e3e8ef; }
-.summary-card { display:flex; justify-content:space-between; gap:16rpx; color:#9a3412; font-size:26rpx; font-weight:800; background:#fff7ed; border-color:#fed7aa; }
+.summary-card { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; color:#9a3412; font-size:26rpx; font-weight:800; background:#fff7ed; border-color:#fed7aa; }
+.summary-stat { min-height:58rpx; display:flex; align-items:center; justify-content:center; padding:0 10rpx; border-radius:8rpx; color:#9a3412; }
+.summary-stat.active { background:#fff; color:#2563eb; box-shadow:inset 0 0 0 2rpx #2563eb; }
 .empty { padding:140rpx 24rpx; text-align:center; color:#8a94a3; font-size:28rpx; }
 .question-card, .record-card { margin:0 24rpx 20rpx; padding:24rpx; background:#fff; border-radius:8rpx; border:1rpx solid #e3e8ef; }
 .source-title { font-size:24rpx; color:#667085; font-weight:800; }
 .tag-row { display:flex; flex-wrap:wrap; gap:10rpx; margin-top:10rpx; }
-.tag { padding:6rpx 12rpx; border-radius:6rpx; background:#eef5ff; color:#1d4ed8; font-size:22rpx; }
+.tag { padding:6rpx 12rpx; border-radius:6rpx; background:#eef5ff; color:#1d4ed8; font-size:22rpx; font-weight:700; }
 .tag.latest-tag { background:#fff1f2; color:#be123c; }
 .stem { margin-top:18rpx; font-size:29rpx; line-height:1.55; font-weight:800; color:#1f2933; }
+.option-list { margin-top:14rpx; padding:14rpx 16rpx; background:#f8fafc; border:1rpx solid #edf0f2; border-radius:8rpx; }
+.option-row { color:#475467; font-size:24rpx; line-height:1.65; }
 .answer { margin-top:12rpx; font-size:26rpx; line-height:1.45; }
 .answer.ok { color:#047857; }
 .answer.bad { color:#dc2626; }
@@ -352,6 +387,10 @@ page { background:#f4f6f8; }
 .detail-list { margin-top:18rpx; border-top:1rpx solid #edf0f2; }
 .detail-row { padding:18rpx 0; border-bottom:1rpx solid #edf0f2; color:#334155; font-size:25rpx; line-height:1.65; }
 .detail-count { font-weight:800; color:#1f2933; }
+.detail-stem { margin-top:10rpx; color:#1f2933; font-size:27rpx; font-weight:800; line-height:1.55; }
+.detail-answer { margin-top:8rpx; font-size:25rpx; line-height:1.45; }
+.detail-answer.ok { color:#047857; }
+.detail-answer.bad { color:#dc2626; }
 .panel-title { font-size:32rpx; font-weight:900; color:#1f2933; }
 .panel-sub, .notice, .retry-meta { margin-top:10rpx; color:#667085; font-size:25rpx; line-height:1.5; }
 .setting-title { margin-top:24rpx; font-size:26rpx; font-weight:900; color:#1f2933; }
@@ -359,4 +398,10 @@ page { background:#f4f6f8; }
 .count-btn { flex:1; height:70rpx; line-height:70rpx; text-align:center; border-radius:8rpx; background:#f1f5f9; color:#334155; font-size:26rpx; font-weight:800; }
 .count-btn.active { background:#2563eb; color:#fff; }
 .start-btn { margin-top:22rpx; height:78rpx; line-height:78rpx; text-align:center; border-radius:8rpx; background:#0f766e; color:#fff; font-size:28rpx; font-weight:900; }
+@media screen and (max-width: 420px) {
+	.band-row { grid-template-columns:1fr; }
+	.band-stats { justify-content:space-between; }
+	.summary-card { grid-template-columns:1fr; }
+	.row-actions { grid-template-columns:1fr; }
+}
 </style>

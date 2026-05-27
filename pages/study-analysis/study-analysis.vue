@@ -8,7 +8,7 @@
 		<view class="section-head">
 			<view>
 				<view class="section-title">学习情况总结</view>
-				<view class="section-sub">所有已开通科目的学习情况汇总，后续绑定家长后也可同步查看。</view>
+				<view class="section-sub">所有已开通科目的学习情况汇总，家长绑定后可同步查看。</view>
 			</view>
 		</view>
 
@@ -79,46 +79,6 @@
 				<view>今日听写完成：xx个</view>
 				<view>今日新学：xx个</view>
 				<view>今日复习：xx个</view>
-			</view>
-		</view>
-
-		<view class="summary" v-if="studySummary">
-			<view class="summary-card" v-for="section in nonEnglishSections" :key="section.title">
-				<view class="summary-title">{{section.title}}</view>
-				<view class="summary-items">
-					<view class="summary-item" v-for="item in section.items" :key="item.label">
-						<text class="summary-label">{{item.label}}</text>
-						<text class="summary-value">{{item.value}}</text>
-					</view>
-				</view>
-				<view class="summary-detail-toggle" v-if="section.details && section.details.length" @click="toggleSummary(section.title)">
-					{{expandedSummary[section.title] ? '收起明细' : '展开明细'}}
-				</view>
-				<view class="summary-details" v-if="section.details && section.details.length && expandedSummary[section.title]">
-					<view class="summary-detail" v-for="detail in section.details" :key="detail.title">
-						<view class="detail-head">
-							<text class="detail-title">{{detail.title}}</text>
-							<text class="detail-count">{{detail.count}}</text>
-							<text class="detail-score">{{detail.score}}</text>
-						</view>
-						<view class="detail-record" v-for="record in detail.records" :key="record.name">
-							<text class="record-name">{{record.name}}</text>
-							<text class="record-result">{{record.result}}</text>
-							<text class="record-score">{{record.score}}</text>
-						</view>
-					</view>
-				</view>
-			</view>
-
-			<view class="master-card">
-				<view class="summary-title">板块掌握评分</view>
-				<view class="master-row" v-for="item in studySummary.plateScores" :key="item.name">
-					<text class="master-name">{{item.name}}</text>
-					<view class="master-bar">
-						<view class="master-bar-inner" :class="'level-' + item.level.color" :style="{width: item.score + '%'}"></view>
-					</view>
-					<text class="master-score" :class="'text-' + item.level.color">{{item.score}}分 {{item.level.label}}</text>
-				</view>
 			</view>
 		</view>
 	</view>
@@ -273,11 +233,10 @@ page { background:#f5f7fa; }
 .panel-title { color:#222; font-size:30rpx; font-weight:900; }
 .panel-note { margin-top:8rpx; color:#697386; font-size:23rpx; line-height:1.45; }
 .course-report-grid { display:grid; grid-template-columns:1fr; gap:14rpx; margin-top:20rpx; }
-.course-report { display:flex; align-items:center; justify-content:space-between; gap:20rpx; padding:18rpx 0; border-top:1rpx solid #eef0f3; }
-.course-report:first-child { border-top:0; }
-.course-name { flex:0 0 150rpx; min-height:58rpx; display:flex; align-items:center; justify-content:center; border:2rpx solid #e34b5c; color:#b91c1c; font-size:28rpx; font-weight:800; cursor:pointer; }
-.course-actions { flex:1; display:flex; flex-wrap:wrap; gap:14rpx; }
-.outline-btn { min-height:58rpx; padding:0 18rpx; display:flex; align-items:center; justify-content:center; border:2rpx solid #e34b5c; color:#222; font-size:26rpx; font-weight:700; background:#fff; box-sizing:border-box; cursor:pointer; }
+.course-report { display:flex; align-items:center; justify-content:space-between; gap:18rpx; padding:18rpx; border:1rpx solid #e8edf3; border-radius:8rpx; background:#fbfcfe; }
+.course-name { flex:0 0 150rpx; min-height:58rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#fff1f2; color:#b42335; font-size:27rpx; font-weight:900; cursor:pointer; }
+.course-actions { flex:1; display:flex; flex-wrap:wrap; gap:12rpx; justify-content:flex-end; }
+.outline-btn { min-height:58rpx; padding:0 18rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; border:1rpx solid #d7e3f2; color:#1f2933; font-size:25rpx; font-weight:800; background:#fff; box-sizing:border-box; cursor:pointer; }
 .checkin-row { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-top:1rpx solid #eef0f3; }
 .checkin-date { color:#222; font-size:26rpx; font-weight:800; }
 .checkin-course { margin-top:6rpx; color:#697386; font-size:22rpx; }

@@ -12,7 +12,6 @@
 			</view>
 			<view class="bind-actions">
 				<view class="primary" @click="submitBind">绑定学生</view>
-			<view class="secondary" @click="goStudyPlan()">学习打卡</view>
 			</view>
 		</view>
 
