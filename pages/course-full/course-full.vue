@@ -7,8 +7,8 @@
 		</view>
 
 		<!-- 封面 -->
-		<view class="cover">
-			<image v-if="cover" class="cover-img" :src="cover" mode="aspectFit" />
+		<view class="cover" :class="coverClass">
+			<image v-if="cover" class="cover-img" :src="cover" :mode="coverMode" @load="onCoverLoad" />
 			<view v-else class="cover-fallback" :style="{background: bg}">
 				<view class="cover-title">{{title}}</view>
 			</view>
@@ -182,6 +182,7 @@ export default {
 			learntCount: 0,
 			learntDuration: '00小时00分',
 			cover: '',
+			coverRatio: 0,
 			tab: 0,
 			showCheckinPanel: false,
 			projectTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
@@ -217,6 +218,17 @@ export default {
 		}
 	},
 	computed: {
+		coverClass() {
+			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
+		},
+		coverMode() {
+			return 'aspectFit';
+		},
+		isPosterCover() {
+			if (!this.cover) return false;
+			if (this.coverRatio) return this.coverRatio < 2.2;
+			return !/[-_]detail\.(png|jpe?g|webp)$/i.test(this.cover);
+		},
 		displayCourseName() {
 			return stripCourseYear(this.courseName);
 		},
@@ -227,7 +239,7 @@ export default {
 	async onLoad(opts) {
 		if (opts && opts.title) this.title = opts.title;
 		if (opts && opts.bg) this.bg = decodeURIComponent(opts.bg);
-		if (opts && opts.cover) this.cover = decodeURIComponent(opts.cover);
+		if (opts && opts.cover) this.setCover(decodeURIComponent(opts.cover));
 		if (opts && opts.id) {
 			await this.loadCourse(opts.id);
 		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
@@ -251,7 +263,7 @@ export default {
 			this.title = course.title || this.title;
 			this.courseName = stripCourseYear(course.courseName || this.courseName);
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
-			this.cover = course.detailCover || course.cover || this.cover;
+			this.setCover(course.detailCover || course.cover || this.cover);
 			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons || this.total;
 			this.duration = stats.totalDuration || this.duration;
@@ -266,6 +278,17 @@ export default {
 			this.setVersion(0);
 		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); },
+		setCover(value) {
+			if (value === this.cover) return;
+			this.cover = value || '';
+			this.coverRatio = 0;
+		},
+		onCoverLoad(event) {
+			const detail = (event && event.detail) || {};
+			if (detail.width && detail.height) {
+				this.coverRatio = detail.width / detail.height;
+			}
+		},
 		toggle(i) { this.chapters[i].open = !this.chapters[i].open; },
 		applyMathCourse() {
 			const course = getGaokaoMathCourse('full');
@@ -275,7 +298,7 @@ export default {
 			this.title = course.title;
 			this.courseName = stripCourseYear(course.courseName);
 			this.updatedAt = course.updatedAt || this.updatedAt;
-			this.cover = course.detailCover || course.cover;
+			this.setCover(course.detailCover || course.cover);
 			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons || course.totalLessons;
 			this.duration = stats.totalDuration || course.totalDuration;
@@ -413,7 +436,9 @@ page { background:#f5f7fa; }
 .back { position:absolute; left:24rpx; font-size:46rpx; font-weight:300; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; color:#222; font-weight:600; }
 
-.cover { position:relative; height:240rpx; overflow:hidden; background:#f3f6fb; }
+.cover { position:relative; overflow:hidden; background:#f3f6fb; }
+.cover-banner { height:240rpx; }
+.cover-poster { height:562rpx; background:#fff; }
 .cover-img { width:100%; height:100%; display:block; }
 .cover-fallback { height:100%; display:flex; align-items:center; color:#fff; padding-left:50rpx; }
 .cover-title {
