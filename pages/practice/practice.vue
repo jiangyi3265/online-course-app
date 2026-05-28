@@ -94,7 +94,7 @@ export default {
 		this.pointId = opts.pointId || '';
 		this.count = Number(opts.count || 5);
 		this.source = decodeURIComponent(opts.source || '全部');
-		this.courseId = opts.courseId || 'gk-math-full';
+		this.courseId = decodeURIComponent(opts.courseId || 'gk-math-full');
 		this.loadData();
 	},
 	methods: {
@@ -107,7 +107,7 @@ export default {
 					: this.type === 'reinforce' && !usePracticeLookup
 						? await getReinforcePractice(this.pointId)
 						: this.type === 'wrongRetry'
-							? await getWrongRetry(this.count, this.source)
+							? await getWrongRetry(this.count, this.source, this.courseId)
 							: await getPractice(practiceLookupTitle);
 				if (!usePracticeLookup) this.title = data.title || this.title;
 				this.questions = data.questions || [];
@@ -152,7 +152,7 @@ export default {
 					type: 'question',
 					targetId: q.id,
 					title: q.stem,
-					courseId: ''
+					courseId: this.courseId || 'gk-math-full'
 				});
 				uni.showToast({ title: result.favorited ? '已收藏' : '已取消收藏', icon:'success' });
 			} catch (err) {
@@ -164,7 +164,9 @@ export default {
 			return Number.isFinite(index) && index >= 0 ? String.fromCharCode(65 + index) : '--';
 		},
 		reload() { this.loadData(); },
-		goWrongBook() { uni.navigateTo({ url: '/pages/wrongbook/wrongbook' }); },
+		goWrongBook() {
+			uni.navigateTo({ url: `/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId || 'gk-math-full')}` });
+		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); }
 	}
 }

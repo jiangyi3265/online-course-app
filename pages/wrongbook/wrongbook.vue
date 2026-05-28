@@ -228,7 +228,7 @@ export default {
 		}
 	},
 	onLoad(opts = {}) {
-		this.courseId = opts.courseId || 'gk-math-full'
+		this.courseId = decodeURIComponent(opts.courseId || 'gk-math-full')
 	},
 	onShow() {
 		this.loadSummary()
@@ -252,21 +252,21 @@ export default {
 		},
 		async loadWrongBook() {
 			try {
-				this.wrongList = await getWrongBook(this.source, this.courseId)
+				this.wrongList = this.scopeCourseItems(await getWrongBook(this.source, this.courseId))
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
 			}
 		},
 		async loadRecords() {
 			try {
-				this.records = await getWrongBookRecords(this.source, this.courseId)
+				this.records = this.scopeCourseRecords(await getWrongBookRecords(this.source, this.courseId))
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
 			}
 		},
 		async loadWeak() {
 			try {
-				this.weakList = await getWeakWrongBook(this.source, this.courseId)
+				this.weakList = this.scopeCourseItems(await getWeakWrongBook(this.source, this.courseId))
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
 			}
@@ -276,6 +276,28 @@ export default {
 				this.retryPaper = await getWrongRetry(this.retryCount, this.source, this.courseId)
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
+			}
+		},
+		itemCourseId(item = {}) {
+			return item.courseId || 'gk-math-full'
+		},
+		sameCourse(item = {}) {
+			return this.itemCourseId(item) === (this.courseId || 'gk-math-full')
+		},
+		scopeCourseItems(list = []) {
+			return Array.isArray(list) ? list.filter(item => this.sameCourse(item)) : []
+		},
+		courseCountLabel(records = []) {
+			const first = records[0] || {}
+			return first.subjectTitle || first.courseTitle || this.course.title || this.course.courseTitle || this.course.courseName || this.courseId || '当前课程'
+		},
+		scopeCourseRecords(data = {}) {
+			const records = this.scopeCourseItems(data.records || [])
+			return {
+				...data,
+				total: records.length,
+				courseCounts: records.length ? [{ label: this.courseCountLabel(records), value: records.length }] : [],
+				records
 			}
 		},
 		setMode(mode) {
@@ -329,7 +351,7 @@ export default {
 					type: 'question',
 					targetId: item.questionId || item.id,
 					title: item.stem,
-					courseId: item.courseId || 'gk-math-full',
+					courseId: item.courseId || this.courseId || 'gk-math-full',
 					action: 'add'
 				})
 				uni.showToast({ title: '已加入我的收藏', icon: 'success' })
