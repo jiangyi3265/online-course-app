@@ -44,14 +44,31 @@
 		</view>
 
 		<view class="record-panel">
-			<view class="panel-title">历史打卡记录</view>
-			<view class="record-empty" v-if="!courseRecords.length">暂无打卡记录</view>
-			<view class="record" v-for="item in courseRecords" :key="item.id">
+			<view class="record-head">
 				<view>
-					<view class="record-date">{{formatDate(item.createdAt)}}</view>
-					<view class="record-text">{{item.content}}</view>
+					<view class="panel-title">打卡历史</view>
+					<view class="panel-sub">最近 20 条记录，按时间倒序排列</view>
 				</view>
-				<text class="record-count">{{item.imageCount}}张图片</text>
+				<view class="record-total">{{courseRecords.length}}条</view>
+			</view>
+			<view class="record-empty" v-if="!courseRecords.length">
+				<view class="empty-mark">记</view>
+				<view>
+					<view class="empty-title">暂无打卡记录</view>
+					<view class="empty-sub">完成第一次打卡后，这里会自动生成历史记录。</view>
+				</view>
+			</view>
+			<view class="record-list" v-else>
+				<view class="record" v-for="item in courseRecords" :key="item.id">
+					<view class="record-dot"></view>
+					<view class="record-main">
+						<view class="record-top">
+							<view class="record-date">{{formatDate(item.createdAt)}}</view>
+							<text class="record-count">{{item.imageCount}}张图片</text>
+						</view>
+						<view class="record-text">{{item.content}}</view>
+					</view>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -184,11 +201,85 @@ export default {
 .submit { margin-top:44rpx; height:88rpx; border-radius:44rpx; display:flex; align-items:center; justify-content:center; gap:16rpx; background:#458af7; color:#fff; font-size:34rpx; font-weight:900; }
 .submit.done { background:#458af7; }
 .submit-ico { font-size:34rpx; }
-.record-panel { max-width:640rpx; margin:0 auto; padding:26rpx 0 10rpx; background:#fff; border:4rpx solid #111; border-top-width:6rpx; box-sizing:border-box; }
-.panel-title { display:inline-block; margin-left:16rpx; padding:4rpx 8rpx; border:2rpx solid #ef4444; color:#222; font-size:30rpx; font-weight:800; }
-.record-empty { padding:32rpx 22rpx; color:#8a94a3; font-size:26rpx; }
-.record { display:flex; justify-content:space-between; gap:18rpx; padding:22rpx; border-top:1rpx solid #edf0f4; color:#333; }
-.record-date { font-size:26rpx; font-weight:800; }
-.record-text { margin-top:8rpx; max-width:430rpx; color:#697386; font-size:24rpx; line-height:1.45; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-.record-count { flex-shrink:0; color:#3aa3f5; font-size:24rpx; font-weight:800; }
+.record-panel {
+	max-width:640rpx;
+	margin:18rpx auto 0;
+	padding:24rpx;
+	background:#fff;
+	border:1rpx solid #dfeaf5;
+	border-radius:14rpx;
+	box-sizing:border-box;
+	box-shadow:0 8rpx 20rpx rgba(37,99,235,.06);
+}
+.record-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; }
+.panel-title { color:#111827; font-size:30rpx; font-weight:900; }
+.panel-sub { margin-top:8rpx; color:#8a94a3; font-size:23rpx; line-height:1.4; }
+.record-total {
+	flex-shrink:0;
+	min-width:74rpx;
+	height:48rpx;
+	line-height:48rpx;
+	text-align:center;
+	border-radius:999rpx;
+	background:#eef6ff;
+	color:#2563eb;
+	font-size:23rpx;
+	font-weight:900;
+}
+.record-empty {
+	display:flex;
+	align-items:center;
+	gap:18rpx;
+	margin-top:22rpx;
+	padding:24rpx;
+	border-radius:12rpx;
+	background:#f8fafc;
+	border:1rpx dashed #d7e1ec;
+}
+.empty-mark {
+	width:54rpx;
+	height:54rpx;
+	border-radius:12rpx;
+	background:#eaf4ff;
+	color:#1677ff;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	font-size:24rpx;
+	font-weight:900;
+	flex-shrink:0;
+}
+.empty-title { color:#334155; font-size:26rpx; font-weight:900; }
+.empty-sub { margin-top:6rpx; color:#8a94a3; font-size:23rpx; line-height:1.45; }
+.record-list { margin-top:18rpx; }
+.record {
+	display:flex;
+	gap:16rpx;
+	padding:18rpx 0;
+	border-top:1rpx solid #eef2f7;
+	color:#333;
+}
+.record:first-child { border-top:0; padding-top:4rpx; }
+.record-dot {
+	width:18rpx;
+	height:18rpx;
+	margin-top:12rpx;
+	border-radius:50%;
+	background:#3aa3f5;
+	box-shadow:0 0 0 8rpx #eaf4ff;
+	flex-shrink:0;
+}
+.record-main { flex:1; min-width:0; }
+.record-top { display:flex; align-items:center; justify-content:space-between; gap:14rpx; }
+.record-date { color:#1f2933; font-size:26rpx; font-weight:900; }
+.record-text { margin-top:10rpx; color:#697386; font-size:24rpx; line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.record-count {
+	flex-shrink:0;
+	padding:6rpx 12rpx;
+	border-radius:999rpx;
+	background:#ecfdf5;
+	color:#0f766e;
+	font-size:22rpx;
+	font-weight:900;
+}
 </style>
