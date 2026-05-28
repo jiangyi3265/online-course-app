@@ -145,7 +145,7 @@ export default {
 			return item.primaryCourseId || (courses[0] && (courses[0].id || courses[0].courseId)) || 'gk-math-full';
 		},
 		viewAnalysis(item) {
-			const url = `/pages/study-analysis/study-analysis?studentId=${encodeURIComponent(item.id || '')}&courseId=${encodeURIComponent(this.primaryCourseId(item))}`;
+			const url = `/pages/study-analysis/study-analysis?studentId=${encodeURIComponent(item.id || '')}&courseId=${encodeURIComponent(this.primaryCourseId(item))}&readonly=1`;
 			uni.navigateTo({ url });
 		},
 		removeBinding(item) {

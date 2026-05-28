@@ -10,6 +10,7 @@
 				<view class="section-title">学习情况总结</view>
 				<view class="section-sub">所有已开通科目的学习情况汇总，家长绑定后可同步查看。</view>
 			</view>
+			<view class="readonly-tag" v-if="readOnly">只读查看</view>
 		</view>
 
 		<view class="time-summary">
@@ -56,10 +57,11 @@
 			<view class="course-report-grid" v-if="courseReports.length">
 				<view class="course-report" v-for="course in courseReports" :key="course.id">
 					<view class="course-name" @click="goReport(course)">{{course.title}}</view>
-					<view class="course-actions">
+					<view class="course-actions" v-if="!readOnly">
 						<view class="outline-btn" @click="goWrongBook(course)">查看【错题与巩固】</view>
 						<view class="outline-btn" @click="goDocs(course)">查看我的文档</view>
 					</view>
+					<view class="readonly-note" v-else>仅查看统计</view>
 				</view>
 			</view>
 			<view class="empty" v-else>暂无已激活课程，激活课程后这里会显示对应科目的学习报告。</view>
@@ -99,6 +101,7 @@ export default {
 			userInfo: {},
 			courseId: '',
 			studentId: '',
+			readOnly: false,
 			expandedSummary: {},
 			activeCourses: [],
 			checkinRecords: [],
@@ -131,6 +134,7 @@ export default {
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || '';
 		this.studentId = opts.studentId || opts.userId || '';
+		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || opts.readonly === true;
 	},
 	async onShow() {
 		if (!isLoggedIn()) {
@@ -226,12 +230,22 @@ export default {
 			this.expandedSummary = { ...this.expandedSummary, [title]: !this.expandedSummary[title] };
 		},
 		goReport(course) {
-			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}` });
+			const readonly = this.readOnly ? '&readonly=1' : '';
+			const student = this.studentId ? `&studentId=${encodeURIComponent(this.studentId)}` : '';
+			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}${student}${readonly}` });
 		},
 		goWrongBook(course) {
+			if (this.readOnly) {
+				uni.showToast({ title:'只读查看，不能操作错题', icon:'none' });
+				return;
+			}
 			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}` });
 		},
 		goDocs(course) {
+			if (this.readOnly) {
+				uni.showToast({ title:'只读查看，不能操作文档', icon:'none' });
+				return;
+			}
 			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(course.id)}&kw=${encodeURIComponent(course.title)}` });
 		},
 		goBack() { uni.navigateBack({ fail:()=>uni.switchTab({ url:'/pages/member/member', fail:()=>{} }) }); }
@@ -245,9 +259,10 @@ page { background:#f5f7fa; }
 .nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; color:#222; font-weight:800; }
-.section-head { padding:28rpx 30rpx 18rpx; }
+.section-head { padding:28rpx 30rpx 18rpx; display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; }
 .section-title { font-size:34rpx; font-weight:900; color:#222; }
 .section-sub { margin-top:10rpx; color:#596272; font-size:24rpx; line-height:1.5; }
+.readonly-tag { flex-shrink:0; margin-top:4rpx; padding:8rpx 16rpx; border-radius:999rpx; background:#eef6ff; color:#1677ff; font-size:23rpx; font-weight:900; }
 .time-summary { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:0 24rpx 20rpx; }
 .time-card { min-height:112rpx; background:#fff; border:1rpx solid #eef0f3; border-radius:8rpx; padding:22rpx; display:flex; flex-direction:column; justify-content:center; box-shadow:0 3rpx 10rpx rgba(0,0,0,0.03); box-sizing:border-box; }
 .checkin-card { grid-column:1 / -1; flex-direction:row; align-items:center; justify-content:space-between; }
@@ -262,6 +277,7 @@ page { background:#f5f7fa; }
 .course-name { flex:0 0 150rpx; min-height:58rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#fff1f2; color:#b42335; font-size:27rpx; font-weight:900; cursor:pointer; }
 .course-actions { flex:1; display:flex; flex-wrap:wrap; gap:12rpx; justify-content:flex-end; }
 .outline-btn { min-height:58rpx; padding:0 18rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; border:1rpx solid #d7e3f2; color:#1f2933; font-size:25rpx; font-weight:800; background:#fff; box-sizing:border-box; cursor:pointer; }
+.readonly-note { flex-shrink:0; color:#8a929c; font-size:24rpx; font-weight:800; }
 .checkin-row { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-top:1rpx solid #eef0f3; }
 .checkin-date { color:#222; font-size:26rpx; font-weight:800; }
 .checkin-course { margin-top:6rpx; color:#697386; font-size:22rpx; }

@@ -13,10 +13,10 @@
 				<view class="summary-value">{{practiceCount}}道</view>
 				<view class="summary-tip">点击查看练习明细</view>
 			</view>
-			<view class="summary-item" @click="goWrongBook">
+			<view class="summary-item" :class="{readonly: readOnly}" @click="goWrongBook">
 				<view class="summary-label">错题</view>
 				<view class="summary-value">{{wrongCount}}道</view>
-				<view class="summary-tip">进入错题复盘</view>
+				<view class="summary-tip">{{readOnly ? '只读统计' : '进入错题复盘'}}</view>
 			</view>
 			<view class="summary-item">
 				<view class="summary-label">正确率</view>
@@ -148,6 +148,7 @@ export default {
 			report: { overview:[], attempts:[], recentPractice:[], suggestions:[] },
 			courseId: 'gk-math-full',
 			userId: '',
+			readOnly: false,
 			showPractice: false,
 			selectedPractice: null,
 			offlineReviews: []
@@ -249,6 +250,7 @@ export default {
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || 'gk-math-full';
 		this.userId = opts.studentId || opts.userId || '';
+		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || opts.readonly === true;
 		this.offlineReviews = uni.getStorageSync(REVIEW_KEY) || [];
 		this.loadData();
 	},
@@ -369,7 +371,13 @@ export default {
 				recentPractice: [{ id:'local-practice-1', title:'高考数学 真题讲练', averageScore:100, wrongCount:0 }]
 			};
 		},
-		goWrongBook() { uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` }); },
+		goWrongBook() {
+			if (this.readOnly) {
+				uni.showToast({ title:'只读查看，不能操作错题', icon:'none' });
+				return;
+			}
+			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` });
+		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); }
 	}
 }
