@@ -16,13 +16,19 @@
 
 			<view class="form-box">
 				<view class="field-label">学习内容</view>
-				<textarea
-					class="content-input"
-					v-model="content"
-					maxlength="500"
-					placeholder="今日所学科目：&#10;今日所学内容：&#10;今日收获与感想：&#10;不理解的内容："
-					placeholder-class="content-ph"
-				/>
+				<view class="content-editor">
+					<view class="content-line" v-for="field in contentFields" :key="field.key">
+						<text class="content-prefix">{{field.label}}</text>
+						<textarea
+							class="content-value"
+							v-model="checkinForm[field.key]"
+							:maxlength="field.maxlength"
+							:auto-height="true"
+							:placeholder="field.placeholder"
+							placeholder-class="content-ph"
+						/>
+					</view>
+				</view>
 
 				<view class="field-label image-label">学习图片 <text>({{images.length}}/3) *</text></view>
 				<view class="image-row">
@@ -76,6 +82,17 @@
 
 <script>
 const CHECKIN_KEY = 'studyCheckins';
+const CONTENT_FIELDS = [
+	{ key: 'subjects', label: '今日所学科目：', placeholder: '如：高中数学、物理化学', maxlength: 80 },
+	{ key: 'learned', label: '今日所学内容：', placeholder: '如：函数、天体运动', maxlength: 160 },
+	{ key: 'reflection', label: '今日收获与感想：', placeholder: '写下今天的收获', maxlength: 160 },
+	{ key: 'confusion', label: '不理解的内容：', placeholder: '没有可填写“无”', maxlength: 160 }
+];
+
+const emptyCheckinForm = () => CONTENT_FIELDS.reduce((form, field) => {
+	form[field.key] = '';
+	return form;
+}, {});
 
 export default {
 	props: {
@@ -85,12 +102,23 @@ export default {
 	data() {
 		return {
 			checkedIn: false,
-			content: '',
+			checkinForm: emptyCheckinForm(),
 			images: [],
 			records: []
 		}
 	},
 	computed: {
+		contentFields() {
+			return CONTENT_FIELDS;
+		},
+		contentText() {
+			return CONTENT_FIELDS
+				.map(field => `${field.label}${(this.checkinForm[field.key] || '').trim()}`)
+				.join('\n');
+		},
+		hasContentInput() {
+			return CONTENT_FIELDS.some(field => (this.checkinForm[field.key] || '').trim());
+		},
 		todayText() {
 			return this.formatDate(this.todayKey());
 		},
@@ -113,7 +141,7 @@ export default {
 			this.records = uni.getStorageSync(CHECKIN_KEY) || [];
 			const todayRecord = this.records.find(item => this.sameScope(item) && item.date === this.todayKey());
 			this.checkedIn = !!todayRecord;
-			this.content = todayRecord ? (todayRecord.content || '') : '';
+			this.checkinForm = todayRecord ? this.parseContent(todayRecord.content || '') : emptyCheckinForm();
 			this.images = todayRecord ? (todayRecord.images || []) : [];
 		},
 		chooseImages() {
@@ -128,7 +156,7 @@ export default {
 			this.images.splice(index, 1);
 		},
 		submitCheckin() {
-			if (!this.content.trim()) {
+			if (!this.hasContentInput) {
 				uni.showToast({ title:'请填写学习内容', icon:'none' });
 				return;
 			}
@@ -140,7 +168,7 @@ export default {
 				id: `checkin-${Date.now()}`,
 				courseId: this.courseId || 'gk-math-full',
 				studentId: this.studentId || '',
-				content: this.content.trim(),
+				content: this.contentText,
 				images: this.images,
 				imageCount: this.images.length,
 				date: this.todayKey(),
@@ -152,6 +180,26 @@ export default {
 			this.records = next;
 			this.checkedIn = true;
 			uni.showToast({ title:'打卡成功', icon:'success' });
+		},
+		parseContent(content = '') {
+			const form = emptyCheckinForm();
+			let currentKey = '';
+			const lines = String(content).split(/\r?\n/);
+			lines.forEach(line => {
+				const matched = CONTENT_FIELDS.find(field => line.trim().startsWith(field.label));
+				if (matched) {
+					currentKey = matched.key;
+					form[currentKey] = line.replace(matched.label, '').trim();
+					return;
+				}
+				if (currentKey && line.trim()) {
+					form[currentKey] = form[currentKey] ? `${form[currentKey]}\n${line.trim()}` : line.trim();
+				}
+			});
+			if (!CONTENT_FIELDS.some(field => form[field.key])) {
+				form.learned = String(content).trim();
+			}
+			return form;
 		},
 		sameScope(item = {}) {
 			return (item.courseId || 'gk-math-full') === (this.courseId || 'gk-math-full') && (item.studentId || '') === (this.studentId || '');
@@ -190,8 +238,45 @@ export default {
 .field-label { color:#111827; font-size:30rpx; font-weight:900; }
 .image-label { margin-top:28rpx; }
 .image-label text { color:#8a94a3; font-size:26rpx; font-weight:700; }
-.content-input { margin-top:18rpx; width:100%; min-height:260rpx; box-sizing:border-box; padding:28rpx; border-radius:10rpx; border:1rpx solid #edf0f4; background:#fbfdff; color:#222; font-size:28rpx; line-height:1.6; }
-.content-ph { color:#555; }
+.content-editor {
+	margin-top:18rpx;
+	min-height:260rpx;
+	box-sizing:border-box;
+	padding:26rpx 28rpx;
+	border-radius:10rpx;
+	border:1rpx solid #edf0f4;
+	background:#fbfdff;
+}
+.content-line {
+	display:flex;
+	align-items:flex-start;
+	gap:8rpx;
+	margin-bottom:14rpx;
+	color:#334155;
+	font-size:28rpx;
+	line-height:1.55;
+}
+.content-line:last-child { margin-bottom:0; }
+.content-prefix {
+	flex-shrink:0;
+	width:214rpx;
+	color:#374151;
+	font-weight:500;
+	line-height:44rpx;
+	white-space:nowrap;
+}
+.content-value {
+	flex:1;
+	min-width:0;
+	width:100%;
+	min-height:44rpx;
+	padding:0;
+	background:transparent;
+	color:#222;
+	font-size:28rpx;
+	line-height:1.55;
+}
+.content-ph { color:#9aa4b2; }
 .image-row { display:flex; flex-wrap:wrap; gap:18rpx; margin-top:18rpx; }
 .upload-cell, .image-cell { width:150rpx; height:150rpx; border-radius:8rpx; position:relative; overflow:hidden; flex-shrink:0; }
 .upload-cell { border:1rpx dashed #cfd6df; background:#f8fafc; color:#8a94a3; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:24rpx; }
@@ -272,7 +357,7 @@ export default {
 .record-main { flex:1; min-width:0; }
 .record-top { display:flex; align-items:center; justify-content:space-between; gap:14rpx; }
 .record-date { color:#1f2933; font-size:26rpx; font-weight:900; }
-.record-text { margin-top:10rpx; color:#697386; font-size:24rpx; line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.record-text { margin-top:10rpx; color:#697386; font-size:24rpx; line-height:1.5; white-space:pre-wrap; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
 .record-count {
 	flex-shrink:0;
 	padding:6rpx 12rpx;
