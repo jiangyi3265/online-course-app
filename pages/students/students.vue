@@ -19,7 +19,7 @@
 			<view class="panel-head">
 				<view>
 					<view class="panel-title">学生绑定记录</view>
-					<view class="panel-sub">一名学生只显示一条记录，绑定后可查看学情与打卡。</view>
+					<view class="panel-sub">一名学生只显示一条记录，可查看学情统计，不可代填学习打卡。</view>
 				</view>
 				<view class="refresh" @click="loadData">{{loading ? '加载中' : '刷新'}}</view>
 			</view>
@@ -40,7 +40,6 @@
 				<view class="course-line">开通课程：{{studentCoursesText(item)}}</view>
 				<view class="action-row">
 					<view class="link-btn" @click="viewAnalysis(item)">查看【学情统计】</view>
-					<view class="link-btn full" @click="goStudyPlan(item)">查看【学习打卡】</view>
 					<view class="link-btn warn" v-if="canUnbind(item)" @click="removeBinding(item)">解除绑定</view>
 				</view>
 			</view>
@@ -147,11 +146,6 @@ export default {
 		},
 		viewAnalysis(item) {
 			const url = `/pages/study-analysis/study-analysis?studentId=${encodeURIComponent(item.id || '')}&courseId=${encodeURIComponent(this.primaryCourseId(item))}`;
-			uni.navigateTo({ url });
-		},
-		goStudyPlan(item = {}) {
-			const studentId = item.id || '';
-			const url = `/pages/study-plan/study-plan?courseId=${encodeURIComponent(this.primaryCourseId(item))}&studentId=${encodeURIComponent(studentId)}&studentName=${encodeURIComponent(item.name || '')}`;
 			uni.navigateTo({ url });
 		},
 		removeBinding(item) {

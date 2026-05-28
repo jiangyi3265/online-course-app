@@ -13,6 +13,7 @@
 			<view class="card-label">绑定推荐人</view>
 			<input class="input" v-model.trim="form.phone" type="number" maxlength="11" placeholder="输入推荐人手机号" />
 			<input class="input" v-model.trim="form.referrerId" placeholder="输入推荐人 ID" />
+			<view class="hint">绑定后，推荐人可在【我的学生】查看你的学情统计，不会获得学习打卡编辑权限。</view>
 			<view class="primary" @click="submitBind">确认绑定</view>
 		</view>
 	</view>
@@ -74,5 +75,6 @@ page { background:#f5f7fa; }
 .ref-name { color:#222; font-size:36rpx; font-weight:900; margin-bottom:14rpx; }
 .ref-line { color:#596272; font-size:28rpx; line-height:1.7; }
 .input { height:82rpx; border-radius:12rpx; background:#f3f6fa; padding:0 18rpx; font-size:27rpx; margin-top:14rpx; box-sizing:border-box; }
+.hint { margin-top:16rpx; color:#697386; font-size:24rpx; line-height:1.5; }
 .primary { height:80rpx; line-height:80rpx; text-align:center; border-radius:12rpx; margin-top:22rpx; background:#1677ff; color:#fff; font-size:28rpx; font-weight:800; }
 </style>
