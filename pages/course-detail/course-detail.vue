@@ -35,7 +35,10 @@
 				<view class="star">☆</view>
 			</view>
 			<view class="info-meta">共计{{totalLessons}}节，课程时长：{{totalDuration}}</view>
-			<view class="update-meta">课程最近更新时间：{{displayUpdateDate}}</view>
+			<view class="update-meta">
+				<text class="update-label">最近更新</text>
+				<text class="update-date">{{displayUpdateDate}}</text>
+			</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
 				<view class="bar"><view class="bar-inner" :style="{width: progress+'%'}"></view></view>
@@ -68,7 +71,7 @@
 
 		<block v-if="activeTab===0">
 			<view class="version-chips">
-				<view class="version-chip" v-for="(item, index) in versionChips" :key="item" :class="{active: versionIndex === index}" @click="versionIndex = index">{{item}}</view>
+				<view class="version-chip" v-for="(item, index) in versionChips" :key="item" :class="{active: versionIndex === index}" @click="setVersion(index)">{{item}}</view>
 			</view>
 
 			<view class="chapter" v-for="(c,i) in chapters" :key="i">
@@ -158,6 +161,7 @@ export default {
 			detailTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
 			versionChips: ['复习加强课', '技巧绝招课'],
+			courseVersions: [],
 			chapters: [
 				{ title:'选材与加工高分技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
 				{ title:'课外文言文做题技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
@@ -196,7 +200,11 @@ export default {
 		}
 	},
 	async onLoad(opts) {
-		if (opts && opts.title) this.title = opts.title;
+		if (opts && opts.title) {
+			this.title = stripCourseYear(decodeURIComponent(opts.title));
+			this.courseName = `《${this.title}》试听课`;
+			this.courseId = this.resolveCourseId(this.title, 'trial');
+		}
 		if (opts && opts.bg) this.bg = decodeURIComponent(opts.bg);
 		if (opts && opts.cover) this.setCover(decodeURIComponent(opts.cover));
 		if (opts && opts.id) {
@@ -204,6 +212,7 @@ export default {
 		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
 			this.applyMathCourse();
 		}
+		if (!this.courseVersions.length) this.courseVersions = this.normalizeVersions({}, this.chapters);
 		this.coverTitle = this.title;
 	},
 	methods: {
@@ -229,7 +238,8 @@ export default {
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
-			this.chapters = course.chapters || this.chapters;
+			this.courseVersions = this.normalizeVersions(course, course.chapters || this.chapters);
+			this.setVersion(0);
 			this.quizzes = course.quizzes || [];
 		},
 		goBack() { uni.navigateBack({ fail:()=>uni.switchTab({url:'/pages/index/index',fail:()=>{}}) }); },
@@ -259,10 +269,49 @@ export default {
 			this.progress = course.progress;
 			this.learntCount = course.readStudyCount;
 			this.learntDuration = course.readDuration;
-			this.chapters = course.chapters;
+			this.courseVersions = this.normalizeVersions(course, course.chapters || this.chapters);
+			this.setVersion(0);
 			this.quizzes = course.quizzes;
 		},
 		toggle(i) { this.chapters[i].open = !this.chapters[i].open; },
+		setVersion(index) {
+			this.versionIndex = index;
+			const version = this.courseVersions[index];
+			if (version && version.chapters) this.chapters = version.chapters;
+		},
+		normalizeVersions(course = {}, fallbackChapters = []) {
+			const baseChapters = course.chapters || fallbackChapters || [];
+			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
+			const normalized = source.map((item, index) => ({
+				...(typeof item === 'object' ? item : { name: item }),
+				name: index === 0 ? '复习加强课' : '技巧绝招课',
+				chapters: (item && item.chapters) || baseChapters
+			}));
+			while (normalized.length < 2) {
+				normalized.push({
+					name: normalized.length === 0 ? '复习加强课' : '技巧绝招课',
+					chapters: baseChapters
+				});
+			}
+			return normalized.slice(0, 2);
+		},
+		resolveCourseId(title = '', kind = 'trial') {
+			const level = /中考/.test(title) ? 'zk' : 'gk';
+			const subjects = [
+				['数学', level === 'gk' ? 'math' : 'shuxue'],
+				['语文', 'yuwen'],
+				['英语', 'yingyu'],
+				['物理', 'wuli'],
+				['化学', 'huaxue'],
+				['生物', 'shengwu'],
+				['历史', 'lishi'],
+				['政治', 'zhengzhi'],
+				['地理', 'dili']
+			];
+			const found = subjects.find(([name]) => title.includes(name));
+			const subject = found ? found[1] : 'course';
+			return `${level}-${subject}-${kind}`;
+		},
 		resolveCourseStats(course = {}) {
 			const totalLessons = this.countCourseLessons(course) || course.totalLessons || 0;
 			return {
@@ -389,14 +438,19 @@ page { background:#f5f7fa; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
 .update-meta {
 	display:inline-flex;
+	align-items:center;
+	gap:10rpx;
 	margin-top:14rpx;
-	padding:8rpx 16rpx;
-	border:2rpx solid #e25555;
-	color:#c74444;
+	padding:8rpx 14rpx;
+	border:1rpx solid #f3d8c5;
+	border-radius:10rpx;
+	color:#9a4b18;
 	font-size:24rpx;
 	font-weight:700;
-	background:#fffafa;
+	background:#fff8f1;
 }
+.update-label { color:#8a94a3; font-weight:700; }
+.update-date { color:#c2410c; font-weight:900; }
 
 .progress-row {
 	display:flex; align-items:center;
@@ -423,12 +477,18 @@ page { background:#f5f7fa; }
 .funcs {
 	background:#fff;
 	display:flex;
-	padding: 30rpx 30rpx 40rpx;
+	padding: 26rpx 24rpx 34rpx;
 	border-top:1rpx solid #f1f3f6;
+	gap:18rpx;
 }
 .func {
-	width:33.33%;
+	flex:1;
+	min-height:146rpx;
 	display:flex; flex-direction:column; align-items:center;
+	justify-content:center;
+	border-radius:14rpx;
+	background:#fbfcfe;
+	border:1rpx solid #edf1f5;
 	cursor:pointer;
 }
 .f-ico {

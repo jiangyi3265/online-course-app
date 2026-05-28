@@ -19,26 +19,50 @@
 			<view class="empty-text">暂无文档</view>
 		</view>
 
-		<view v-else>
-			<view class="section" v-if="lectureDocs.length">
-				<view class="section-title">讲义及学习资料</view>
-				<view class="doc-card" v-for="doc in lectureDocs" :key="doc.id">
-					<view class="doc-icon">{{doc.fileType || 'DOC'}}</view>
-					<view class="doc-info">
-						<view class="doc-title">{{doc.title}}</view>
-						<view class="doc-meta">{{doc.size || '未知大小'}}</view>
-						<view class="doc-time">上传时间：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
+		<view v-else class="doc-sections">
+			<view class="doc-section">
+				<view class="section-head" @click="toggleSection('lecture')">
+					<view class="section-main">
+						<view class="section-title">
+							<text class="section-icon">资</text>
+							<text>资料</text>
+							<text class="section-count">{{lectureDocs.length}}份</text>
+						</view>
+						<view class="section-sub">讲义、学习资料、学案统一放在这里</view>
 					</view>
-					<view class="doc-actions">
-						<view class="download" @click="downloadDoc(doc)">文件下载</view>
-						<view class="doc-open" @click="openDoc(doc)">打开</view>
+					<view class="section-caret" :class="{open: expandedSections.lecture}">⌄</view>
+				</view>
+				<view class="section-body" v-if="expandedSections.lecture">
+					<view class="doc-card" v-for="doc in lectureDocs" :key="doc.id">
+						<view class="doc-icon">{{doc.fileType || 'DOC'}}</view>
+						<view class="doc-info">
+							<view class="doc-title">{{doc.title}}</view>
+							<view class="doc-meta">{{doc.size || '未知大小'}}</view>
+							<view class="doc-time">上传时间：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
+						</view>
+						<view class="doc-actions">
+							<view class="download" @click="downloadDoc(doc)">文件下载</view>
+							<view class="doc-open" @click="openDoc(doc)">打开</view>
+						</view>
 					</view>
+					<view class="section-empty" v-if="!lectureDocs.length">暂无资料</view>
 				</view>
 			</view>
 
-			<view class="section" v-if="paperDocs.length">
-				<view class="section-title">线下试卷</view>
-				<view class="paper-card" v-for="doc in paperDocs" :key="doc.id">
+			<view class="doc-section">
+				<view class="section-head paper" @click="toggleSection('paper')">
+					<view class="section-main">
+						<view class="section-title">
+							<text class="section-icon paper">卷</text>
+							<text>试卷</text>
+							<text class="section-count">{{paperDocs.length}}份</text>
+						</view>
+						<view class="section-sub">线下试卷可上传照片并记录自评分数</view>
+					</view>
+					<view class="section-caret" :class="{open: expandedSections.paper}">⌄</view>
+				</view>
+				<view class="section-body" v-if="expandedSections.paper">
+					<view class="paper-card" v-for="doc in paperDocs" :key="doc.id">
 					<view class="paper-main">
 						<view class="doc-icon">{{doc.fileType || 'PDF'}}</view>
 						<view class="doc-info">
@@ -53,26 +77,37 @@
 					</view>
 
 					<view class="paper-review">
-						<view class="upload-btn" @click="choosePaperImages(doc)">试卷照片上传</view>
+						<view class="review-top">
+							<view class="upload-btn" @click="choosePaperImages(doc)">上传试卷照片</view>
+							<view class="image-count">{{(doc.images || []).length}}/3 张</view>
+						</view>
 						<view class="review-box">
 							<view class="review-title">试卷自评：</view>
 							<view class="score-line">
-								<text>总分：</text>
-								<input class="score-input" type="number" v-model="doc.totalScore" />
-								<text>分</text>
-								<text class="score-gap">得分：</text>
-								<input class="score-input" type="number" v-model="doc.score" />
-								<text>分</text>
-								<text class="score-gap">错题：</text>
-								<input class="score-input small" type="number" v-model="doc.wrongCount" />
-								<text>道</text>
+								<view class="score-field">
+									<text>总分</text>
+									<input class="score-input" type="number" v-model="doc.totalScore" />
+									<text class="score-unit">分</text>
+								</view>
+								<view class="score-field">
+									<text>得分</text>
+									<input class="score-input" type="number" v-model="doc.score" />
+									<text class="score-unit">分</text>
+								</view>
+								<view class="score-field">
+									<text>错题</text>
+									<input class="score-input small" type="number" v-model="doc.wrongCount" />
+									<text class="score-unit">道</text>
+								</view>
 							</view>
 						</view>
 						<view class="save-review" @click="savePaperReview(doc)">保存细节</view>
 					</view>
 					<view class="paper-note">线下试卷在学生自评后记录，记录可在【学习报告】的练习统计中同步统计。</view>
 				</view>
+					<view class="section-empty" v-if="!paperDocs.length">暂无试卷</view>
 			</view>
+		</view>
 		</view>
 
 		<view class="mask" v-if="showLogin">
@@ -103,7 +138,15 @@ const LOCAL_DOCS = [
 ];
 
 export default {
-	data() { return { kw:'', courseId:'', list:[], showLogin:false } },
+	data() {
+		return {
+			kw:'',
+			courseId:'',
+			list:[],
+			showLogin:false,
+			expandedSections: { lecture:true, paper:true }
+		}
+	},
 	computed: {
 		lectureDocs() {
 			return this.list.filter(doc => !this.isPaper(doc));
@@ -128,8 +171,8 @@ export default {
 		async loadDocs() {
 			try {
 				const docs = await getMyDocs(this.kw);
-				const withFallbackPapers = this.ensurePaperDocs(docs || []);
-				this.list = this.filterDocs(withFallbackPapers).map(doc => ({ ...doc }));
+				const withFallbackDocs = this.ensureCategoryDocs(docs || []);
+				this.list = this.filterDocs(withFallbackDocs).map(doc => ({ ...doc }));
 			} catch (err) {
 				console.warn('文档接口不可用，使用本地文档', err);
 				this.list = this.filterLocalDocs();
@@ -137,7 +180,9 @@ export default {
 		},
 		filterLocalDocs() {
 			const key = this.kw.trim().toLowerCase();
-			return this.filterDocs(LOCAL_DOCS, key).map(doc => ({ ...doc }));
+			const matched = this.filterDocs(LOCAL_DOCS, key);
+			const list = matched.length ? matched : this.filterDocs(this.createCourseFallbackDocs(), key);
+			return list.map(doc => ({ ...doc }));
 		},
 		filterDocs(docs = [], normalizedKey = '') {
 			const key = normalizedKey || this.kw.trim().toLowerCase();
@@ -147,14 +192,45 @@ export default {
 				return matchCourse && matchKeyword;
 			});
 		},
-		ensurePaperDocs(docs = []) {
-			const hasPaper = docs.some(doc => this.isPaper(doc));
+		ensureCategoryDocs(docs = []) {
 			const list = docs.length ? docs : this.filterLocalDocs();
-			if (hasPaper) return list;
-			return list.concat(this.filterDocs(LOCAL_DOCS.filter(doc => doc.category === 'paper')));
+			const fallback = this.createCourseFallbackDocs();
+			let result = list.slice();
+			if (!result.some(doc => !this.isPaper(doc))) {
+				result = result.concat(fallback.filter(doc => doc.category === 'lecture'));
+			}
+			if (!result.some(doc => this.isPaper(doc))) {
+				result = result.concat(fallback.filter(doc => doc.category === 'paper'));
+			}
+			return result;
 		},
 		isPaper(doc = {}) {
 			return doc.category === 'paper' || /试卷|测试卷|线下/i.test(doc.title || '');
+		},
+		createCourseFallbackDocs() {
+			const title = this.resolveCourseTitle();
+			const courseId = this.courseId || `local-${title}`;
+			return [
+				{ id:`fallback-lecture-${courseId}`, courseId, category:'lecture', title:`${title}讲义及学习资料.pdf`, fileUrl:'#', fileType:'PDF', size:'1.2MB', uploadTime:'2026-05-26T10:11:00', visible:true },
+				{ id:`fallback-paper-${courseId}`, courseId, category:'paper', title:`${title}线下测试卷.pdf`, fileUrl:'#', fileType:'PDF', size:'1.2MB', uploadTime:'2026-05-26T10:15:00', visible:true }
+			];
+		},
+		resolveCourseTitle() {
+			const key = this.kw.replace(/[《》]/g, '').trim();
+			if (key) return key;
+			if (/yingyu|english/i.test(this.courseId)) return '英语';
+			if (/yuwen|chinese/i.test(this.courseId)) return '语文';
+			if (/wuli|physics/i.test(this.courseId)) return '物理';
+			if (/huaxue|chemistry/i.test(this.courseId)) return '化学';
+			if (/shengwu|biology/i.test(this.courseId)) return '生物';
+			if (/lishi|history/i.test(this.courseId)) return '历史';
+			if (/zhengzhi|politics/i.test(this.courseId)) return '政治';
+			if (/dili|geography/i.test(this.courseId)) return '地理';
+			if (/math|shuxue/i.test(this.courseId)) return '数学';
+			return '课程';
+		},
+		toggleSection(type) {
+			this.expandedSections[type] = !this.expandedSections[type];
 		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); },
 		search() { this.loadDocs(); },
@@ -220,23 +296,76 @@ export default {
 </script>
 
 <style lang="scss">
-page { background:#fff; }
-.page { min-height:100vh; background:#fff; padding-bottom:50rpx; }
+page { background:#f5f7fa; }
+.page { min-height:100vh; background:#f5f7fa; padding-bottom:50rpx; }
 .nav { position:relative; height:90rpx; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; font-weight:300; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; color:#222; font-weight:800; }
-.search { display:flex; align-items:center; margin:24rpx; background:#f3f6fa; border-radius:12rpx; padding:0 20rpx; height:78rpx; border:1rpx solid #e8edf3; }
+.search { display:flex; align-items:center; margin:24rpx; background:#fff; border-radius:14rpx; padding:0 20rpx; height:82rpx; border:1rpx solid #e8edf3; box-shadow:0 4rpx 14rpx rgba(16,24,40,.04); }
 .search-box { flex:1; display:flex; align-items:center; }
 .s-ico { font-size:30rpx; color:#9aa1a9; margin-right:14rpx; }
 .s-input { flex:1; height:80rpx; font-size:28rpx; color:#222; background:transparent; }
 .s-ph { color:#aab1b9; }
 .s-divider { width:2rpx; height:36rpx; background:#dfe2e6; margin:0 20rpx; }
 .s-btn { color:#3aa3f5; font-size:28rpx; cursor:pointer; }
-.section { margin-top:20rpx; }
-.section-title { margin:28rpx 24rpx 14rpx; color:#1f2933; font-size:32rpx; font-weight:900; }
-.doc-card, .paper-card { margin:0 24rpx 18rpx; background:#fff; border:1rpx solid #e5eaf1; border-radius:8rpx; box-shadow:0 3rpx 10rpx rgba(16,24,40,.03); overflow:hidden; }
+.doc-sections { padding:0 24rpx; }
+.doc-section { margin-bottom:26rpx; }
+.section-head {
+	min-height:98rpx;
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	padding:18rpx 20rpx;
+	border-radius:14rpx;
+	background:#fff;
+	border:1rpx solid #e5edf5;
+	box-shadow:0 4rpx 14rpx rgba(16,24,40,.04);
+	cursor:pointer;
+}
+.section-head.paper { border-color:#e1efe8; }
+.section-main { min-width:0; }
+.section-title { display:flex; align-items:center; color:#1f2933; font-size:31rpx; font-weight:900; }
+.section-icon {
+	width:44rpx;
+	height:44rpx;
+	margin-right:14rpx;
+	border-radius:10rpx;
+	background:#eaf4ff;
+	color:#1677ff;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	font-size:23rpx;
+	font-weight:900;
+}
+.section-icon.paper { background:#ecfdf5; color:#0f766e; }
+.section-count {
+	margin-left:12rpx;
+	padding:4rpx 10rpx;
+	border-radius:999rpx;
+	background:#f1f5f9;
+	color:#64748b;
+	font-size:21rpx;
+	font-weight:800;
+}
+.section-sub { margin-top:8rpx; color:#8a94a3; font-size:23rpx; line-height:1.4; }
+.section-caret {
+	width:50rpx;
+	height:50rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	color:#94a3b8;
+	font-size:34rpx;
+	transform:rotate(-90deg);
+	transition:transform .18s ease-out;
+}
+.section-caret.open { transform:rotate(0deg); }
+.section-body { padding-top:16rpx; }
+.section-empty { padding:32rpx 0; text-align:center; color:#94a3b8; font-size:25rpx; }
+.doc-card, .paper-card { margin:0 0 18rpx; background:#fff; border:1rpx solid #e5eaf1; border-radius:12rpx; box-shadow:0 3rpx 10rpx rgba(16,24,40,.03); overflow:hidden; }
 .doc-card, .paper-main { display:flex; align-items:center; min-height:132rpx; padding:20rpx 22rpx; box-sizing:border-box; }
-.doc-icon { width:86rpx; height:86rpx; border-radius:4rpx; background:#edf7ff; color:#1684e8; display:flex; align-items:center; justify-content:center; font-size:22rpx; font-weight:900; flex-shrink:0; }
+.doc-icon { width:86rpx; height:86rpx; border-radius:8rpx; background:#edf7ff; color:#1684e8; display:flex; align-items:center; justify-content:center; font-size:22rpx; font-weight:900; flex-shrink:0; }
 .doc-info { flex:1; min-width:0; margin-left:20rpx; }
 .doc-title { color:#1f2933; font-size:28rpx; font-weight:900; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .doc-meta, .doc-time { margin-top:8rpx; color:#697386; font-size:24rpx; }
@@ -244,21 +373,35 @@ page { background:#fff; }
 .doc-actions { display:flex; align-items:center; gap:18rpx; margin-left:18rpx; flex-shrink:0; }
 .download, .doc-open { min-height:52rpx; padding:0 14rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#eef6ff; color:#2563eb; font-size:24rpx; white-space:nowrap; cursor:pointer; }
 .doc-open { color:#0f766e; background:#ecfdf5; }
-.paper-review { display:flex; align-items:center; padding:0 22rpx 20rpx 128rpx; gap:18rpx; flex-wrap:wrap; }
-.upload-btn { min-width:160rpx; height:58rpx; line-height:58rpx; text-align:center; border:2rpx solid #314ba0; color:#314ba0; font-size:24rpx; background:#fff; }
-.review-box { min-width:360rpx; border:1rpx solid #5e6b9c; padding:10rpx 14rpx; color:#333b7a; }
-.review-title { font-size:24rpx; margin-bottom:8rpx; }
-.score-line { display:flex; align-items:center; flex-wrap:wrap; color:#333b7a; font-size:24rpx; }
-.score-input { width:74rpx; height:42rpx; margin:0 8rpx; border-bottom:1rpx solid #9aa3af; text-align:center; font-size:24rpx; color:#222; }
-.score-input.small { width:58rpx; }
-.score-gap { margin-left:22rpx; }
-.save-review { min-width:112rpx; height:56rpx; line-height:56rpx; text-align:center; border-radius:8rpx; background:#3aa3f5; color:#fff; font-size:24rpx; font-weight:800; }
-.paper-note { padding:0 22rpx 22rpx 128rpx; color:#667085; font-size:23rpx; line-height:1.6; }
+.paper-review { margin:0 22rpx 18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #e9eef5; }
+.review-top { display:flex; align-items:center; justify-content:space-between; gap:16rpx; margin-bottom:16rpx; }
+.upload-btn { min-width:180rpx; height:58rpx; line-height:58rpx; text-align:center; border-radius:10rpx; color:#1d4ed8; font-size:24rpx; font-weight:800; background:#eef6ff; border:1rpx solid #cfe1ff; }
+.image-count { color:#94a3b8; font-size:23rpx; }
+.review-box { color:#334155; }
+.review-title { font-size:24rpx; font-weight:900; margin-bottom:12rpx; }
+.score-line { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
+.score-field {
+	min-width:0;
+	display:flex;
+	align-items:center;
+	height:66rpx;
+	padding:0 12rpx;
+	border-radius:10rpx;
+	background:#fff;
+	border:1rpx solid #dfe7f0;
+	color:#64748b;
+	font-size:23rpx;
+}
+.score-field text { flex-shrink:0; }
+.score-unit { color:#94a3b8; }
+.score-input { flex:1; min-width:0; height:58rpx; margin:0 8rpx; text-align:center; font-size:25rpx; color:#1f2933; font-weight:800; }
+.score-input.small { width:auto; }
+.save-review { margin-top:16rpx; height:62rpx; line-height:62rpx; text-align:center; border-radius:10rpx; background:#3aa3f5; color:#fff; font-size:25rpx; font-weight:900; }
+.paper-note { padding:0 22rpx 22rpx; color:#667085; font-size:23rpx; line-height:1.6; }
 @media screen and (max-width: 420px) {
 	.doc-card, .paper-main { align-items:flex-start; }
 	.doc-actions { flex-direction:column; gap:10rpx; margin-left:12rpx; }
-	.paper-review, .paper-note { padding-left:22rpx; }
-	.review-box { min-width:0; width:100%; box-sizing:border-box; }
+	.score-line { grid-template-columns:1fr; }
 }
 .empty { display:flex; flex-direction:column; align-items:center; padding-top:200rpx; }
 .empty-img { width:520rpx; }

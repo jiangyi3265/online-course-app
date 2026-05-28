@@ -20,20 +20,32 @@
 
 		<view class="action-grid">
 			<view class="action-card" :class="{active: mode === 'review'}" @click="setMode('review')">
-				<view class="action-title">温习错题</view>
-				<view class="action-sub">按来源查看解析与正确答案</view>
+				<view class="action-mark">温</view>
+				<view>
+					<view class="action-title">温习错题</view>
+					<view class="action-sub">按来源查看解析与正确答案</view>
+				</view>
 			</view>
 			<view class="action-card" :class="{active: mode === 'records'}" @click="setMode('records')">
-				<view class="action-title">查看测试记录</view>
-				<view class="action-sub">章节扫雷、复习测试、真题讲练、错题重练记录</view>
+				<view class="action-mark records">记</view>
+				<view>
+					<view class="action-title">查看测试记录</view>
+					<view class="action-sub">章节扫雷、复习测试、真题讲练、错题重练记录</view>
+				</view>
 			</view>
 			<view class="action-card" :class="{active: mode === 'retry'}" @click="setMode('retry')">
-				<view class="action-title">错题重练</view>
-				<view class="action-sub">再次测试错题，巩固解题技巧</view>
+				<view class="action-mark retry">练</view>
+				<view>
+					<view class="action-title">错题重练</view>
+					<view class="action-sub">再次测试错题，巩固解题技巧</view>
+				</view>
 			</view>
 			<view class="action-card" :class="{active: mode === 'weak'}" @click="setMode('weak')">
-				<view class="action-title">短板题库</view>
-				<view class="action-sub">多次重练仍未掌握的题型</view>
+				<view class="action-mark weak">短</view>
+				<view>
+					<view class="action-title">短板题库</view>
+					<view class="action-sub">多次重练仍未掌握的题型</view>
+				</view>
 			</view>
 		</view>
 
@@ -48,10 +60,16 @@
 		</view>
 
 		<view v-if="mode === 'review'">
-			<view class="summary-card">
-				<view class="summary-stat" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">待温习：{{summary.pending || 0}} 道</view>
-				<view class="summary-stat" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">已掌握：{{summary.mastered || 0}} 道</view>
-				<view class="summary-stat" :class="{active: statusFilter === 'weak'}" @click="setStatusFilter('weak')">短板：{{summary.weak || 0}} 道</view>
+			<view class="status-panel">
+				<view class="status-item" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">
+					<text>待温习</text><text class="status-num">{{summary.pending || 0}}</text><text class="status-unit">道</text>
+				</view>
+				<view class="status-item" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">
+					<text>已掌握</text><text class="status-num">{{summary.mastered || 0}}</text><text class="status-unit">道</text>
+				</view>
+				<view class="status-item" :class="{active: statusFilter === 'weak'}" @click="setStatusFilter('weak')">
+					<text>短板</text><text class="status-num">{{summary.weak || 0}}</text><text class="status-unit">道</text>
+				</view>
 			</view>
 			<view class="empty" v-if="visibleWrongList.length === 0">暂无错题，先完成一次测试后这里会自动收录</view>
 			<view class="question-card" v-for="item in visibleWrongList" :key="item.id">
@@ -123,9 +141,20 @@
 		</view>
 
 		<view v-if="mode === 'weak'">
-			<view class="summary-card">
-				<view class="summary-stat" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">未掌握：{{weakPending}} 道</view>
-				<view class="summary-stat" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">已掌握：{{weakMastered}} 道</view>
+			<view class="weak-brief">
+				<view>
+					<view class="weak-title">短板题库</view>
+					<view class="weak-sub">多次重练仍出错，或来源标签较多的题会集中到这里。</view>
+				</view>
+				<view class="weak-total">{{weakPending + weakMastered}}<text>道</text></view>
+			</view>
+			<view class="status-panel two">
+				<view class="status-item" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">
+					<text>未掌握</text><text class="status-num">{{weakPending}}</text><text class="status-unit">道</text>
+				</view>
+				<view class="status-item" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">
+					<text>已掌握</text><text class="status-num">{{weakMastered}}</text><text class="status-unit">道</text>
+				</view>
 			</view>
 			<view class="empty" v-if="visibleWeakList.length === 0">暂无短板题，带三个来源标签或多次重练错误后会自动加入</view>
 			<view class="question-card" v-for="item in visibleWeakList" :key="item.id">
@@ -137,7 +166,10 @@
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">{{optionLetter(optionIndex)}}. {{option}}</view>
 				</view>
-				<view class="weak-status" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
+				<view class="row-actions weak-actions">
+					<view class="state" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
+					<view class="mark-btn" :class="{done:item.mastered}" @click="mark(item)">{{item.mastered ? '已标记' : '标记掌握'}}</view>
+				</view>
 				<analysis-viewer :item="item" :text="item.analysis" />
 			</view>
 		</view>
@@ -338,7 +370,7 @@ page { background:#f4f6f8; }
 .back { position:absolute; left:24rpx; font-size:48rpx; color:#1f2933; line-height:1; }
 .nav-title { font-size:31rpx; font-weight:800; }
 .study-band { padding:24rpx; background:#fff; }
-.band-row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:20rpx; padding:26rpx 28rpx; border-radius:8rpx; background:#eaf6f3; border:1rpx solid #cce9e1; }
+.band-row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:20rpx; padding:28rpx; border-radius:14rpx; background:#eef9f6; border:1rpx solid #cce9e1; }
 .band-label { font-size:27rpx; font-weight:800; color:#143b35; line-height:1.5; }
 .band-sub { margin-top:8rpx; font-size:24rpx; color:#526b66; line-height:1.5; }
 .band-stats { flex-shrink:0; display:flex; align-items:center; gap:24rpx; }
@@ -346,19 +378,76 @@ page { background:#f4f6f8; }
 .band-score { min-width:116rpx; text-align:center; color:#0f766e; font-size:42rpx; font-weight:900; }
 .band-score text { display:block; margin-top:4rpx; font-size:21rpx; font-weight:700; }
 .action-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:24rpx; }
-.action-card { min-height:132rpx; padding:22rpx; border-radius:8rpx; background:#fff; border:1rpx solid #e3e8ef; }
-.action-card.active { border-color:#2563eb; background:#eef5ff; }
+.action-card {
+	min-height:138rpx;
+	padding:22rpx;
+	border-radius:14rpx;
+	background:#fff;
+	border:1rpx solid #e3e8ef;
+	display:flex;
+	align-items:flex-start;
+	gap:16rpx;
+	box-shadow:0 3rpx 10rpx rgba(16,24,40,.03);
+}
+.action-card.active { border-color:#8fb8ff; background:#f4f8ff; box-shadow:0 5rpx 16rpx rgba(37,99,235,.08); }
+.action-mark {
+	width:42rpx;
+	height:42rpx;
+	border-radius:10rpx;
+	background:#eef5ff;
+	color:#2563eb;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	font-size:22rpx;
+	font-weight:900;
+	flex-shrink:0;
+}
+.action-mark.records { background:#f1f5f9; color:#475569; }
+.action-mark.retry { background:#ecfdf5; color:#0f766e; }
+.action-mark.weak { background:#fff7ed; color:#c2410c; }
 .action-title { font-size:29rpx; font-weight:800; color:#1f2933; }
 .action-sub { margin-top:10rpx; font-size:23rpx; color:#667085; line-height:1.45; }
 .source-filter { display:flex; gap:12rpx; padding:0 24rpx 20rpx; overflow-x:auto; }
-.source-chip { flex:0 0 auto; height:58rpx; line-height:58rpx; padding:0 22rpx; border-radius:8rpx; background:#fff; color:#52606d; border:1rpx solid #d9e0e8; font-size:24rpx; }
+.source-chip { flex:0 0 auto; height:58rpx; line-height:58rpx; padding:0 22rpx; border-radius:10rpx; background:#fff; color:#52606d; border:1rpx solid #d9e0e8; font-size:24rpx; }
 .source-chip.active { background:#2563eb; border-color:#2563eb; color:#fff; font-weight:800; }
-.summary-card, .record-summary, .retry-panel { margin:0 24rpx 20rpx; padding:24rpx; border-radius:8rpx; background:#fff; border:1rpx solid #e3e8ef; }
-.summary-card { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; color:#9a3412; font-size:26rpx; font-weight:800; background:#fff7ed; border-color:#fed7aa; }
-.summary-stat { min-height:58rpx; display:flex; align-items:center; justify-content:center; padding:0 10rpx; border-radius:8rpx; color:#9a3412; }
-.summary-stat.active { background:#fff; color:#2563eb; box-shadow:inset 0 0 0 2rpx #2563eb; }
+.status-panel, .record-summary, .retry-panel { margin:0 24rpx 20rpx; padding:18rpx; border-radius:14rpx; background:#fff; border:1rpx solid #e3e8ef; }
+.status-panel { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
+.status-panel.two { grid-template-columns:repeat(2, 1fr); }
+.status-item {
+	min-height:96rpx;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	padding:10rpx;
+	border-radius:12rpx;
+	background:#f8fafc;
+	border:1rpx solid #edf2f7;
+	color:#64748b;
+	font-size:23rpx;
+	font-weight:800;
+}
+.status-item.active { background:#eef5ff; border-color:#2563eb; color:#1d4ed8; }
+.status-num { margin-top:6rpx; color:#1f2933; font-size:34rpx; font-weight:900; line-height:1; }
+.status-unit { margin-top:4rpx; color:#94a3b8; font-size:20rpx; }
+.weak-brief {
+	margin:0 24rpx 20rpx;
+	padding:24rpx;
+	border-radius:14rpx;
+	background:#fffaf4;
+	border:1rpx solid #fed7aa;
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap:18rpx;
+}
+.weak-title { color:#9a3412; font-size:31rpx; font-weight:900; }
+.weak-sub { margin-top:8rpx; color:#8a5a37; font-size:24rpx; line-height:1.5; }
+.weak-total { color:#c2410c; font-size:42rpx; font-weight:900; text-align:center; flex-shrink:0; }
+.weak-total text { display:block; margin-top:2rpx; color:#9a3412; font-size:20rpx; }
 .empty { padding:140rpx 24rpx; text-align:center; color:#8a94a3; font-size:28rpx; }
-.question-card, .record-card { margin:0 24rpx 20rpx; padding:24rpx; background:#fff; border-radius:8rpx; border:1rpx solid #e3e8ef; }
+.question-card, .record-card { margin:0 24rpx 20rpx; padding:24rpx; background:#fff; border-radius:14rpx; border:1rpx solid #e3e8ef; box-shadow:0 3rpx 10rpx rgba(16,24,40,.03); }
 .source-title { font-size:24rpx; color:#667085; font-weight:800; }
 .tag-row { display:flex; flex-wrap:wrap; gap:10rpx; margin-top:10rpx; }
 .tag { padding:6rpx 12rpx; border-radius:6rpx; background:#eef5ff; color:#1d4ed8; font-size:22rpx; font-weight:700; }
@@ -371,12 +460,13 @@ page { background:#f4f6f8; }
 .answer.bad { color:#dc2626; }
 .analysis, .detail-analysis { margin-top:14rpx; color:#5f6b7a; font-size:25rpx; line-height:1.55; }
 .row-actions { display:grid; grid-template-columns:120rpx 1fr 1fr; align-items:center; gap:16rpx; margin-top:20rpx; }
-.state, .weak-status { height:64rpx; line-height:64rpx; text-align:center; border-radius:8rpx; background:#fff1f2; color:#be123c; font-size:23rpx; font-weight:800; }
+.state, .weak-status { height:64rpx; line-height:64rpx; text-align:center; border-radius:10rpx; background:#f1f5f9; color:#64748b; font-size:23rpx; font-weight:800; }
 .state.done, .weak-status.done { background:#ecfdf5; color:#047857; }
-.mark-btn, .fav-btn { height:68rpx; line-height:68rpx; text-align:center; border-radius:8rpx; color:#fff; font-size:27rpx; font-weight:800; }
-.mark-btn { background:#2563eb; }
-.mark-btn.done { background:#edf1f5; color:#667085; }
+.mark-btn, .fav-btn { height:68rpx; line-height:68rpx; text-align:center; border-radius:10rpx; font-size:27rpx; font-weight:800; }
+.mark-btn { background:#eef5ff; color:#1d4ed8; border:1rpx solid #bfdbfe; }
+.mark-btn.done { background:#edf1f5; color:#667085; border-color:#edf1f5; }
 .fav-btn { background:#0f766e; }
+.weak-actions { grid-template-columns:1fr 1fr; }
 .record-total { font-size:30rpx; font-weight:900; color:#1f2933; }
 .record-subjects { display:flex; flex-wrap:wrap; gap:16rpx; margin-top:12rpx; color:#667085; font-size:24rpx; }
 .record-time { font-size:23rpx; color:#8a94a3; }
@@ -401,7 +491,9 @@ page { background:#f4f6f8; }
 @media screen and (max-width: 420px) {
 	.band-row { grid-template-columns:1fr; }
 	.band-stats { justify-content:space-between; }
-	.summary-card { grid-template-columns:1fr; }
+	.status-panel { grid-template-columns:1fr; }
+	.status-panel.two { grid-template-columns:1fr 1fr; }
 	.row-actions { grid-template-columns:1fr; }
+	.weak-actions { grid-template-columns:1fr 1fr; }
 }
 </style>

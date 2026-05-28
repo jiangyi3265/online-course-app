@@ -25,6 +25,41 @@
 			</view>
 		</view>
 
+		<view class="detail-panel">
+			<view class="panel-title">学习报告功能细节</view>
+			<view class="detail-sub">课程学习统计和练习统计会在这里合并展示。</view>
+			<view class="track-grid">
+				<view class="track-card" v-for="item in courseTrackRows" :key="item.name">
+					<view class="track-head">
+						<view class="track-name">{{item.name}}</view>
+						<view class="track-progress-text">{{item.progress}}%</view>
+					</view>
+					<view class="track-progress"><view :style="{width:item.progress + '%'}"></view></view>
+					<view class="track-meta">
+						<text>今日 {{item.today}}</text>
+						<text>本周 {{item.week}}</text>
+						<text>累计 {{item.total}}</text>
+					</view>
+					<view class="track-foot">
+						<text>总节数 {{item.totalLessons}}节</text>
+						<text>已学习 {{item.learnedLessons}}节</text>
+						<text>累计打卡 {{item.checkins}}天</text>
+					</view>
+				</view>
+			</view>
+			<view class="report-stat-list">
+				<view class="report-stat-row" v-for="item in reportDetailRows" :key="item.name">
+					<view class="report-stat-title">{{item.name}}</view>
+					<view class="report-metrics">
+						<view class="report-metric" v-for="metric in item.metrics" :key="metric.label">
+							<text>{{metric.label}}</text>
+							<text class="metric-value">{{metric.value}}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
 		<view class="panel" v-if="showPractice">
 			<view class="panel-title">真题讲练明细</view>
 			<view class="practice-row" v-for="item in practiceRows" :key="item.id || item.createdAt || item.title" @click="selectedPractice = item">
@@ -173,6 +208,42 @@ export default {
 		},
 		suggestions() {
 			return this.report.suggestions || [];
+		},
+		courseTrackRows() {
+			const stats = this.report.learningStats || {};
+			const totalLessons = Number(this.report.totalLessons || (this.report.course && this.report.course.totalLessons) || 0);
+			const learnedLessons = Number(this.report.readStudyCount || (this.report.course && this.report.course.readStudyCount) || 0);
+			const progress = Number(this.report.progress !== undefined ? this.report.progress : (totalLessons ? Math.round(learnedLessons * 100 / totalLessons) : 0));
+			const base = {
+				today: stats.todayText || '0分钟',
+				week: stats.weekText || '0分钟',
+				total: stats.totalText || '0分钟',
+				totalLessons,
+				learnedLessons,
+				progress: Math.max(0, Math.min(100, progress || 0)),
+				checkins: Number(this.report.checkinDays || stats.checkinDays || 0)
+			};
+			return [
+				{ name:'复习加强课', ...base },
+				{ name:'技巧绝招课', ...base }
+			];
+		},
+		reportDetailRows() {
+			const chapterRows = this.chapterRows;
+			const attempts = this.report.attempts || [];
+			const reinforceRows = attempts.filter(item => item.type === 'reinforce');
+			const retryRows = attempts.filter(item => item.type === 'wrongRetry');
+			const practiceRows = this.practiceRows.filter(item => item.type !== 'reinforce' && item.type !== 'wrongRetry');
+			const favoriteRows = this.report.favoriteRows || this.report.favoritePractice || [];
+			const offlineRows = this.offlineRows;
+			return [
+				this.buildTestStats('章节扫雷', chapterRows, '测试', '平均得分'),
+				this.buildTestStats('复习测试', reinforceRows, '测试', '平均得分'),
+				this.buildPracticeStats('真题讲练', practiceRows, '完成', '正确率'),
+				this.buildWrongRetryStats(retryRows),
+				this.buildPracticeStats('我的收藏', favoriteRows, '完成', '正确率'),
+				this.buildOfflineStats(offlineRows)
+			];
 		}
 	},
 	onLoad(opts = {}) {
@@ -192,9 +263,94 @@ export default {
 				this.selectedPractice = this.practiceRows[0] || null;
 			}
 		},
+		buildTestStats(name, rows = [], actionLabel = '测试', scoreLabel = '平均得分') {
+			const todayRows = this.todayRows(rows);
+			return {
+				name,
+				metrics: [
+					{ label:`今日${actionLabel}`, value:`${todayRows.length}次` },
+					{ label:`累计${actionLabel}`, value:`${rows.length}次` },
+					{ label:'今日错题', value:`${this.sumField(todayRows, 'wrongCount')}道` },
+					{ label:'累计错题', value:`${this.sumField(rows, 'wrongCount')}道` },
+					{ label:scoreLabel, value:`${this.averageScoreOf(rows)}分` }
+				]
+			};
+		},
+		buildPracticeStats(name, rows = [], actionLabel = '完成', rateLabel = '正确率') {
+			const todayRows = this.todayRows(rows);
+			return {
+				name,
+				metrics: [
+					{ label:`今日${actionLabel}`, value:`${todayRows.length}道` },
+					{ label:`累计${actionLabel}`, value:`${this.totalQuestions(rows)}道` },
+					{ label:'今日错题', value:`${this.sumField(todayRows, 'wrongCount')}道` },
+					{ label:'累计错题', value:`${this.sumField(rows, 'wrongCount')}道` },
+					{ label:rateLabel, value:this.accuracyFromRows(rows) }
+				]
+			};
+		},
+		buildWrongRetryStats(rows = []) {
+			const todayRows = this.todayRows(rows);
+			const totalWrong = this.wrongCount;
+			const mastered = Math.max(0, totalWrong - this.sumField(rows, 'wrongCount'));
+			return {
+				name:'错题重练',
+				metrics: [
+					{ label:'今日完成', value:`${todayRows.length}道` },
+					{ label:'累计完成', value:`${this.totalQuestions(rows)}道` },
+					{ label:'总错题', value:`${totalWrong}道` },
+					{ label:'未掌握', value:`${this.sumField(rows, 'wrongCount')}道` },
+					{ label:'已掌握', value:`${mastered}道` },
+					{ label:'掌握率', value:this.accuracyFromRows(rows) }
+				]
+			};
+		},
+		buildOfflineStats(rows = []) {
+			const todayRows = this.todayRows(rows);
+			return {
+				name:'线下试卷',
+				metrics: [
+					{ label:'今日上传', value:`${todayRows.length}次` },
+					{ label:'累计上传', value:`${rows.length}次` },
+					{ label:'今日错题', value:`${this.sumField(todayRows, 'wrongCount')}道` },
+					{ label:'累计错题', value:`${this.sumField(rows, 'wrongCount')}道` },
+					{ label:'平均得分', value:`${this.averageScoreOf(rows)}分` }
+				]
+			};
+		},
+		todayRows(rows = []) {
+			return rows.filter(item => this.isToday(item.createdAt || item.completedAt || item.updatedAt || item.time));
+		},
+		isToday(value) {
+			if (!value) return false;
+			const date = new Date(value);
+			if (Number.isNaN(date.getTime())) return false;
+			const now = new Date();
+			return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+		},
+		sumField(rows = [], field) {
+			return rows.reduce((sum, item) => sum + (Number(item[field]) || 0), 0);
+		},
+		totalQuestions(rows = []) {
+			return rows.reduce((sum, item) => sum + (Number(item.total || item.count || 1) || 1), 0);
+		},
+		averageScoreOf(rows = []) {
+			if (!rows.length) return 0;
+			return Math.round(rows.reduce((sum, item) => sum + (Number(item.averageScore || item.score) || 0), 0) / rows.length);
+		},
+		accuracyFromRows(rows = []) {
+			const total = rows.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+			const correct = rows.reduce((sum, item) => sum + (Number(item.correct) || 0), 0);
+			if (total) return `${Math.round(correct * 100 / total)}%`;
+			return rows.length ? `${Math.max(0, 100 - this.sumField(rows, 'wrongCount') * 10)}%` : '0%';
+		},
 		localReport() {
 			return {
 				courseTitle: this.courseId.includes('yingyu') ? '高考英语' : '高考数学',
+				totalLessons: 22,
+				readStudyCount: 5,
+				progress: 23,
+				checkinDays: 1,
 				learningStats: {
 					todayText: '5秒',
 					weekText: '25秒',
@@ -225,7 +381,7 @@ page { background:#f5f7fa; }
 .nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; font-weight:700; }
-.course-card, .panel { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
+.course-card, .panel, .detail-panel { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
 .course-label { color:#697386; font-size:24rpx; font-weight:700; }
 .course-name { color:#222; font-size:36rpx; font-weight:900; margin-top:8rpx; }
 .summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14rpx; padding:0 24rpx; }
@@ -234,6 +390,23 @@ page { background:#f5f7fa; }
 .summary-value { color:#1677ff; font-size:36rpx; font-weight:900; margin-top:8rpx; }
 .summary-tip { color:#9aa3af; font-size:20rpx; margin-top:6rpx; line-height:1.3; }
 .panel-title { font-size:32rpx; color:#222; font-weight:800; margin-bottom:18rpx; }
+.detail-sub { color:#8a94a3; font-size:24rpx; line-height:1.45; margin-top:-8rpx; margin-bottom:20rpx; }
+.track-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; margin-bottom:20rpx; }
+.track-card { padding:18rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #e6edf5; }
+.track-head { display:flex; align-items:center; justify-content:space-between; gap:12rpx; }
+.track-name { color:#1f2933; font-size:27rpx; font-weight:900; }
+.track-progress-text { color:#1677ff; font-size:25rpx; font-weight:900; }
+.track-progress { margin-top:14rpx; height:12rpx; background:#e8edf3; border-radius:999rpx; overflow:hidden; }
+.track-progress view { height:100%; background:#20b486; border-radius:999rpx; }
+.track-meta, .track-foot { display:flex; flex-wrap:wrap; gap:10rpx 16rpx; margin-top:14rpx; color:#667085; font-size:22rpx; line-height:1.45; }
+.track-foot { color:#475467; }
+.report-stat-list { border-top:1rpx solid #eef0f3; }
+.report-stat-row { padding:20rpx 0; border-bottom:1rpx solid #eef0f3; }
+.report-stat-row:last-child { border-bottom:0; padding-bottom:0; }
+.report-stat-title { color:#1f2933; font-size:28rpx; font-weight:900; margin-bottom:14rpx; }
+.report-metrics { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
+.report-metric { min-height:70rpx; border-radius:10rpx; background:#f8fafc; padding:12rpx; color:#667085; font-size:22rpx; box-sizing:border-box; }
+.metric-value { display:block; margin-top:6rpx; color:#1f2933; font-size:25rpx; font-weight:900; }
 .practice-row, .row, .record { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-bottom:1rpx solid #eef0f3; font-size:27rpx; color:#333; }
 .practice-row:last-child, .row:last-child, .record:last-child { border-bottom:0; }
 .practice-detail { margin-top:18rpx; padding:20rpx; border-radius:14rpx; background:#f8fafc; }
@@ -258,4 +431,8 @@ page { background:#f5f7fa; }
 .suggestion { padding:16rpx 0; border-bottom:1rpx solid #eef0f3; color:#333; font-size:27rpx; line-height:1.5; }
 .suggestion:last-child { border-bottom:0; }
 .empty { color:#8a94a3; font-size:26rpx; padding:20rpx 0; }
+@media screen and (max-width: 420px) {
+	.track-grid { grid-template-columns:1fr; }
+	.report-metrics { grid-template-columns:1fr 1fr; }
+}
 </style>

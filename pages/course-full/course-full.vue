@@ -21,7 +21,10 @@
 				<view class="star">☆</view>
 			</view>
 			<view class="info-meta">共计{{total}}节，课程时长：{{duration}}</view>
-			<view class="update-meta">课程最近更新时间：{{displayUpdateDate}}</view>
+			<view class="update-meta">
+				<text class="update-label">最近更新</text>
+				<text class="update-date">{{displayUpdateDate}}</text>
+			</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
 				<view class="bar"><view class="bar-inner" :style="{width: progress+'%'}"></view></view>
@@ -187,7 +190,10 @@ export default {
 			showCheckinPanel: false,
 			projectTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
-			versions: [{ name:'2026版' }, { name:'绝招课' }],
+			versions: [
+				{ name:'复习加强课', chapters: [] },
+				{ name:'技巧绝招课', chapters: [] }
+			],
 			locked: true,
 			showFooter: true,
 			showAuth: false,
@@ -237,13 +243,20 @@ export default {
 		}
 	},
 	async onLoad(opts) {
-		if (opts && opts.title) this.title = opts.title;
+		if (opts && opts.title) {
+			this.title = stripCourseYear(decodeURIComponent(opts.title));
+			this.courseName = `《${this.title}》`;
+			this.courseId = this.resolveCourseId(this.title, 'full');
+		}
 		if (opts && opts.bg) this.bg = decodeURIComponent(opts.bg);
 		if (opts && opts.cover) this.setCover(decodeURIComponent(opts.cover));
 		if (opts && opts.id) {
 			await this.loadCourse(opts.id);
 		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
 			this.applyMathCourse();
+		}
+		if (!this.versions.some(item => item.chapters && item.chapters.length)) {
+			this.versions = this.normalizeVersions({}, this.chapters);
 		}
 	},
 	methods: {
@@ -271,7 +284,7 @@ export default {
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
-			this.versions = course.versions || this.versions;
+			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
 			this.quizzes = course.quizzes || this.quizzes;
 			this.locked = course.subject === 'gaokao-math' ? false : this.locked;
 			this.showFooter = course.subject === 'gaokao-math' ? false : this.showFooter;
@@ -306,7 +319,7 @@ export default {
 			this.progress = course.progress;
 			this.learntCount = course.readStudyCount;
 			this.learntDuration = course.readDuration;
-			this.versions = course.versions;
+			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
 			this.quizzes = course.quizzes;
 			this.locked = false;
 			this.showFooter = false;
@@ -314,7 +327,40 @@ export default {
 		},
 		setVersion(i) {
 			this.versionIndex = i;
-			if (this.versions[i] && this.versions[i].chapters) this.chapters = this.versions[i].chapters;
+			if (this.versions[i] && this.versions[i].chapters && this.versions[i].chapters.length) this.chapters = this.versions[i].chapters;
+		},
+		normalizeVersions(course = {}, fallbackChapters = []) {
+			const baseChapters = course.chapters || fallbackChapters || [];
+			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
+			const normalized = source.map((item, index) => ({
+				...(typeof item === 'object' ? item : { name: item }),
+				name: index === 0 ? '复习加强课' : '技巧绝招课',
+				chapters: (item && item.chapters) || baseChapters
+			}));
+			while (normalized.length < 2) {
+				normalized.push({
+					name: normalized.length === 0 ? '复习加强课' : '技巧绝招课',
+					chapters: baseChapters
+				});
+			}
+			return normalized.slice(0, 2);
+		},
+		resolveCourseId(title = '', kind = 'full') {
+			const level = /中考/.test(title) ? 'zk' : 'gk';
+			const subjects = [
+				['数学', level === 'gk' ? 'math' : 'shuxue'],
+				['语文', 'yuwen'],
+				['英语', 'yingyu'],
+				['物理', 'wuli'],
+				['化学', 'huaxue'],
+				['生物', 'shengwu'],
+				['历史', 'lishi'],
+				['政治', 'zhengzhi'],
+				['地理', 'dili']
+			];
+			const found = subjects.find(([name]) => title.includes(name));
+			const subject = found ? found[1] : 'course';
+			return `${level}-${subject}-${kind}`;
 		},
 		setTab(i) {
 			this.tab = i;
@@ -458,13 +504,24 @@ page { background:#f5f7fa; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
 .update-meta {
 	display:inline-flex;
+	align-items:center;
+	gap:10rpx;
 	margin-top:14rpx;
-	padding:8rpx 16rpx;
-	border:2rpx solid #e25555;
-	color:#c74444;
+	padding:8rpx 14rpx;
+	border:1rpx solid #f3d8c5;
+	border-radius:10rpx;
+	color:#9a4b18;
 	font-size:24rpx;
 	font-weight:700;
-	background:#fffafa;
+	background:#fff8f1;
+}
+.update-label {
+	color:#8a94a3;
+	font-weight:700;
+}
+.update-date {
+	color:#c2410c;
+	font-weight:900;
 }
 .progress-row {
 	display:flex; align-items:center;
@@ -481,8 +538,19 @@ page { background:#f5f7fa; }
 .p-num { font-size:24rpx; color:#666; margin-right:24rpx; }
 .p-extra { font-size:24rpx; color:#888; }
 
-.funcs { background:#fff; display:flex; padding: 30rpx 30rpx 40rpx; border-top:1rpx solid #f1f3f6; }
-.func { width:33.33%; display:flex; flex-direction:column; align-items:center; cursor:pointer; }
+.funcs { background:#fff; display:flex; padding: 26rpx 24rpx 34rpx; border-top:1rpx solid #f1f3f6; gap:18rpx; }
+.func {
+	flex:1;
+	min-height:146rpx;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	border-radius:14rpx;
+	background:#fbfcfe;
+	border:1rpx solid #edf1f5;
+	cursor:pointer;
+}
 .f-ico {
 	width:90rpx; height:90rpx; border-radius:18rpx;
 	display:flex; align-items:center; justify-content:center;
