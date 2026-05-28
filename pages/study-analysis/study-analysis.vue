@@ -43,8 +43,8 @@
 			<view class="empty" v-if="!checkinRecords.length">暂无打卡记录</view>
 			<view class="checkin-row" v-for="item in checkinRecords" :key="item.id">
 				<view>
-					<view class="checkin-date">{{formatDate(item.createdAt || item.date)}}</view>
-					<view class="checkin-course">{{courseNameById(item.courseId)}}</view>
+					<view class="checkin-date">{{formatDate(item.updatedAt || item.createdAt || item.date)}}</view>
+					<view class="checkin-course">全科共享</view>
 				</view>
 				<view class="checkin-content">{{item.content || '已打卡'}}</view>
 			</view>
@@ -139,7 +139,7 @@ export default {
 		}
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		this.studySummary = getStudySummary();
-		this.checkinRecords = (uni.getStorageSync(CHECKIN_KEY) || []).slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+		this.checkinRecords = this.sharedCheckins(uni.getStorageSync(CHECKIN_KEY) || []);
 		await this.loadRemoteData();
 	},
 	methods: {
@@ -191,6 +191,31 @@ export default {
 		courseNameById(courseId = '') {
 			const found = this.courseReports.find(item => item.id === courseId);
 			return found ? found.title : (courseId || '课程学习');
+		},
+		sharedCheckins(records = []) {
+			const byDate = {};
+			(Array.isArray(records) ? records : []).filter(item => this.sameStudentCheckin(item)).forEach(item => {
+				const date = item.date || String(item.updatedAt || item.createdAt || '').slice(0, 10);
+				if (!date) return;
+				if (!byDate[date] || this.checkinTime(item) >= this.checkinTime(byDate[date])) {
+					byDate[date] = { ...item, date };
+				}
+			});
+			return Object.values(byDate).sort((a, b) => this.checkinTime(b) - this.checkinTime(a));
+		},
+		sameStudentCheckin(item = {}) {
+			const recordId = item.studentId || item.userId || item.user_id || item.uid || '';
+			const targetId = this.targetStudentId();
+			if (recordId) return recordId === targetId;
+			return !this.studentId;
+		},
+		targetStudentId() {
+			const user = this.userInfo || {};
+			return this.studentId || user.id || user.userId || user.user_id || user.uid || user.phone || '';
+		},
+		checkinTime(item = {}) {
+			const time = new Date(String(item.updatedAt || item.createdAt || '').replace(' ', 'T')).getTime();
+			return Number.isFinite(time) ? time : 0;
 		},
 		formatDate(value) {
 			const raw = value ? String(value) : '';

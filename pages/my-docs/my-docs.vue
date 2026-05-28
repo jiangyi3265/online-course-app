@@ -141,6 +141,7 @@ export default {
 	data() {
 		return {
 			kw:'',
+			courseTitle:'',
 			courseId:'',
 			list:[],
 			showLogin:false,
@@ -157,7 +158,10 @@ export default {
 	},
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || '';
-		if (opts.kw) this.kw = decodeURIComponent(opts.kw);
+		if (opts.kw) {
+			this.courseTitle = decodeURIComponent(opts.kw);
+			this.kw = this.courseTitle;
+		}
 	},
 	onShow() {
 		if (!isLoggedIn()) {
@@ -170,27 +174,34 @@ export default {
 	methods: {
 		async loadDocs() {
 			try {
-				const docs = await getMyDocs(this.kw);
+				const docs = await getMyDocs(this.activeKeyword(), this.courseId);
 				const withFallbackDocs = this.ensureCategoryDocs(docs || []);
-				this.list = this.filterDocs(withFallbackDocs).map(doc => ({ ...doc }));
+				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => ({ ...doc }));
 			} catch (err) {
 				console.warn('文档接口不可用，使用本地文档', err);
 				this.list = this.filterLocalDocs();
 			}
 		},
 		filterLocalDocs() {
-			const key = this.kw.trim().toLowerCase();
+			const key = this.activeKeyword().toLowerCase();
 			const matched = this.filterDocs(LOCAL_DOCS, key);
 			const list = matched.length ? matched : this.filterDocs(this.createCourseFallbackDocs(), key);
 			return list.map(doc => ({ ...doc }));
 		},
-		filterDocs(docs = [], normalizedKey = '') {
-			const key = normalizedKey || this.kw.trim().toLowerCase();
+		activeKeyword() {
+			const keyword = this.kw.trim();
+			return keyword && keyword === this.courseTitle.trim() ? '' : keyword;
+		},
+		filterDocs(docs = [], normalizedKey = null) {
+			const key = normalizedKey === null ? this.activeKeyword().toLowerCase() : normalizedKey;
 			return docs.filter(doc => {
-				const matchCourse = !this.courseId || !doc.courseId || doc.courseId === this.courseId;
+				const matchCourse = !this.courseId || this.docCourseId(doc) === this.courseId;
 				const matchKeyword = !key || (doc.title || '').toLowerCase().includes(key);
 				return matchCourse && matchKeyword;
 			});
+		},
+		docCourseId(doc = {}) {
+			return doc.courseId || 'gk-math-full';
 		},
 		ensureCategoryDocs(docs = []) {
 			const list = docs.length ? docs : this.filterLocalDocs();
@@ -216,7 +227,7 @@ export default {
 			];
 		},
 		resolveCourseTitle() {
-			const key = this.kw.replace(/[《》]/g, '').trim();
+			const key = (this.courseTitle || this.kw).replace(/[《》]/g, '').trim();
 			if (key) return key;
 			if (/yingyu|english/i.test(this.courseId)) return '英语';
 			if (/yuwen|chinese/i.test(this.courseId)) return '语文';

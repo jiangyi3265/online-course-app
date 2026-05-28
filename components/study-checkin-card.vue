@@ -42,9 +42,9 @@
 					</view>
 				</view>
 
-				<view class="submit" :class="{done: checkedIn}" @click="submitCheckin">
+				<view class="submit" :class="{done: checkedIn, locked: isEditLocked}" @click="submitCheckin">
 					<text class="submit-ico">▣</text>
-					<text>{{checkedIn ? '更新打卡' : '打卡'}}</text>
+					<text>{{submitText}}</text>
 				</view>
 			</view>
 		</view>
@@ -53,7 +53,7 @@
 			<view class="record-head">
 				<view>
 					<view class="panel-title">打卡历史</view>
-					<view class="panel-sub">最近 20 条记录，按时间倒序排列</view>
+					<view class="panel-sub">所有科目共享，每天保留最新一次打卡</view>
 				</view>
 				<view class="record-total">{{courseRecords.length}}条</view>
 			</view>
@@ -69,7 +69,7 @@
 					<view class="record-dot"></view>
 					<view class="record-main">
 						<view class="record-top">
-							<view class="record-date">{{formatDate(item.createdAt)}}</view>
+							<view class="record-date">{{formatDate(item.updatedAt || item.createdAt || item.date)}}</view>
 							<text class="record-count">{{item.imageCount}}张图片</text>
 						</view>
 						<view class="record-text">{{item.content}}</view>
@@ -82,6 +82,7 @@
 
 <script>
 const CHECKIN_KEY = 'studyCheckins';
+const EDIT_LIMIT_MS = 12 * 60 * 60 * 1000;
 const CONTENT_FIELDS = [
 	{ key: 'subjects', label: '今日所学科目：', placeholder: '如：高中数学、物理化学', maxlength: 80 },
 	{ key: 'learned', label: '今日所学内容：', placeholder: '如：函数、天体运动', maxlength: 160 },
@@ -102,6 +103,7 @@ export default {
 	data() {
 		return {
 			checkedIn: false,
+			currentRecord: null,
 			checkinForm: emptyCheckinForm(),
 			images: [],
 			records: []
@@ -119,13 +121,19 @@ export default {
 		hasContentInput() {
 			return CONTENT_FIELDS.some(field => (this.checkinForm[field.key] || '').trim());
 		},
+		isEditLocked() {
+			return this.currentRecord ? Date.now() - this.createdTime(this.currentRecord) > EDIT_LIMIT_MS : false;
+		},
+		submitText() {
+			if (this.isEditLocked) return '超过12小时不可修改';
+			return this.checkedIn ? '更新打卡' : '打卡';
+		},
 		todayText() {
 			return this.formatDate(this.todayKey());
 		},
 		courseRecords() {
-			return this.records
-				.filter(item => this.sameScope(item))
-				.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+			return this.sharedRecords()
+				.sort((a, b) => this.recordTime(b) - this.recordTime(a))
 				.slice(0, 20);
 		}
 	},
@@ -138,8 +146,10 @@ export default {
 	},
 	methods: {
 		loadRecords() {
-			this.records = uni.getStorageSync(CHECKIN_KEY) || [];
-			const todayRecord = this.records.find(item => this.sameScope(item) && item.date === this.todayKey());
+			const stored = uni.getStorageSync(CHECKIN_KEY) || [];
+			this.records = Array.isArray(stored) ? stored : [];
+			const todayRecord = this.courseRecords.find(item => item.date === this.todayKey());
+			this.currentRecord = todayRecord || null;
 			this.checkedIn = !!todayRecord;
 			this.checkinForm = todayRecord ? this.parseContent(todayRecord.content || '') : emptyCheckinForm();
 			this.images = todayRecord ? (todayRecord.images || []) : [];
@@ -156,6 +166,10 @@ export default {
 			this.images.splice(index, 1);
 		},
 		submitCheckin() {
+			if (this.isEditLocked) {
+				uni.showToast({ title:'超过12小时，今日打卡不能修改', icon:'none' });
+				return;
+			}
 			if (!this.hasContentInput) {
 				uni.showToast({ title:'请填写学习内容', icon:'none' });
 				return;
@@ -164,22 +178,44 @@ export default {
 				uni.showToast({ title:'请上传学习图片', icon:'none' });
 				return;
 			}
+			const existing = this.currentRecord;
+			const now = this.localDateTime();
 			const record = {
-				id: `checkin-${Date.now()}`,
-				courseId: this.courseId || 'gk-math-full',
-				studentId: this.studentId || '',
+				...(existing || {}),
+				id: existing && existing.id ? existing.id : `checkin-${Date.now()}`,
+				courseId: this.courseId || '',
+				studentId: this.scopeStudentId(),
 				content: this.contentText,
 				images: this.images,
 				imageCount: this.images.length,
 				date: this.todayKey(),
-				createdAt: this.localDateTime()
+				createdAt: existing && existing.createdAt ? existing.createdAt : now,
+				updatedAt: now
 			};
-			const next = (uni.getStorageSync(CHECKIN_KEY) || []).filter(item => !(this.sameScope(item) && item.date === record.date));
+			const stored = uni.getStorageSync(CHECKIN_KEY) || [];
+			const next = (Array.isArray(stored) ? stored : []).filter(item => !(this.sameScope(item) && this.recordDate(item) === record.date));
 			next.unshift(record);
 			uni.setStorageSync(CHECKIN_KEY, next);
 			this.records = next;
+			this.currentRecord = record;
 			this.checkedIn = true;
 			uni.showToast({ title:'打卡成功', icon:'success' });
+		},
+		sharedRecords() {
+			const byDate = {};
+			this.records.filter(item => this.sameScope(item)).forEach(item => {
+				const date = this.recordDate(item);
+				if (!date) return;
+				const normalized = {
+					...item,
+					date,
+					imageCount: item.imageCount !== undefined ? item.imageCount : ((item.images || []).length)
+				};
+				if (!byDate[date] || this.recordTime(normalized) >= this.recordTime(byDate[date])) {
+					byDate[date] = normalized;
+				}
+			});
+			return Object.values(byDate);
 		},
 		parseContent(content = '') {
 			const form = emptyCheckinForm();
@@ -202,7 +238,36 @@ export default {
 			return form;
 		},
 		sameScope(item = {}) {
-			return (item.courseId || 'gk-math-full') === (this.courseId || 'gk-math-full') && (item.studentId || '') === (this.studentId || '');
+			const recordId = this.recordStudentId(item);
+			if (recordId) return recordId === this.scopeStudentId();
+			return !this.studentId;
+		},
+		scopeStudentId() {
+			const user = this.storedUserInfo();
+			return this.studentId || user.id || user.userId || user.user_id || user.uid || user.phone || '';
+		},
+		recordStudentId(item = {}) {
+			return item.studentId || item.userId || item.user_id || item.uid || '';
+		},
+		storedUserInfo() {
+			return uni.getStorageSync('userInfo') || {};
+		},
+		recordDate(item = {}) {
+			return item.date || this.dateKeyFrom(item.updatedAt || item.createdAt);
+		},
+		recordTime(item = {}) {
+			const raw = item.updatedAt || item.createdAt || '';
+			const time = raw ? new Date(String(raw).replace(' ', 'T')).getTime() : 0;
+			return Number.isFinite(time) ? time : 0;
+		},
+		createdTime(item = {}) {
+			const raw = item.createdAt || item.updatedAt || '';
+			const time = raw ? new Date(String(raw).replace(' ', 'T')).getTime() : 0;
+			return Number.isFinite(time) ? time : 0;
+		},
+		dateKeyFrom(value = '') {
+			const match = String(value).match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+			return match ? `${match[1]}-${this.pad(match[2])}-${this.pad(match[3])}` : '';
 		},
 		todayKey() {
 			const now = new Date();
@@ -285,6 +350,7 @@ export default {
 .remove { position:absolute; top:6rpx; right:6rpx; width:34rpx; height:34rpx; line-height:32rpx; text-align:center; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:28rpx; }
 .submit { margin-top:44rpx; height:88rpx; border-radius:44rpx; display:flex; align-items:center; justify-content:center; gap:16rpx; background:#458af7; color:#fff; font-size:34rpx; font-weight:900; }
 .submit.done { background:#458af7; }
+.submit.locked { background:#aab4c3; }
 .submit-ico { font-size:34rpx; }
 .record-panel {
 	max-width:640rpx;

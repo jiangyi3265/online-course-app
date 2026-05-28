@@ -160,8 +160,8 @@ export function getMyCourses() {
 	return request('/my/courses')
 }
 
-export function getMyDocs(kw = '') {
-	return request('/my/docs', { params: { kw } })
+export function getMyDocs(kw = '', courseId = '') {
+	return request('/my/docs', { params: { kw, courseId } })
 }
 
 export function getStudySummaryApi() {
