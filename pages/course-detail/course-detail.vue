@@ -128,7 +128,7 @@
 		</view>
 
 		<view class="minor-panel" v-else>
-			<view class="minor-title">复习加强</view>
+			<view class="minor-title">{{displayCourseName}}</view>
 			<view class="minor-text">权限未开通，请联系授权。</view>
 			<view class="minor-btn locked" @click="requestPermission">申请授权</view>
 		</view>
@@ -138,7 +138,7 @@
 </template>
 
 <script>
-import { getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
+import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
 import { getCourse } from '@/common/api.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
@@ -187,7 +187,7 @@ export default {
 			return !/[-_]detail\.(png|jpe?g|webp)$/i.test(this.cover);
 		},
 		displayCourseName() {
-			return stripCourseYear(this.courseName);
+			return cleanCourseDisplayName(this.courseName, this.title);
 		},
 		displayUpdateDate() {
 			return this.formatCourseDate(this.updatedAt);

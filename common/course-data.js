@@ -36,6 +36,14 @@ export function stripCourseYear(value = '') {
 		.trim();
 }
 
+export function cleanCourseDisplayName(value = '', fallback = '') {
+	const text = stripCourseYear(value || fallback)
+		.replace(/[《》]/g, '')
+		.replace(/\s*试听课\s*/g, '')
+		.trim();
+	return text || stripCourseYear(fallback).replace(/[《》]/g, '').replace(/\s*试听课\s*/g, '').trim();
+}
+
 export const OFFICIAL_USER = {
 	phone: '15585827319',
 	password: 'dyr594200',

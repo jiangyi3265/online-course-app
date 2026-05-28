@@ -128,7 +128,7 @@
 		<view class="reinforce-section" v-if="tab===3">
 			<view class="reinforce-head">
 				<view>
-					<view class="reinforce-title">高中数学</view>
+					<view class="reinforce-title">{{displayCourseName}}</view>
 					<view class="reinforce-sub">共{{reinforceList.length || 17}}个知识点</view>
 				</view>
 				<view class="reinforce-time">共xx小时xx分钟</view>
@@ -167,7 +167,7 @@
 </template>
 
 <script>
-import { getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
+import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, getReinforce } from '@/common/api.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
@@ -236,7 +236,7 @@ export default {
 			return !/[-_]detail\.(png|jpe?g|webp)$/i.test(this.cover);
 		},
 		displayCourseName() {
-			return stripCourseYear(this.courseName);
+			return cleanCourseDisplayName(this.courseName, this.title);
 		},
 		displayUpdateDate() {
 			return this.formatCourseDate(this.updatedAt);
