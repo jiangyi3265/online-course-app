@@ -42,54 +42,56 @@
 
 		<study-checkin-card v-if="showCheckinPanel" :course-id="courseId" />
 
-		<!-- Tabs -->
-		<view class="tabs">
-			<view class="tab" v-for="(t,i) in projectTabs" :key="t" :class="{active: tab===i}" @click="setTab(i)">{{t}}</view>
-		</view>
-
-		<!-- 技巧干货 -->
-		<block v-if="tab===0">
-			<view class="chip-row">
-				<view class="chip" v-for="(v,i) in versions" :key="v.name || v" :class="{active: versionIndex===i}" @click="setVersion(i)">{{versionLabel(v, i)}}</view>
+		<view class="course-actions-area" @click="collapseCheckinPanel">
+			<!-- Tabs -->
+			<view class="tabs">
+				<view class="tab" v-for="(t,i) in projectTabs" :key="t" :class="{active: tab===i}" @click="setTab(i)">{{t}}</view>
 			</view>
 
-			<view class="chap-list">
-				<view class="chap" v-for="(c,i) in chapters" :key="i">
-					<view class="chap-head" @click="toggle(i)">
-						<text class="chap-title">{{c.title}}</text>
-						<view class="chap-right">
-							<text class="lock" v-if="locked">🔒</text>
-							<text class="caret" :class="{open: c.open}">{{c.open ? '⌄' : '›'}}</text>
-						</view>
-					</view>
-					<view class="chap-sub" v-if="c.open">
-						<view class="sub-row" v-for="(s,j) in c.items" :key="j">
-							<text class="sub-title">{{s.title || s}}</text>
-							<view class="sub-right">
+			<!-- 技巧干货 -->
+			<block v-if="tab===0">
+				<view class="chip-row">
+					<view class="chip" v-for="(v,i) in versions" :key="v.name || v" :class="{active: versionIndex===i}" @click="setVersion(i)">{{versionLabel(v, i)}}</view>
+				</view>
+
+				<view class="chap-list">
+					<view class="chap" v-for="(c,i) in chapters" :key="i">
+						<view class="chap-head" @click="toggle(i)">
+							<text class="chap-title">{{c.title}}</text>
+							<view class="chap-right">
 								<text class="lock" v-if="locked">🔒</text>
-								<text class="caret">›</text>
+								<text class="caret" :class="{open: c.open}">{{c.open ? '⌄' : '›'}}</text>
 							</view>
-							<view class="lesson-children" v-if="s.children && s.children.length">
-								<view class="lesson-child" v-for="(child,k) in s.children" :key="k">
-									<view class="child-left">
-										<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
-										<view>
-											<view class="child-name">{{childName(child, c, s, j)}}</view>
-											<view class="child-progress">已学习：{{progressText(child)}}</view>
+						</view>
+						<view class="chap-sub" v-if="c.open">
+							<view class="sub-row" v-for="(s,j) in c.items" :key="j">
+								<text class="sub-title">{{s.title || s}}</text>
+								<view class="sub-right">
+									<text class="lock" v-if="locked">🔒</text>
+									<text class="caret">›</text>
+								</view>
+								<view class="lesson-children" v-if="s.children && s.children.length">
+									<view class="lesson-child" v-for="(child,k) in s.children" :key="k">
+										<view class="child-left">
+											<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
+											<view>
+												<view class="child-name">{{childName(child, c, s, j)}}</view>
+												<view class="child-progress">已学习：{{progressText(child)}}</view>
+											</view>
 										</view>
-									</view>
-									<view class="child-actions">
-										<view class="child-btn go" @click.stop="goLesson(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
-										<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
-									</view>
-									<view class="knowledge-panel" v-if="isKnowledgeChild(child)">
-										<view class="knowledge-item" @click.stop="goLesson(c, s, child, j)">
-											<text class="knowledge-type video">视频</text>
-											<text class="knowledge-name">视频课程</text>
+										<view class="child-actions">
+											<view class="child-btn go" @click.stop="goLesson(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
+											<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 										</view>
-										<view class="knowledge-item" @click.stop="goDocs">
-											<text class="knowledge-type doc">讲义</text>
-											<text class="knowledge-name">文字讲义</text>
+										<view class="knowledge-panel" v-if="isKnowledgeChild(child)">
+											<view class="knowledge-item" @click.stop="goLesson(c, s, child, j)">
+												<text class="knowledge-type video">视频</text>
+												<text class="knowledge-name">视频课程</text>
+											</view>
+											<view class="knowledge-item" @click.stop="goDocs">
+												<text class="knowledge-type doc">讲义</text>
+												<text class="knowledge-name">文字讲义</text>
+											</view>
 										</view>
 									</view>
 								</view>
@@ -97,62 +99,62 @@
 						</view>
 					</view>
 				</view>
-			</view>
-		</block>
+			</block>
 
-		<!-- 章节扫雷 -->
-		<block v-if="tab===1">
-			<view class="quiz-list">
-				<view class="quiz" v-for="(q,i) in quizzes" :key="i">
-					<view class="quiz-left">
+			<!-- 章节扫雷 -->
+			<block v-if="tab===1">
+				<view class="quiz-list">
+					<view class="quiz" v-for="(q,i) in quizzes" :key="i">
+						<view class="quiz-left">
 							<view class="q-mark">测</view>
 							<view>
 								<view class="q-name">{{q.name}}</view>
 								<view class="q-status">{{q.status || '未学习'}}</view>
 							</view>
 						</view>
-					<view class="quiz-right">
-						<view class="download" @click="goDocs">下载</view>
-						<view class="q-btn" @click="goQuiz(q)">{{q.action || '去测评'}}</view>
+						<view class="quiz-right">
+							<view class="download" @click="goDocs">下载</view>
+							<view class="q-btn" @click="goQuiz(q)">{{q.action || '去测评'}}</view>
+						</view>
 					</view>
 				</view>
+			</block>
+
+			<view class="minor-panel" v-if="tab===2">
+				<view class="minor-title">错题与巩固</view>
+				<view class="minor-text">当前课程错题共25道，可继续巩固薄弱题型。</view>
+				<view class="minor-btn" @click="goWrongBook">进入错题与巩固</view>
 			</view>
-		</block>
 
-		<view class="minor-panel" v-if="tab===2">
-			<view class="minor-title">错题与巩固</view>
-			<view class="minor-text">当前课程错题共25道，可继续巩固薄弱题型。</view>
-			<view class="minor-btn" @click="goWrongBook">进入错题与巩固</view>
-		</view>
-
-		<view class="reinforce-section" v-if="tab===3">
-			<view class="reinforce-head">
-				<view>
-					<view class="reinforce-title">{{displayCourseName}}</view>
-					<view class="reinforce-sub">共{{reinforceList.length || 17}}个知识点</view>
+			<view class="reinforce-section" v-if="tab===3">
+				<view class="reinforce-head">
+					<view>
+						<view class="reinforce-title">{{displayCourseName}}</view>
+						<view class="reinforce-sub">共{{reinforceList.length || 17}}个知识点</view>
+					</view>
+					<view class="reinforce-time">共xx小时xx分钟</view>
 				</view>
-				<view class="reinforce-time">共xx小时xx分钟</view>
-			</view>
-			<view class="reinforce-empty" v-if="!reinforceList.length">暂无复习加强内容</view>
-			<view class="reinforce-row" v-for="item in reinforceList" :key="item.id">
-				<view class="point-badge">知</view>
-				<view class="point-main">
-					<view class="point-title">{{item.title}}</view>
-					<view class="point-status">{{item.status || '未学'}}-添加日期：{{formatDateTime(item.createdAt)}}</view>
+				<view class="reinforce-empty" v-if="!reinforceList.length">暂无复习加强内容</view>
+				<view class="reinforce-row" v-for="item in reinforceList" :key="item.id">
+					<view class="point-badge">知</view>
+					<view class="point-main">
+						<view class="point-title">{{item.title}}</view>
+						<view class="point-status">{{item.status || '未学'}}-添加日期：{{formatDateTime(item.createdAt)}}</view>
+					</view>
+					<view class="point-btn" @click="startReinforce(item)">去学习</view>
 				</view>
-				<view class="point-btn" @click="startReinforce(item)">去学习</view>
 			</view>
-		</view>
 
-		<view style="height:160rpx"></view>
+			<view style="height:160rpx"></view>
 
-		<!-- 底部开通栏 -->
-		<view class="footer" v-if="showFooter">
-			<view class="apply" @click="showApplyAuth">
-				<view class="apply-ico">📦</view>
-				<text class="apply-text">申请授权</text>
+			<!-- 底部开通栏 -->
+			<view class="footer" v-if="showFooter">
+				<view class="apply" @click="showApplyAuth">
+					<view class="apply-ico">📦</view>
+					<text class="apply-text">申请授权</text>
+				</view>
+				<view class="active" @click="goActivate">激活课程</view>
 			</view>
-			<view class="active" @click="goActivate">激活课程</view>
 		</view>
 
 		<view class="auth-mask" v-if="showAuth">
@@ -302,7 +304,13 @@ export default {
 				this.coverRatio = detail.width / detail.height;
 			}
 		},
-		toggle(i) { this.chapters[i].open = !this.chapters[i].open; },
+		collapseCheckinPanel() {
+			if (this.showCheckinPanel) this.showCheckinPanel = false;
+		},
+		toggle(i) {
+			this.collapseCheckinPanel();
+			this.chapters[i].open = !this.chapters[i].open;
+		},
 		applyMathCourse() {
 			const course = getGaokaoMathCourse('full');
 			this.courseId = 'gk-math-full';
@@ -326,6 +334,7 @@ export default {
 			this.setVersion(0);
 		},
 		setVersion(i) {
+			this.collapseCheckinPanel();
 			this.versionIndex = i;
 			if (this.versions[i] && this.versions[i].chapters && this.versions[i].chapters.length) this.chapters = this.versions[i].chapters;
 		},
@@ -363,6 +372,7 @@ export default {
 			return `${level}-${subject}-${kind}`;
 		},
 		setTab(i) {
+			this.collapseCheckinPanel();
 			this.tab = i;
 			if (i === 3) this.loadReinforce();
 		},
@@ -426,19 +436,46 @@ export default {
 			const match = raw.match(/^\s*(\d+)[.．、]/);
 			return match ? match[1] : String((lessonIndex || 0) + 1);
 		},
-		goDocs() { uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` }); },
+		goDocs() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` });
+		},
 		goPlan() {
 			this.showCheckinPanel = !this.showCheckinPanel;
 			if (this.showCheckinPanel) this.tab = 0;
 		},
-		goReport() { uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` }); },
-		goAi(context) { uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` }); },
-		goQuiz(q) { uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` }); },
-		goWrongBook() { uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}&title=${encodeURIComponent(this.displayCourseName)}` }); },
-		goReinforce() { uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` }); },
-		startReinforce(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}` }); },
-		goActivate() { uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}` }); },
-		showApplyAuth() { this.showAuth = true; },
+		goReport() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` });
+		},
+		goAi(context) {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` });
+		},
+		goQuiz(q) {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` });
+		},
+		goWrongBook() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}&title=${encodeURIComponent(this.displayCourseName)}` });
+		},
+		goReinforce() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` });
+		},
+		startReinforce(item) {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}` });
+		},
+		goActivate() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}` });
+		},
+		showApplyAuth() {
+			this.collapseCheckinPanel();
+			this.showAuth = true;
+		},
 		copyWechat() {
 			uni.setClipboardData({
 				data: this.wechatId,
@@ -446,6 +483,7 @@ export default {
 			});
 		},
 		goLesson(chapter, lesson, child, lessonIndex) {
+			this.collapseCheckinPanel();
 			if (child.type === 2) {
 				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex) : (lesson.title || lesson);
 				const type = this.versionIndex === 0 ? 'reinforce' : 'practice';

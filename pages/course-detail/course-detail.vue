@@ -65,75 +65,77 @@
 
 		<study-checkin-card v-if="showCheckinPanel" :course-id="courseId" />
 
-		<view class="tabs">
-			<view class="tab" v-for="(t,i) in detailTabs" :key="t" :class="{active: activeTab===i}" @click="activeTab=i">{{t}}</view>
-		</view>
-
-		<block v-if="activeTab===0">
-			<view class="version-chips">
-				<view class="version-chip" v-for="(item, index) in versionChips" :key="item" :class="{active: versionIndex === index}" @click="setVersion(index)">{{item}}</view>
+		<view class="course-actions-area" @click="collapseCheckinPanel">
+			<view class="tabs">
+				<view class="tab" v-for="(t,i) in detailTabs" :key="t" :class="{active: activeTab===i}" @click="setTab(i)">{{t}}</view>
 			</view>
 
-			<view class="chapter" v-for="(c,i) in chapters" :key="i">
-				<view class="ch-head" @click="toggle(i)">
-					<text class="ch-title">{{c.title}}</text>
-					<view class="ch-right">
-						<text class="trial" v-if="c.audition !== false">试听</text>
-						<text class="caret">{{c.open ? '▾' : '›'}}</text>
-					</view>
+			<block v-if="activeTab===0">
+				<view class="version-chips">
+					<view class="version-chip" v-for="(item, index) in versionChips" :key="item" :class="{active: versionIndex === index}" @click="setVersion(index)">{{item}}</view>
 				</view>
-				<block v-if="c.open">
-					<view class="ch-body" v-for="(s,j) in c.children" :key="j">
-						<view class="ch-left">
-							<view class="ch-mark" :class="{practice:s.type===2}">{{s.type===2 ? '练' : '学'}}</view>
-							<view>
-								<view class="ch-name">{{childName(s)}}</view>
-								<view class="ch-progress">已学习：{{progressText(s)}}</view>
+
+				<view class="chapter" v-for="(c,i) in chapters" :key="i">
+					<view class="ch-head" @click="toggle(i)">
+						<text class="ch-title">{{c.title}}</text>
+						<view class="ch-right">
+							<text class="trial" v-if="c.audition !== false">试听</text>
+							<text class="caret">{{c.open ? '▾' : '›'}}</text>
+						</view>
+					</view>
+					<block v-if="c.open">
+						<view class="ch-body" v-for="(s,j) in c.children" :key="j">
+							<view class="ch-left">
+								<view class="ch-mark" :class="{practice:s.type===2}">{{s.type===2 ? '练' : '学'}}</view>
+								<view>
+									<view class="ch-name">{{childName(s)}}</view>
+									<view class="ch-progress">已学习：{{progressText(s)}}</view>
+								</view>
+							</view>
+								<view class="ch-actions">
+									<view class="btn-go" @click.stop="goLesson(c, s)">{{s.type===2 ? '去练习' : '去学习'}}</view>
+								<view class="btn-ai" @click.stop="goAi(c.title)">AI问答</view>
 							</view>
 						</view>
-							<view class="ch-actions">
-								<view class="btn-go" @click.stop="goLesson(c, s)">{{s.type===2 ? '去练习' : '去学习'}}</view>
-							<view class="btn-ai" @click.stop="goAi(c.title)">AI问答</view>
+					</block>
+				</view>
+			</block>
+
+			<view class="quiz-list" v-else-if="activeTab===1">
+				<view class="minor-panel" v-if="isChineseTrial">
+					<view class="minor-title">章节扫雷</view>
+					<view class="minor-text">权限未开通，请联系授权。</view>
+					<view class="minor-btn locked" @click="requestPermission">申请授权</view>
+				</view>
+				<template v-else>
+					<view class="trial-tip">试听课仅开放部分章节扫雷内容，完整测评请开通课程。</view>
+					<view class="quiz" v-for="(q,i) in trialQuizzes" :key="i">
+					<view class="quiz-left">
+						<view class="q-mark">测</view>
+						<view>
+							<view class="q-name">{{q.name}}</view>
+							<view class="q-status">{{q.status}}</view>
 						</view>
 					</view>
-				</block>
+					<view class="q-btn" @click="goQuiz(q)">{{q.action || '去测评'}}</view>
+					</view>
+				</template>
 			</view>
-		</block>
 
-		<view class="quiz-list" v-else-if="activeTab===1">
-			<view class="minor-panel" v-if="isChineseTrial">
-				<view class="minor-title">章节扫雷</view>
+			<view class="minor-panel" v-else-if="activeTab===2">
+				<view class="minor-title">错题与巩固</view>
 				<view class="minor-text">权限未开通，请联系授权。</view>
 				<view class="minor-btn locked" @click="requestPermission">申请授权</view>
 			</view>
-			<template v-else>
-				<view class="trial-tip">试听课仅开放部分章节扫雷内容，完整测评请开通课程。</view>
-				<view class="quiz" v-for="(q,i) in trialQuizzes" :key="i">
-				<view class="quiz-left">
-					<view class="q-mark">测</view>
-					<view>
-						<view class="q-name">{{q.name}}</view>
-						<view class="q-status">{{q.status}}</view>
-					</view>
-				</view>
-				<view class="q-btn" @click="goQuiz(q)">{{q.action || '去测评'}}</view>
-				</view>
-			</template>
-		</view>
 
-		<view class="minor-panel" v-else-if="activeTab===2">
-			<view class="minor-title">错题与巩固</view>
-			<view class="minor-text">权限未开通，请联系授权。</view>
-			<view class="minor-btn locked" @click="requestPermission">申请授权</view>
-		</view>
+			<view class="minor-panel" v-else>
+				<view class="minor-title">{{displayCourseName}}</view>
+				<view class="minor-text">权限未开通，请联系授权。</view>
+				<view class="minor-btn locked" @click="requestPermission">申请授权</view>
+			</view>
 
-		<view class="minor-panel" v-else>
-			<view class="minor-title">{{displayCourseName}}</view>
-			<view class="minor-text">权限未开通，请联系授权。</view>
-			<view class="minor-btn locked" @click="requestPermission">申请授权</view>
+			<view style="height:60rpx"></view>
 		</view>
-
-		<view style="height:60rpx"></view>
 	</view>
 </template>
 
@@ -273,8 +275,19 @@ export default {
 			this.setVersion(0);
 			this.quizzes = course.quizzes;
 		},
-		toggle(i) { this.chapters[i].open = !this.chapters[i].open; },
+		collapseCheckinPanel() {
+			if (this.showCheckinPanel) this.showCheckinPanel = false;
+		},
+		toggle(i) {
+			this.collapseCheckinPanel();
+			this.chapters[i].open = !this.chapters[i].open;
+		},
+		setTab(i) {
+			this.collapseCheckinPanel();
+			this.activeTab = i;
+		},
 		setVersion(index) {
+			this.collapseCheckinPanel();
 			this.versionIndex = index;
 			const version = this.courseVersions[index];
 			if (version && version.chapters) this.chapters = version.chapters;
@@ -335,17 +348,36 @@ export default {
 				}, 0);
 			}, 0);
 		},
-		goDocs() { uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` }); },
+		goDocs() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` });
+		},
 		goPlan() {
 			this.showCheckinPanel = !this.showCheckinPanel;
 			if (this.showCheckinPanel) this.activeTab = 0;
 		},
-		goReport() { uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` }); },
-		goAi(context) { uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` }); },
-		goQuiz(q) { uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` }); },
-		goWrongBook() { uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` }); },
-		goReinforce() { uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` }); },
+		goReport() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` });
+		},
+		goAi(context) {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` });
+		},
+		goQuiz(q) {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` });
+		},
+		goWrongBook() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` });
+		},
+		goReinforce() {
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` });
+		},
 		goLesson(chapter, item) {
+			this.collapseCheckinPanel();
 			if (item.type === 2) {
 				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(chapter.title)}` });
 				return;
@@ -367,6 +399,7 @@ export default {
 			return item.name;
 		},
 		requestPermission() {
+			this.collapseCheckinPanel();
 			uni.showModal({ title:'权限未开通', content:'权限未开通，请联系授权。', showCancel:false });
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); }
