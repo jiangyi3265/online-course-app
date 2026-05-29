@@ -18,7 +18,7 @@
 				<view class="summary-value">{{wrongCount}}道</view>
 				<view class="summary-tip">{{readOnly ? '只读统计' : '进入错题复盘'}}</view>
 			</view>
-			<view class="summary-item">
+			<view class="summary-item" :class="metricWarningClass({ label: '正确率', value: accuracyText })">
 				<view class="summary-label">正确率</view>
 				<view class="summary-value">{{accuracyText}}</view>
 				<view class="summary-tip">按已做题统计</view>
@@ -51,7 +51,7 @@
 				<view class="report-stat-row" v-for="item in reportDetailRows" :key="item.name">
 					<view class="report-stat-title">{{item.name}}</view>
 					<view class="report-metrics">
-						<view class="report-metric" v-for="metric in item.metrics" :key="metric.label">
+						<view class="report-metric" :class="metricWarningClass(metric)" v-for="metric in item.metrics" :key="metric.label">
 							<text>{{metric.label}}</text>
 							<text class="metric-value">{{metric.value}}</text>
 						</view>
@@ -92,19 +92,6 @@
 		</view>
 
 		<view class="panel">
-			<view class="panel-title">平均得分（满分 100）</view>
-			<view class="score-line"><text>{{averageScore}}分</text><view class="score-bar"><view :style="{width: averageScore + '%'}"></view></view></view>
-		</view>
-
-		<view class="panel">
-			<view class="panel-title">章节扫雷</view>
-			<view class="row" v-for="item in chapterRows" :key="item.id || item.title">
-				<text>{{item.title || item.name}}</text><text>{{item.score || item.averageScore || 0}}分</text>
-			</view>
-			<view class="empty" v-if="!chapterRows.length">暂无章节扫雷记录</view>
-		</view>
-
-		<view class="panel">
 			<view class="panel-title">练习统计</view>
 			<view class="row" v-for="item in recentRows" :key="item.id || item.createdAt || item.title">
 				<text>{{item.title}}</text><text>平均{{item.averageScore || item.score || 0}}分，错题{{item.wrongCount || 0}}道</text>
@@ -116,14 +103,6 @@
 			<view class="panel-title">线下试卷自评</view>
 			<view class="row" v-for="item in offlineRows" :key="item.id">
 				<text>{{item.title}}</text><text>{{item.score}}/{{item.totalScore}}分，错题{{item.wrongCount}}道</text>
-			</view>
-		</view>
-
-		<view class="panel" v-if="plateRows.length">
-			<view class="panel-title">学习报告细节</view>
-			<view class="plate-row" v-for="item in plateRows" :key="item.name">
-				<text>{{item.name}}</text>
-				<view class="plate-score"><text>{{item.score}}分</text><small>{{item.level && item.level.label}}</small></view>
 			</view>
 		</view>
 
@@ -190,22 +169,12 @@ export default {
 			if (this.report.wrongCount !== undefined) return this.report.wrongCount + offlineWrong;
 			return this.recentRows.reduce((sum, item) => sum + (Number(item.wrongCount) || 0), 0);
 		},
-		averageScore() {
-			const value = Number(this.report.averageScore);
-			if (!Number.isNaN(value) && value > 0 && !this.offlineRows.length) return Math.min(100, value);
-			const rows = this.recentRows;
-			if (!rows.length) return 0;
-			return Math.round(rows.reduce((sum, item) => sum + (Number(item.averageScore || item.score) || 0), 0) / rows.length);
-		},
 		accuracyText() {
 			if (this.report.accuracy !== undefined && !this.offlineRows.length) return `${this.report.accuracy}%`;
 			const rows = (this.report.attempts || []).concat(this.offlineRows);
 			const total = rows.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
 			const correct = rows.reduce((sum, item) => sum + (Number(item.correct) || 0), 0);
 			return total ? `${Math.round(correct / total * 100)}%` : '0%';
-		},
-		plateRows() {
-			return (this.report.summary && this.report.summary.plateScores) || [];
 		},
 		suggestions() {
 			return this.report.suggestions || [];
@@ -346,6 +315,21 @@ export default {
 			if (total) return `${Math.round(correct * 100 / total)}%`;
 			return rows.length ? `${Math.max(0, 100 - this.sumField(rows, 'wrongCount') * 10)}%` : '0%';
 		},
+		metricWarningClass(metric = {}) {
+			const label = String(metric.label || '');
+			if (!/(平均得分|正确率)/.test(label)) return '';
+			return `metric-warning metric-warning-${this.metricWarningLevel(metric.value)}`;
+		},
+		metricWarningLevel(value = '') {
+			const score = this.metricNumber(value);
+			if (score >= 70) return 'success';
+			if (score >= 60) return 'warning';
+			return 'danger';
+		},
+		metricNumber(value = '') {
+			const match = String(value).match(/\d+(?:\.\d+)?/);
+			return match ? Number(match[0]) : 0;
+		},
 		localReport() {
 			return {
 				courseTitle: this.courseId.includes('yingyu') ? '高考英语' : '高考数学',
@@ -415,6 +399,12 @@ page { background:#f5f7fa; }
 .report-metrics { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
 .report-metric { min-height:70rpx; border-radius:10rpx; background:#f8fafc; padding:12rpx; color:#667085; font-size:22rpx; box-sizing:border-box; }
 .metric-value { display:block; margin-top:6rpx; color:#1f2933; font-size:25rpx; font-weight:900; }
+.metric-warning-danger { background:#fff5f5; border:1rpx solid #ffd6d9; }
+.metric-warning-warning { background:#fff8e6; border:1rpx solid #f4d38a; }
+.metric-warning-success { background:#effaf4; border:1rpx solid #bfe6d1; }
+.metric-warning-danger .summary-value, .metric-warning-danger .metric-value { color:#e5484d; }
+.metric-warning-warning .summary-value, .metric-warning-warning .metric-value { color:#b7791f; }
+.metric-warning-success .summary-value, .metric-warning-success .metric-value { color:#16a36b; }
 .practice-row, .row, .record { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-bottom:1rpx solid #eef0f3; font-size:27rpx; color:#333; }
 .practice-row:last-child, .row:last-child, .record:last-child { border-bottom:0; }
 .practice-detail { margin-top:18rpx; padding:20rpx; border-radius:14rpx; background:#f8fafc; }
@@ -429,13 +419,6 @@ page { background:#f5f7fa; }
 .record-grid view { background:#f8fafc; border-radius:12rpx; padding:16rpx 8rpx; text-align:center; }
 .record-grid text { display:block; color:#1677ff; font-size:27rpx; font-weight:900; }
 .record-grid small { display:block; color:#8a94a3; font-size:20rpx; margin-top:6rpx; }
-.score-line { display:flex; align-items:center; gap:18rpx; color:#1677ff; font-size:40rpx; font-weight:900; }
-.score-bar { flex:1; height:14rpx; background:#edf0f3; border-radius:10rpx; overflow:hidden; }
-.score-bar view { height:100%; background:#20b486; border-radius:10rpx; }
-.plate-row { display:flex; align-items:center; justify-content:space-between; padding:18rpx 0; border-bottom:1rpx solid #eef0f3; color:#333; font-size:27rpx; }
-.plate-row:last-child { border-bottom:0; }
-.plate-score { display:flex; align-items:center; gap:12rpx; color:#1677ff; font-weight:900; }
-.plate-score small { color:#697386; font-size:22rpx; font-weight:700; }
 .suggestion { padding:16rpx 0; border-bottom:1rpx solid #eef0f3; color:#333; font-size:27rpx; line-height:1.5; }
 .suggestion:last-child { border-bottom:0; }
 .empty { color:#8a94a3; font-size:26rpx; padding:20rpx 0; }
