@@ -480,9 +480,25 @@ page { background:#eef3f7; }
 	.code-btn {
 		margin-top:0;
 	}
-	.student-meta,
-	.metric-row {
+	.student-meta {
 		grid-template-columns:1fr;
+	}
+	.metric-row {
+		grid-template-columns:repeat(3, minmax(0, 1fr));
+		gap:8rpx;
+	}
+	.metric {
+		min-height:74rpx;
+		padding:10rpx 4rpx;
+		border-radius:12rpx;
+	}
+	.metric text {
+		font-size:26rpx;
+	}
+	.metric small {
+		margin-top:4rpx;
+		font-size:20rpx;
+		white-space:nowrap;
 	}
 	.meta-date {
 		display:block;
