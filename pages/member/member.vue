@@ -564,4 +564,64 @@ page { background:#eef3f7; }
 .func:nth-child(7) .f-ico::before {
 	border-color:#7c3aed;
 }
+
+/* Invite card typography polish */
+.invite {
+	align-items:center;
+	min-height:142rpx;
+	padding:26rpx 28rpx;
+	gap:22rpx;
+}
+.invite-l {
+	max-width:calc(100% - 170rpx);
+}
+.invite-t {
+	font-size:32rpx;
+	line-height:1.15;
+	letter-spacing:0;
+}
+.invite-s {
+	max-width:30ch;
+	margin-top:8rpx;
+	font-size:23rpx;
+	font-weight:700;
+	line-height:1.42;
+	letter-spacing:0;
+	text-wrap:balance;
+}
+.invite-btn {
+	min-width:132rpx;
+	height:58rpx;
+	line-height:58rpx;
+	padding:0 22rpx;
+	text-align:center;
+	font-size:24rpx;
+}
+@media screen and (max-width: 430px) {
+	.invite {
+		flex-direction:row;
+		align-items:center;
+		min-height:132rpx;
+		padding:22rpx 24rpx;
+	}
+	.invite-l {
+		max-width:calc(100% - 144rpx);
+	}
+	.invite-t {
+		font-size:30rpx;
+	}
+	.invite-s {
+		max-width:24ch;
+		font-size:22rpx;
+		line-height:1.36;
+	}
+	.invite-btn {
+		align-self:center;
+		min-width:118rpx;
+		height:54rpx;
+		line-height:54rpx;
+		padding:0 18rpx;
+		font-size:23rpx;
+	}
+}
 </style>
