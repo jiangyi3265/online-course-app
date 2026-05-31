@@ -659,5 +659,20 @@ page { background:#eef3f7; }
 	.source-chip {
 		flex-basis:calc(50% - 8rpx);
 	}
+	.status-panel {
+		grid-template-columns:repeat(3, minmax(0, 1fr));
+		gap:8rpx;
+		padding:14rpx;
+	}
+	.status-panel.two {
+		grid-template-columns:repeat(2, minmax(0, 1fr));
+	}
+	.status-item {
+		min-height:96rpx;
+		padding:10rpx 4rpx;
+	}
+	.status-num {
+		font-size:32rpx;
+	}
 }
 </style>
