@@ -7,6 +7,22 @@
 			<view class="course-name">{{courseTitle}}</view>
 		</view>
 
+		<view class="panel learning-panel">
+			<view class="panel-title">学习记录</view>
+			<view class="record-grid" v-if="report.learningStats">
+				<view><text>{{report.learningStats.todayText || '0分钟'}}</text><small>今日学习</small></view>
+				<view><text>{{report.learningStats.weekText || '0分钟'}}</text><small>本周学习</small></view>
+				<view><text>{{report.learningStats.totalText || '0分钟'}}</text><small>累计时长</small></view>
+			</view>
+			<view class="record-list">
+				<view class="record" v-for="item in learningRecords" :key="item.lessonTitle + item.updatedAt">
+					<text>{{item.lessonTitle || '课程学习'}}</text>
+					<text>{{item.duration || item.updatedAt || ''}}</text>
+				</view>
+			</view>
+			<view class="empty" v-if="!learningRecords.length">暂无学习记录</view>
+		</view>
+
 		<view class="summary-grid">
 			<view class="summary-item" @click="showPractice = !showPractice">
 				<view class="summary-label">真题讲练</view>
@@ -25,9 +41,15 @@
 			</view>
 		</view>
 
-		<view class="detail-panel">
-			<view class="panel-title">学习报告功能细节</view>
-			<view class="detail-sub">课程学习统计和练习统计会在这里合并展示。</view>
+		<view class="detail-panel" :class="{collapsed: !showCourseRecords}">
+			<view class="panel-head" @click="showCourseRecords = !showCourseRecords">
+				<view>
+					<view class="panel-title">课程记录与练习明细</view>
+					<view class="detail-sub">默认收起，点击展开查看课程进度、章节扫雷、复习测试和真题统计。</view>
+				</view>
+				<view class="panel-toggle">{{showCourseRecords ? '收起' : '展开'}}</view>
+			</view>
+			<view class="detail-body" v-if="showCourseRecords">
 			<view class="track-grid">
 				<view class="track-card" v-for="item in courseTrackRows" :key="item.name">
 					<view class="track-head">
@@ -58,6 +80,7 @@
 					</view>
 				</view>
 			</view>
+			</view>
 		</view>
 
 		<view class="panel" v-if="showPractice">
@@ -75,20 +98,6 @@
 					<analysis-viewer :item="detail" :text="detail.analysis" />
 				</view>
 			</view>
-		</view>
-
-		<view class="panel">
-			<view class="panel-title">学习记录</view>
-			<view class="record-grid" v-if="report.learningStats">
-				<view><text>{{report.learningStats.todayText || '0分钟'}}</text><small>今日学习</small></view>
-				<view><text>{{report.learningStats.weekText || '0分钟'}}</text><small>本周学习</small></view>
-				<view><text>{{report.learningStats.totalText || '0分钟'}}</text><small>累计时长</small></view>
-			</view>
-			<view class="record" v-for="item in learningRecords" :key="item.lessonTitle + item.updatedAt">
-				<text>{{item.lessonTitle || '课程学习'}}</text>
-				<text>{{item.duration || item.updatedAt || ''}}</text>
-			</view>
-			<view class="empty" v-if="!learningRecords.length">暂无学习记录</view>
 		</view>
 
 		<view class="panel">
@@ -129,6 +138,7 @@ export default {
 			userId: '',
 			readOnly: false,
 			showPractice: false,
+			showCourseRecords: false,
 			selectedPractice: null,
 			offlineReviews: []
 		}
@@ -382,6 +392,52 @@ page { background:#f5f7fa; }
 .summary-value { color:#1677ff; font-size:36rpx; font-weight:900; margin-top:8rpx; }
 .summary-tip { color:#9aa3af; font-size:20rpx; margin-top:6rpx; line-height:1.3; }
 .panel-title { font-size:32rpx; color:#222; font-weight:800; margin-bottom:18rpx; }
+.learning-panel {
+	margin-top:18rpx;
+	border-color:#dfe7f0;
+	box-shadow:0 12rpx 28rpx rgba(31,41,51,.045);
+}
+.learning-panel .panel-title {
+	margin-bottom:20rpx;
+}
+.record-list {
+	margin-top:10rpx;
+	border-radius:14rpx;
+	overflow:hidden;
+	border:1rpx solid #edf2f7;
+}
+.record-list .record {
+	padding:18rpx 20rpx;
+	background:#fff;
+}
+.panel-head {
+	display:flex;
+	align-items:flex-start;
+	justify-content:space-between;
+	gap:18rpx;
+	cursor:pointer;
+}
+.panel-head .panel-title {
+	margin-bottom:8rpx;
+}
+.panel-toggle {
+	flex-shrink:0;
+	min-width:88rpx;
+	height:52rpx;
+	line-height:52rpx;
+	text-align:center;
+	border-radius:999rpx;
+	background:#eef5ff;
+	color:#1677ff;
+	font-size:24rpx;
+	font-weight:900;
+}
+.detail-panel.collapsed {
+	padding-bottom:22rpx;
+}
+.detail-body {
+	margin-top:18rpx;
+}
 .detail-sub { color:#8a94a3; font-size:24rpx; line-height:1.45; margin-top:-8rpx; margin-bottom:20rpx; }
 .track-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; margin-bottom:20rpx; }
 .track-card { padding:18rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #e6edf5; }

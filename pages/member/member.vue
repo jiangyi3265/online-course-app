@@ -427,4 +427,141 @@ page { background:#eef3f7; }
 	background:#22c55e;
 	box-shadow:12rpx -10rpx 0 #f59e0b, 24rpx -18rpx 0 #ef4444;
 }
+
+/* Refined desktop line icons */
+.func::after {
+	display:none;
+}
+.func {
+	background:linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+}
+.f-ico {
+	width:68rpx;
+	height:68rpx;
+	border-radius:20rpx;
+	background:#f7fbff;
+	border:1rpx solid #d9e6f5;
+	box-shadow:inset 0 1rpx 0 rgba(255,255,255,.9), 0 10rpx 22rpx rgba(15,45,82,.08);
+}
+.f-ico::before,
+.f-ico::after {
+	border:0;
+	background:transparent;
+	box-shadow:none;
+	clip-path:none;
+	transform:none;
+}
+.func:nth-child(1) .f-ico::before,
+.func:nth-child(2) .f-ico::before {
+	width:18rpx;
+	height:18rpx;
+	left:14rpx;
+	top:15rpx;
+	border:4rpx solid #1769ff;
+	border-radius:50%;
+	background:transparent;
+	box-shadow:22rpx 0 0 -4rpx #9abfff, 22rpx 0 0 0 #1769ff;
+}
+.func:nth-child(1) .f-ico::after,
+.func:nth-child(2) .f-ico::after {
+	width:44rpx;
+	height:20rpx;
+	left:12rpx;
+	top:39rpx;
+	border:4rpx solid #1769ff;
+	border-top:0;
+	border-radius:0 0 22rpx 22rpx;
+	background:transparent;
+}
+.func:nth-child(2) .f-ico::before {
+	left:23rpx;
+	box-shadow:none;
+}
+.func:nth-child(2) .f-ico::after {
+	left:17rpx;
+	width:34rpx;
+}
+.func:nth-child(3) .f-ico::before {
+	left:17rpx;
+	bottom:14rpx;
+	width:34rpx;
+	height:32rpx;
+	border-left:4rpx solid #1769ff;
+	border-bottom:4rpx solid #1769ff;
+	background:transparent;
+}
+.func:nth-child(3) .f-ico::after {
+	left:24rpx;
+	bottom:18rpx;
+	width:6rpx;
+	height:16rpx;
+	border-radius:6rpx 6rpx 0 0;
+	background:#22b07d;
+	box-shadow:12rpx -8rpx 0 #f4a340, 24rpx -16rpx 0 #1769ff;
+}
+.func:nth-child(4) .f-ico::before {
+	width:32rpx;
+	height:40rpx;
+	left:18rpx;
+	top:13rpx;
+	border:4rpx solid #1769ff;
+	border-radius:8rpx;
+	background:transparent;
+	clip-path:none;
+}
+.func:nth-child(4) .f-ico::after {
+	width:14rpx;
+	height:18rpx;
+	right:16rpx;
+	top:13rpx;
+	background:#ffcf5a;
+	clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+	box-shadow:none;
+}
+.func:nth-child(5) .f-ico::before {
+	width:38rpx;
+	height:28rpx;
+	left:15rpx;
+	top:17rpx;
+	border:4rpx solid #1769ff;
+	border-radius:12rpx;
+	background:transparent;
+}
+.func:nth-child(5) .f-ico::after {
+	width:13rpx;
+	height:13rpx;
+	left:25rpx;
+	top:42rpx;
+	border-left:4rpx solid #1769ff;
+	border-bottom:4rpx solid #1769ff;
+	transform:skew(-18deg);
+	background:transparent;
+}
+.func:nth-child(6) .f-ico::before,
+.func:nth-child(7) .f-ico::before {
+	width:30rpx;
+	height:40rpx;
+	left:19rpx;
+	top:13rpx;
+	border:4rpx solid #1769ff;
+	border-radius:8rpx;
+	background:transparent;
+	box-shadow:none;
+}
+.func:nth-child(6) .f-ico::after,
+.func:nth-child(7) .f-ico::after {
+	width:18rpx;
+	height:4rpx;
+	left:25rpx;
+	top:26rpx;
+	border:0;
+	background:#94a3b8;
+	box-shadow:0 10rpx 0 #94a3b8, 0 20rpx 0 #94a3b8;
+}
+.func:nth-child(6) .f-ico::before {
+	border-color:#64748b;
+}
+.func:nth-child(7) .f-ico::before {
+	border-color:#7c3aed;
+}
 </style>
