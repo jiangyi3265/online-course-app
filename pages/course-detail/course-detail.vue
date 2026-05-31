@@ -737,4 +737,39 @@ page { background:#f5f7fa; }
 	background:#eef2f7;
 	color:#596272;
 }
+
+/* Desktop course cover polish */
+.cover {
+	margin:18rpx 24rpx 0;
+	border-radius:18rpx;
+	border:1rpx solid #e2e8f0;
+	box-shadow:0 10rpx 24rpx rgba(31,41,51,.045);
+	background:#f8fafc;
+}
+.cover-banner,
+.cover-poster {
+	height:336rpx;
+}
+.cover-img {
+	object-fit:contain;
+	background:#f8fafc;
+}
+.info-block {
+	margin:0 24rpx;
+	border-left:1rpx solid #edf2f7;
+	border-right:1rpx solid #edf2f7;
+}
+@media screen and (max-width: 420px) {
+	.cover {
+		margin:14rpx 18rpx 0;
+		border-radius:14rpx;
+	}
+	.cover-banner,
+	.cover-poster {
+		height:300rpx;
+	}
+	.info-block {
+		margin:0 18rpx;
+	}
+}
 </style>

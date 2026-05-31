@@ -295,4 +295,136 @@ page { background:#eef3f7; }
 		align-self:flex-end;
 	}
 }
+
+/* Premium CSS icons for desktop */
+.func {
+	position:relative;
+	overflow:hidden;
+}
+.func::after {
+	content:'';
+	position:absolute;
+	inset:auto 12rpx 10rpx auto;
+	width:42rpx;
+	height:42rpx;
+	border-radius:50%;
+	background:rgba(23,105,255,.06);
+}
+.f-ico {
+	position:relative;
+	color:transparent;
+	background:linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
+	border:1rpx solid #d8e7fb;
+	box-shadow:0 8rpx 18rpx rgba(23,105,255,.08);
+}
+.f-ico::before,
+.f-ico::after {
+	content:'';
+	position:absolute;
+	box-sizing:border-box;
+}
+.func:nth-child(1) .f-ico::before {
+	width:34rpx;
+	height:22rpx;
+	left:14rpx;
+	top:24rpx;
+	border-radius:14rpx 14rpx 8rpx 8rpx;
+	background:#2563eb;
+	box-shadow:22rpx 0 0 #78a7ff;
+}
+.func:nth-child(1) .f-ico::after {
+	width:44rpx;
+	height:16rpx;
+	left:10rpx;
+	top:44rpx;
+	border-radius:16rpx 16rpx 8rpx 8rpx;
+	background:#bcd7ff;
+}
+.func:nth-child(2) .f-ico::before,
+.func:nth-child(5) .f-ico::before,
+.func:nth-child(6) .f-ico::before {
+	width:30rpx;
+	height:38rpx;
+	left:16rpx;
+	top:12rpx;
+	border:3rpx solid #2563eb;
+	border-radius:6rpx;
+	background:#fff;
+	box-shadow:10rpx 10rpx 0 -4rpx #cfe0ff;
+}
+.func:nth-child(2) .f-ico::after {
+	width:18rpx;
+	height:18rpx;
+	right:12rpx;
+	top:12rpx;
+	border-top:4rpx solid #ef4444;
+	border-right:4rpx solid #ef4444;
+	transform:rotate(45deg);
+}
+.func:nth-child(3) .f-ico::before {
+	width:10rpx;
+	height:32rpx;
+	left:25rpx;
+	top:14rpx;
+	border-radius:999rpx;
+	background:#ef4444;
+	transform:rotate(26deg);
+	box-shadow:0 0 0 5rpx #fee2e2;
+}
+.func:nth-child(3) .f-ico::after {
+	width:10rpx;
+	height:10rpx;
+	left:30rpx;
+	bottom:12rpx;
+	border-radius:50%;
+	background:#2563eb;
+}
+.func:nth-child(4) .f-ico::before {
+	width:38rpx;
+	height:26rpx;
+	left:12rpx;
+	top:18rpx;
+	background:#334155;
+	clip-path:polygon(50% 0, 100% 28%, 50% 56%, 0 28%);
+}
+.func:nth-child(4) .f-ico::after {
+	width:24rpx;
+	height:12rpx;
+	left:19rpx;
+	top:38rpx;
+	border-radius:0 0 14rpx 14rpx;
+	background:#f59e0b;
+}
+.func:nth-child(5) .f-ico::after,
+.func:nth-child(6) .f-ico::after {
+	width:22rpx;
+	height:3rpx;
+	left:20rpx;
+	top:25rpx;
+	background:#94a3b8;
+	box-shadow:0 9rpx 0 #94a3b8, 0 18rpx 0 #94a3b8;
+}
+.func:nth-child(6) .f-ico::before {
+	border-color:#7c3aed;
+}
+.func:nth-child(6) .f-ico::after {
+	background:#7c3aed;
+	box-shadow:0 9rpx 0 #94a3b8, 0 18rpx 0 #94a3b8;
+}
+.func:nth-child(7) .f-ico::before {
+	width:36rpx;
+	height:34rpx;
+	left:13rpx;
+	top:14rpx;
+	border-left:4rpx solid #2563eb;
+	border-bottom:4rpx solid #2563eb;
+}
+.func:nth-child(7) .f-ico::after {
+	width:7rpx;
+	height:28rpx;
+	left:23rpx;
+	bottom:14rpx;
+	background:#22c55e;
+	box-shadow:12rpx -10rpx 0 #f59e0b, 24rpx -18rpx 0 #ef4444;
+}
 </style>
