@@ -604,10 +604,10 @@ page { background:#eef3f7; }
 }
 .course-report {
 	display:grid;
-	grid-template-columns:150rpx minmax(0, 1fr);
+	grid-template-columns:1fr;
 	align-items:center;
-	gap:18rpx;
-	min-height:118rpx;
+	gap:14rpx;
+	min-height:auto;
 }
 .course-name {
 	width:100%;
@@ -617,7 +617,7 @@ page { background:#eef3f7; }
 }
 .course-actions {
 	display:grid;
-	grid-template-columns:repeat(2, minmax(0, 1fr));
+	grid-template-columns:1fr;
 	gap:12rpx;
 }
 .outline-btn {
@@ -639,10 +639,10 @@ page { background:#eef3f7; }
 	padding:28rpx;
 }
 .english-daily {
-	grid-template-columns:repeat(5, minmax(0, 1fr));
+	grid-template-columns:1fr;
 }
 .english-daily view {
-	min-height:86rpx;
+	min-height:76rpx;
 	display:flex;
 	align-items:center;
 }
@@ -654,10 +654,7 @@ page { background:#eef3f7; }
 		grid-template-columns:1fr;
 	}
 	.course-actions {
-		grid-template-columns:1fr 1fr;
-	}
-	.english-daily {
-		grid-template-columns:repeat(2, minmax(0, 1fr));
+		grid-template-columns:1fr;
 	}
 }
 @media screen and (max-width: 420px) {
