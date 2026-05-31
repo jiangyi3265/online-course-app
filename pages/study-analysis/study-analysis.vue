@@ -561,4 +561,109 @@ page { background:#eef3f7; }
 		grid-template-columns:1fr;
 	}
 }
+
+/* Refined desktop report layout */
+.checkin-card > view:first-child {
+	display:flex;
+	align-items:baseline;
+	gap:8rpx;
+	min-width:0;
+}
+.checkin-card .time-label {
+	display:block;
+	margin-top:2rpx;
+}
+.checkin-panel {
+	padding:28rpx;
+}
+.checkin-panel .panel-title {
+	margin-bottom:14rpx;
+}
+.checkin-row {
+	display:grid;
+	grid-template-columns:180rpx minmax(0, 1fr);
+	gap:20rpx;
+	padding:20rpx;
+	margin-top:14rpx;
+	border:1rpx solid #e6edf5;
+	border-radius:16rpx;
+	background:#f9fbfd;
+}
+.checkin-row:first-of-type {
+	border-top:1rpx solid #e6edf5;
+}
+.checkin-content {
+	display:block;
+	-webkit-line-clamp:unset;
+	overflow:visible;
+	text-align:left;
+	word-break:break-word;
+}
+.report-panel {
+	padding:28rpx;
+}
+.course-report {
+	display:grid;
+	grid-template-columns:150rpx minmax(0, 1fr);
+	align-items:center;
+	gap:18rpx;
+	min-height:118rpx;
+}
+.course-name {
+	width:100%;
+	min-height:74rpx;
+	box-sizing:border-box;
+	text-align:center;
+}
+.course-actions {
+	display:grid;
+	grid-template-columns:repeat(2, minmax(0, 1fr));
+	gap:12rpx;
+}
+.outline-btn {
+	width:100%;
+	min-height:64rpx;
+	padding:0 14rpx;
+	box-sizing:border-box;
+}
+.readonly-note {
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	min-height:62rpx;
+	border-radius:12rpx;
+	background:#f1f5f9;
+	color:#64748b;
+}
+.english-panel {
+	padding:28rpx;
+}
+.english-daily {
+	grid-template-columns:repeat(5, minmax(0, 1fr));
+}
+.english-daily view {
+	min-height:86rpx;
+	display:flex;
+	align-items:center;
+}
+@media screen and (max-width: 520px) {
+	.checkin-row {
+		grid-template-columns:1fr;
+	}
+	.course-report {
+		grid-template-columns:1fr;
+	}
+	.course-actions {
+		grid-template-columns:1fr 1fr;
+	}
+	.english-daily {
+		grid-template-columns:repeat(2, minmax(0, 1fr));
+	}
+}
+@media screen and (max-width: 420px) {
+	.course-actions,
+	.english-daily {
+		grid-template-columns:1fr;
+	}
+}
 </style>
