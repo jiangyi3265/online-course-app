@@ -7,10 +7,15 @@
 
 		<view class="section-head">
 			<view>
-				<view class="section-title">学习情况总结</view>
-				<view class="section-sub">所有已开通科目的学习情况汇总，家长绑定后可同步查看。</view>
+				<view class="section-title">{{pageTitle}}</view>
+				<view class="section-sub">{{readOnly ? '推荐绑定学生的学习情况汇总，此处只允许查看统计。' : '所有已开通科目的学习情况汇总。'}}</view>
 			</view>
 			<view class="readonly-tag" v-if="readOnly">只读查看</view>
+		</view>
+
+		<view class="readonly-banner" v-if="readOnly">
+			<view class="readonly-banner-title">只读权限</view>
+			<view class="readonly-banner-text">可查看学习时长、打卡记录和各科报告，不能编辑打卡、错题、文档或学生资料。</view>
 		</view>
 
 		<view class="time-summary">
@@ -88,7 +93,7 @@
 
 <script>
 import { getStudySummary } from '@/common/study-summary.js'
-import { getStudyReport, getStudySummaryApi, getMyCourses, isLoggedIn } from '@/common/api.js'
+import { getStudyReport, getStudySummaryApi, getMyCourses, getMyStudents, isLoggedIn } from '@/common/api.js'
 import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
 
 const CHECKIN_KEY = 'studyCheckins';
@@ -101,6 +106,7 @@ export default {
 			userInfo: {},
 			courseId: '',
 			studentId: '',
+			studentName: '',
 			readOnly: false,
 			expandedSummary: {},
 			activeCourses: [],
@@ -124,6 +130,9 @@ export default {
 		courseReports() {
 			return this.activeCourses.map(item => this.normalizeCourse(item)).filter(item => item.id && item.title);
 		},
+		pageTitle() {
+			return this.readOnly && this.studentName ? `${this.studentName}的学情统计` : '学习情况总结';
+		},
 		englishStats() {
 			return (this.studySummary && this.studySummary.sections || []).find(section => /英语|外语/.test(section.title));
 		},
@@ -134,6 +143,7 @@ export default {
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || '';
 		this.studentId = opts.studentId || opts.userId || '';
+		this.studentName = opts.studentName ? decodeURIComponent(opts.studentName) : '';
 		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || opts.readonly === true;
 	},
 	async onShow() {
@@ -158,6 +168,22 @@ export default {
 				this.learningStats = report.learningStats || null;
 			} catch (err) {
 				console.warn('学习报告接口不可用', err);
+			}
+			if (this.readOnly && this.studentId) {
+				try {
+					const students = await getMyStudents();
+					const current = (students || []).find(item => String(item.id || item.userId || item.studentUserId || '') === String(this.studentId));
+					if (current) {
+						this.studentName = this.studentName || current.name || '';
+						const courses = current.courses || current.openCourses || [];
+						if (courses.length) {
+							this.activeCourses = courses;
+							return;
+						}
+					}
+				} catch (err) {
+					console.warn('学生课程接口不可用', err);
+				}
 			}
 			try {
 				const list = await getMyCourses();
@@ -263,6 +289,9 @@ page { background:#f5f7fa; }
 .section-title { font-size:34rpx; font-weight:900; color:#222; }
 .section-sub { margin-top:10rpx; color:#596272; font-size:24rpx; line-height:1.5; }
 .readonly-tag { flex-shrink:0; margin-top:4rpx; padding:8rpx 16rpx; border-radius:999rpx; background:#eef6ff; color:#1677ff; font-size:23rpx; font-weight:900; }
+.readonly-banner { margin:0 24rpx 20rpx; padding:22rpx 24rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #e1e8f0; box-sizing:border-box; }
+.readonly-banner-title { color:#1f2933; font-size:26rpx; font-weight:900; }
+.readonly-banner-text { margin-top:8rpx; color:#667085; font-size:23rpx; line-height:1.5; }
 .time-summary { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:0 24rpx 20rpx; }
 .time-card { min-height:112rpx; background:#fff; border:1rpx solid #eef0f3; border-radius:8rpx; padding:22rpx; display:flex; flex-direction:column; justify-content:center; box-shadow:0 3rpx 10rpx rgba(0,0,0,0.03); box-sizing:border-box; }
 .checkin-card { grid-column:1 / -1; flex-direction:row; align-items:center; justify-content:space-between; }
@@ -321,10 +350,215 @@ page { background:#f5f7fa; }
 .text-green { color:#2bb673; }
 .text-purple { color:#7c3aed; }
 .empty { color:#8a94a3; font-size:26rpx; padding:20rpx 0; }
-@media screen and (min-width: 768px) {
-	.time-summary { grid-template-columns:repeat(4, 1fr); }
-	.checkin-card { grid-column:auto; }
-	.course-report-grid { grid-template-columns:1fr 1fr; column-gap:44rpx; }
-	.english-daily { grid-template-columns:repeat(5, 1fr); }
+
+/* PC H5 polish */
+page { background:#eef3f7; }
+.page {
+	background:linear-gradient(180deg, #f9fbfd 0%, #eef3f7 390rpx, #eef3f7 100%);
+	color:#17212f;
+	padding-bottom:56rpx;
+}
+.nav {
+	position:sticky;
+	top:0;
+	z-index:20;
+	height:92rpx;
+	background:rgba(251,253,255,.96);
+	backdrop-filter:saturate(140%) blur(10px);
+	border-bottom:1rpx solid #e4eaf1;
+}
+.section-head {
+	padding:30rpx 30rpx 20rpx;
+}
+.section-title {
+	font-size:35rpx;
+	color:#111827;
+	letter-spacing:0;
+}
+.section-sub {
+	max-width:58ch;
+	color:#5d6b7c;
+	font-size:24rpx;
+}
+.readonly-tag {
+	background:#eaf3ff;
+	border:1rpx solid #cfe2ff;
+}
+.time-summary {
+	grid-template-columns:repeat(4, minmax(0, 1fr));
+	gap:14rpx;
+	padding:0 24rpx 20rpx;
+}
+.time-card {
+	min-height:116rpx;
+	padding:20rpx 18rpx;
+	border-radius:16rpx;
+	border-color:#dfe7f0;
+	box-shadow:0 10rpx 24rpx rgba(31,41,51,.045);
+}
+.time-value {
+	color:#1769ff;
+	font-size:31rpx;
+	line-height:1.15;
+}
+.time-label {
+	color:#758197;
+	font-size:22rpx;
+	line-height:1.35;
+}
+.checkin-card {
+	grid-column:1 / -1;
+	min-height:126rpx;
+	flex-direction:row;
+	align-items:center;
+	background:linear-gradient(135deg, #fff 0%, #f4f8ff 100%);
+}
+.text-action {
+	min-height:56rpx;
+	padding:0 18rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	border-radius:12rpx;
+	background:#eef5ff;
+	border:1rpx solid #cfe0ff;
+	line-height:1.3;
+	text-align:center;
+}
+.checkin-panel,
+.report-panel,
+.english-panel {
+	margin:0 24rpx 20rpx;
+	padding:26rpx;
+	border-radius:18rpx;
+	border-color:#dfe7f0;
+	box-shadow:0 10rpx 24rpx rgba(31,41,51,.04);
+}
+.panel-title,
+.english-title {
+	color:#111827;
+	font-size:30rpx;
+	letter-spacing:0;
+}
+.panel-note {
+	color:#66758a;
+	line-height:1.55;
+}
+.checkin-panel {
+	background:#fff;
+}
+.checkin-row {
+	align-items:flex-start;
+	padding:20rpx 0;
+	border-top:1rpx solid #edf2f7;
+}
+.checkin-date {
+	color:#111827;
+	font-size:26rpx;
+}
+.checkin-course {
+	display:inline-flex;
+	margin-top:8rpx;
+	padding:5rpx 12rpx;
+	border-radius:999rpx;
+	background:#eef5ff;
+	color:#2b5da8;
+}
+.checkin-content {
+	text-align:left;
+	color:#405066;
+	font-size:24rpx;
+	line-height:1.55;
+}
+.course-report-grid {
+	gap:16rpx;
+}
+.course-report {
+	align-items:stretch;
+	padding:18rpx;
+	border-radius:16rpx;
+	border-color:#dfe7f0;
+	background:#f9fbfd;
+}
+.course-name {
+	flex:0 0 152rpx;
+	min-height:70rpx;
+	border-radius:14rpx;
+	background:#fff1f3;
+	color:#b42335;
+}
+.course-actions {
+	display:grid;
+	grid-template-columns:1fr;
+	gap:10rpx;
+	justify-content:stretch;
+}
+.outline-btn {
+	min-height:58rpx;
+	padding:0 16rpx;
+	border-radius:12rpx;
+	border-color:#cddbea;
+	color:#1f2937;
+	line-height:1.25;
+	text-align:center;
+}
+.english-grid {
+	grid-template-columns:repeat(2, minmax(0, 1fr));
+	gap:16rpx;
+}
+.english-item {
+	padding:20rpx;
+	border-radius:14rpx;
+	background:#f6f9fd;
+	border:1rpx solid #edf2f7;
+}
+.english-item text {
+	color:#64748b;
+}
+.english-item strong {
+	color:#111827;
+	font-size:31rpx;
+}
+.english-daily {
+	grid-template-columns:repeat(2, minmax(0, 1fr));
+	gap:12rpx;
+	margin-top:20rpx;
+	color:#b42335;
+	font-size:24rpx;
+	line-height:1.5;
+}
+.english-daily view {
+	min-height:58rpx;
+	padding:14rpx 16rpx;
+	border-radius:14rpx;
+	background:#fff7f8;
+	border:1rpx solid #ffd9df;
+	box-sizing:border-box;
+	word-break:break-word;
+}
+.empty {
+	margin-top:14rpx;
+	padding:40rpx 20rpx;
+	text-align:center;
+	background:#f8fafc;
+	border:1rpx dashed #cbd6e2;
+	border-radius:16rpx;
+	line-height:1.6;
+}
+@media screen and (max-width: 420px) {
+	.time-summary {
+		grid-template-columns:repeat(2, minmax(0, 1fr));
+	}
+	.course-report {
+		flex-direction:column;
+	}
+	.course-name {
+		flex:0 0 auto;
+		width:100%;
+		min-height:62rpx;
+	}
+	.english-daily {
+		grid-template-columns:1fr;
+	}
 }
 </style>
