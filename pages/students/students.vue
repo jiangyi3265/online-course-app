@@ -28,7 +28,7 @@
 			<view class="panel-head">
 				<view>
 					<view class="panel-title">学生列表</view>
-					<view class="panel-sub">一名学生只显示一条记录，可查看学情统计，不可编辑或代填学习打卡。</view>
+					<view class="panel-sub list-sub">一名学生只显示一条记录，可查看学情统计，不可编辑或代填学习打卡。</view>
 				</view>
 				<view class="refresh" @click="loadData">{{loading ? '加载中' : '刷新'}}</view>
 			</view>
@@ -45,10 +45,10 @@
 					<view class="source-tag" :class="sourceClass(item)">{{item.bindingSource || '账号绑定'}}</view>
 				</view>
 				<view class="student-meta">
-					<view>年级：{{item.grade || '--'}}</view>
-					<view>地区：{{item.region || '--'}}</view>
-					<view>绑定时间：{{formatDate(item.bindingCreatedAt || item.createdAt)}}</view>
-					<view>权限：{{item.permissionText || '只读查看学情'}}</view>
+					<view class="meta-item"><text>年级</text><strong>{{item.grade || '--'}}</strong></view>
+					<view class="meta-item"><text>地区</text><strong>{{item.region || '--'}}</strong></view>
+					<view class="meta-item meta-permission"><text>权限</text><strong>{{item.permissionText || '只读查看学情'}}</strong></view>
+					<view class="meta-item meta-date"><text>绑定时间</text><strong>{{formatDate(item.bindingCreatedAt || item.createdAt)}}</strong></view>
 				</view>
 				<view class="metric-row">
 					<view class="metric"><text>{{learningValue(item, 'courseCount')}}</text><small>开通课程</small></view>
@@ -294,6 +294,9 @@ page { background:#eef3f7; }
 	color:#66758a;
 	line-height:1.55;
 }
+.list-sub {
+	display:none;
+}
 .panel-sub.standalone {
 	margin-top:0;
 	margin-bottom:20rpx;
@@ -324,9 +327,9 @@ page { background:#eef3f7; }
 }
 .panel-head {
 	align-items:center;
-	padding-bottom:18rpx;
-	margin-bottom:18rpx;
-	border-bottom:1rpx solid #edf2f7;
+	padding-bottom:6rpx;
+	margin-bottom:12rpx;
+	border-bottom:0;
 }
 .refresh {
 	height:58rpx;
@@ -369,12 +372,53 @@ page { background:#eef3f7; }
 }
 .student-meta {
 	grid-template-columns:repeat(2, minmax(0, 1fr));
-	gap:10rpx 18rpx;
+	gap:12rpx;
 	margin-top:20rpx;
 	padding:18rpx;
 	border-radius:14rpx;
 	background:#f6f9fd;
 	color:#405066;
+}
+.meta-item {
+	min-height:64rpx;
+	padding:12rpx 14rpx;
+	border-radius:12rpx;
+	background:#fff;
+	border:1rpx solid #e7edf5;
+	box-sizing:border-box;
+}
+.meta-item text {
+	display:block;
+	color:#7b8797;
+	font-size:21rpx;
+	line-height:1.2;
+}
+.meta-item strong {
+	display:block;
+	margin-top:6rpx;
+	color:#233044;
+	font-size:24rpx;
+	font-weight:800;
+	line-height:1.35;
+	word-break:break-word;
+}
+.meta-date,
+.meta-permission {
+	grid-column:1 / -1;
+}
+.meta-date {
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap:18rpx;
+}
+.meta-date text,
+.meta-date strong {
+	margin-top:0;
+}
+.meta-date strong {
+	text-align:right;
+	white-space:nowrap;
 }
 .metric-row {
 	gap:14rpx;
@@ -439,6 +483,14 @@ page { background:#eef3f7; }
 	.student-meta,
 	.metric-row {
 		grid-template-columns:1fr;
+	}
+	.meta-date {
+		display:block;
+	}
+	.meta-date strong {
+		margin-top:6rpx;
+		text-align:left;
+		white-space:normal;
 	}
 	.action-row {
 		display:grid;
