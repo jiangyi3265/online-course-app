@@ -38,8 +38,8 @@
 				<view class="field-label image-label">学习图片 <text>({{images.length}}/3) *</text></view>
 				<view class="image-row">
 					<view class="image-cell" v-for="(img,index) in images" :key="img">
-						<image class="preview" :src="img" mode="aspectFill" />
-						<view class="remove" @click="removeImage(index)">×</view>
+						<image class="preview" :src="img" mode="aspectFill" @click="previewImages(images, index)" />
+						<view class="remove" @click.stop="removeImage(index)">×</view>
 					</view>
 					<view class="upload-cell" v-if="images.length < 3" @click="chooseImages">
 						<view class="camera">▢</view>
@@ -75,7 +75,7 @@
 					<view class="record-main">
 						<view class="record-top">
 							<view class="record-date">{{formatDate(item.updatedAt || item.createdAt || item.date)}}</view>
-							<text class="record-count">{{item.imageCount}}张图片</text>
+							<text class="record-count" :class="{clickable: recordImages(item).length}" @click="previewRecordImages(item)">{{item.imageCount}}张图片</text>
 						</view>
 						<view class="record-text">{{item.content}}</view>
 					</view>
@@ -174,6 +174,24 @@ export default {
 		removeImage(index) {
 			if (this.readOnly) return;
 			this.images.splice(index, 1);
+		},
+		recordImages(item = {}) {
+			return Array.isArray(item.images) ? item.images.filter(Boolean) : [];
+		},
+		previewRecordImages(item = {}) {
+			this.previewImages(this.recordImages(item), 0);
+		},
+		previewImages(urls = [], current = 0) {
+			const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+			if (!list.length) {
+				uni.showToast({ title:'暂无可查看图片', icon:'none' });
+				return;
+			}
+			const safeIndex = Math.min(Math.max(Number(current) || 0, 0), list.length - 1);
+			uni.previewImage({
+				urls: list,
+				current: list[safeIndex]
+			});
 		},
 		submitCheckin() {
 			if (this.readOnly) {
@@ -363,7 +381,7 @@ export default {
 .upload-cell, .image-cell { width:150rpx; height:150rpx; border-radius:8rpx; position:relative; overflow:hidden; flex-shrink:0; }
 .upload-cell { border:1rpx dashed #cfd6df; background:#f8fafc; color:#8a94a3; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:24rpx; }
 .camera { font-size:38rpx; margin-bottom:10rpx; }
-.preview { width:100%; height:100%; display:block; }
+.preview { width:100%; height:100%; display:block; cursor:pointer; }
 .remove { position:absolute; top:6rpx; right:6rpx; width:34rpx; height:34rpx; line-height:32rpx; text-align:center; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:28rpx; }
 .submit { margin-top:44rpx; height:88rpx; border-radius:44rpx; display:flex; align-items:center; justify-content:center; gap:16rpx; background:#458af7; color:#fff; font-size:34rpx; font-weight:900; }
 .submit.done { background:#458af7; }
@@ -446,8 +464,15 @@ export default {
 	padding:6rpx 12rpx;
 	border-radius:999rpx;
 	background:#ecfdf5;
+	border:1rpx solid transparent;
 	color:#0f766e;
 	font-size:22rpx;
 	font-weight:900;
 }
+.record-count.clickable {
+	cursor:pointer;
+	border-color:#bbf0dc;
+	box-shadow:0 6rpx 14rpx rgba(15,118,110,.12);
+}
+.record-count.clickable:active { opacity:.78; }
 </style>
