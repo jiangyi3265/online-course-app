@@ -649,6 +649,96 @@ page { background:#eef3f7; }
 	border-radius:20rpx;
 	line-height:1.6;
 }
+/* Desktop typography refinement */
+@media screen and (min-width: 431px) {
+	.study-band {
+		padding-top:22rpx;
+	}
+	.band-row {
+		grid-template-columns:minmax(0, 1fr) 152rpx;
+		min-height:168rpx;
+		padding:24rpx 26rpx;
+		gap:18rpx;
+	}
+	.band-label {
+		font-size:26rpx;
+		line-height:1.32;
+		letter-spacing:0;
+	}
+	.band-sub {
+		margin-top:10rpx;
+		font-size:22rpx;
+		line-height:1.38;
+		color:#5d706d;
+	}
+	.band-stats {
+		gap:10rpx;
+	}
+	.band-total {
+		min-height:58rpx;
+		display:flex;
+		align-items:center;
+		justify-content:center;
+		padding:8rpx 10rpx;
+		font-size:20rpx;
+		font-weight:800;
+		line-height:1.25;
+		color:#173b36;
+		box-shadow:0 6rpx 18rpx rgba(15,118,110,.045);
+	}
+	.band-score {
+		min-height:72rpx;
+		display:flex;
+		flex-direction:column;
+		align-items:center;
+		justify-content:center;
+		padding:8rpx;
+		font-size:34rpx;
+		line-height:1;
+		box-shadow:0 8rpx 20rpx rgba(15,118,110,.055);
+	}
+	.band-score text {
+		margin-top:8rpx;
+		font-size:19rpx;
+		line-height:1.15;
+	}
+	.action-grid {
+		gap:14rpx;
+		padding-top:16rpx;
+	}
+	.action-card {
+		min-height:132rpx;
+		padding:22rpx 20rpx;
+		gap:14rpx;
+	}
+	.action-mark {
+		width:40rpx;
+		height:40rpx;
+		border-radius:10rpx;
+		font-size:21rpx;
+	}
+	.action-title {
+		font-size:28rpx;
+		line-height:1.25;
+	}
+	.action-sub {
+		margin-top:8rpx;
+		font-size:22rpx;
+		line-height:1.42;
+	}
+	.source-filter {
+		gap:10rpx;
+	}
+	.source-chip {
+		height:56rpx;
+		line-height:56rpx;
+		font-size:23rpx;
+	}
+	.status-panel {
+		margin-top:0;
+		padding:16rpx;
+	}
+}
 @media screen and (max-width: 420px) {
 	.band-row {
 		grid-template-columns:1fr;
