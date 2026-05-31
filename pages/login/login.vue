@@ -78,7 +78,7 @@
 
 <script>
 	import { OFFICIAL_USER } from '@/common/course-data.js'
-	import { login, resetPassword, saveSession, sendSmsCode } from '@/common/api.js'
+	import { bindReferrer, login, resetPassword, saveSession, sendSmsCode } from '@/common/api.js'
 	export default {
 		data() {
 			return {
@@ -109,7 +109,22 @@
 				this.resetMode = true;
 			},
 			onRegister() {
-				uni.navigateTo({ url: '/pages/register/register' });
+				const query = this.inviteQuery();
+				uni.navigateTo({ url: `/pages/register/register${query}` });
+			},
+			inviteQuery() {
+				const params = [];
+				if (this.invitePhone) params.push(`invitePhone=${encodeURIComponent(this.invitePhone)}`);
+				if (this.inviteId) params.push(`inviteId=${encodeURIComponent(this.inviteId)}`);
+				return params.length ? `?${params.join('&')}` : '';
+			},
+			async bindInviteReferrer() {
+				if (!this.invitePhone || !this.inviteId) return;
+				try {
+					await bindReferrer({ phone: this.invitePhone, referrerId: this.inviteId });
+				} catch (err) {
+					console.warn('邀请推荐人绑定失败', err);
+				}
 			},
 			openProtocol() {
 				uni.showToast({ title: '用户隐私协议', icon: 'none' });
@@ -170,6 +185,7 @@
 				try {
 					const session = await login(this.phone, this.password);
 					saveSession(session);
+					await this.bindInviteReferrer();
 					uni.showToast({ title: '登录成功', icon: 'success' });
 					setTimeout(() => {
 						uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index', fail: () => {} }) });

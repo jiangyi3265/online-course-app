@@ -5,9 +5,10 @@
 			<view class="nav-title">学习打卡</view>
 		</view>
 
-		<study-checkin-card :course-id="courseId" :student-id="studentId" />
+		<view class="readonly-tip" v-if="readOnly">当前为只读查看，不能代填或修改学生打卡。</view>
+		<study-checkin-card :course-id="courseId" :student-id="studentId" :read-only="readOnly" />
 
-		<view class="task-panel" v-if="plan.tasks && plan.tasks.length">
+		<view class="task-panel" v-if="!readOnly && plan.tasks && plan.tasks.length">
 			<view class="panel-title">今日建议任务</view>
 			<view class="task" v-for="item in plan.tasks" :key="item.id" @click="toggleTask(item)">
 				<view class="check" :class="{done:item.done}">{{item.done ? '✓' : ''}}</view>
@@ -31,13 +32,15 @@ export default {
 			plan: { tasks: [] },
 			courseId: 'gk-math-full',
 			studentId: '',
-			studentName: ''
+			studentName: '',
+			readOnly: false
 		}
 	},
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || 'gk-math-full';
 		this.studentId = opts.studentId || '';
 		this.studentName = opts.studentName ? decodeURIComponent(opts.studentName) : '';
+		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || !!this.studentId;
 		this.loadData();
 	},
 	methods: {
@@ -59,6 +62,7 @@ page { background:#f5f7fa; }
 .nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; font-weight:800; color:#222; }
+.readonly-tip { margin:24rpx 24rpx 0; padding:18rpx 22rpx; border-radius:10rpx; background:#f8fafc; border:1rpx solid #e1e8f0; color:#667085; font-size:24rpx; line-height:1.45; }
 .task-panel { margin:24rpx; padding:26rpx; background:#fff; border:1rpx solid #edf0f4; border-radius:10rpx; }
 .panel-title { color:#222; font-size:30rpx; font-weight:900; margin-bottom:18rpx; }
 .task { display:flex; align-items:center; padding:18rpx 0; border-bottom:1rpx solid #edf0f4; }

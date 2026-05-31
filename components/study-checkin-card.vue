@@ -14,7 +14,12 @@
 				<text>{{todayText}}</text>
 			</view>
 
-			<view class="form-box">
+			<view class="readonly-box" v-if="readOnly">
+				<view class="readonly-title">只读查看</view>
+				<view class="readonly-text">可查看该学生的打卡历史，不能上传图片、提交打卡或修改已有记录。</view>
+			</view>
+
+			<view class="form-box" v-else>
 				<view class="field-label">学习内容</view>
 				<view class="content-editor">
 					<view class="content-line" v-for="field in contentFields" :key="field.key">
@@ -98,7 +103,8 @@ const emptyCheckinForm = () => CONTENT_FIELDS.reduce((form, field) => {
 export default {
 	props: {
 		courseId: { type: String, default: 'gk-math-full' },
-		studentId: { type: String, default: '' }
+		studentId: { type: String, default: '' },
+		readOnly: { type: Boolean, default: false }
 	},
 	data() {
 		return {
@@ -122,9 +128,11 @@ export default {
 			return CONTENT_FIELDS.some(field => (this.checkinForm[field.key] || '').trim());
 		},
 		isEditLocked() {
+			if (this.readOnly) return true;
 			return this.currentRecord ? Date.now() - this.createdTime(this.currentRecord) > EDIT_LIMIT_MS : false;
 		},
 		submitText() {
+			if (this.readOnly) return '只读查看';
 			if (this.isEditLocked) return '超过12小时不可修改';
 			return this.checkedIn ? '更新打卡' : '打卡';
 		},
@@ -155,6 +163,7 @@ export default {
 			this.images = todayRecord ? (todayRecord.images || []) : [];
 		},
 		chooseImages() {
+			if (this.readOnly) return;
 			uni.chooseImage({
 				count: 3 - this.images.length,
 				success: res => {
@@ -163,9 +172,14 @@ export default {
 			});
 		},
 		removeImage(index) {
+			if (this.readOnly) return;
 			this.images.splice(index, 1);
 		},
 		submitCheckin() {
+			if (this.readOnly) {
+				uni.showToast({ title:'只读查看，不能修改打卡', icon:'none' });
+				return;
+			}
 			if (this.isEditLocked) {
 				uni.showToast({ title:'超过12小时，今日打卡不能修改', icon:'none' });
 				return;
@@ -299,6 +313,9 @@ export default {
 .hero-ico { width:120rpx; height:120rpx; display:flex; align-items:center; justify-content:center; font-size:72rpx; flex-shrink:0; }
 .date-row { margin-top:34rpx; min-height:86rpx; display:flex; align-items:center; padding:0 28rpx; border-radius:8rpx 8rpx 0 0; background:#80d9f2; color:#111827; font-size:34rpx; font-weight:900; }
 .date-ico { margin-right:18rpx; color:#333; font-size:30rpx; }
+.readonly-box { padding:26rpx 28rpx 30rpx; border-radius:0 0 10rpx 10rpx; background:#fff; border-top:1rpx solid #eef2f7; }
+.readonly-title { color:#111827; font-size:30rpx; font-weight:900; }
+.readonly-text { margin-top:10rpx; color:#667085; font-size:24rpx; line-height:1.5; }
 .form-box { padding:26rpx 28rpx 30rpx; border-radius:0 0 10rpx 10rpx; background:#fff; }
 .field-label { color:#111827; font-size:30rpx; font-weight:900; }
 .image-label { margin-top:28rpx; }

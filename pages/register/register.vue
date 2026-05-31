@@ -11,6 +11,7 @@
 		<view class="form">
 			<view class="title">创建账号</view>
 			<view class="subtitle">注册后即可同步学习进度和课程授权</view>
+			<view class="invite-tip" v-if="inviteId || invitePhone">推荐人：{{invitePhone || '--'}} / ID {{inviteId || '--'}}</view>
 
 			<view class="input-row">
 				<text class="input-icon">👤</text>
@@ -57,7 +58,7 @@
 </template>
 
 <script>
-	import { register, saveSession, sendSmsCode } from '@/common/api.js'
+	import { bindReferrer, register, saveSession, sendSmsCode } from '@/common/api.js'
 
 	export default {
 		data() {
@@ -68,8 +69,14 @@
 				password: '',
 				confirmPassword: '',
 				agree: true,
-				loading: false
+				loading: false,
+				invitePhone: '',
+				inviteId: ''
 			}
+		},
+		onLoad(opts = {}) {
+			this.invitePhone = opts.invitePhone ? decodeURIComponent(opts.invitePhone) : ''
+			this.inviteId = opts.inviteId ? decodeURIComponent(opts.inviteId) : ''
 		},
 		methods: {
 			goBack() {
@@ -121,6 +128,7 @@
 				try {
 					const session = await register({ name: this.name, phone: this.phone, password: this.password, smsCode: this.smsCode })
 					saveSession(session)
+					await this.bindInviteReferrer()
 					uni.showToast({ title: '注册成功', icon: 'success' })
 					setTimeout(() => {
 						uni.switchTab({ url: '/pages/index/index', fail: () => uni.navigateBack() })
@@ -129,6 +137,14 @@
 					uni.showToast({ title: err.message || '注册失败', icon: 'none' })
 				} finally {
 					this.loading = false
+				}
+			},
+			async bindInviteReferrer() {
+				if (!this.invitePhone || !this.inviteId) return
+				try {
+					await bindReferrer({ phone: this.invitePhone, referrerId: this.inviteId })
+				} catch (err) {
+					console.warn('邀请推荐人绑定失败', err)
 				}
 			}
 		}
@@ -198,6 +214,17 @@ page {
 	margin: 16rpx 0 34rpx;
 	font-size: 26rpx;
 	color: #7d8da6;
+	text-align: center;
+}
+
+.invite-tip {
+	margin: -16rpx 0 26rpx;
+	padding: 14rpx 18rpx;
+	border-radius: 10rpx;
+	background: #eef6ff;
+	color: #1677ff;
+	font-size: 24rpx;
+	font-weight: 700;
 	text-align: center;
 }
 
