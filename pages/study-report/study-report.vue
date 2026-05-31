@@ -7,20 +7,37 @@
 			<view class="course-name">{{courseTitle}}</view>
 		</view>
 
-		<view class="panel learning-panel">
-			<view class="panel-title">学习记录</view>
+		<view class="panel learning-panel" :class="{collapsed: !showLearningRecords}">
+			<view class="panel-head" @click="showLearningRecords = !showLearningRecords">
+				<view>
+					<view class="panel-title">学习记录</view>
+					<view class="detail-sub">默认收起，展开后按日期倒序查看本课程所有视频学习记录。</view>
+				</view>
+				<view class="panel-toggle">{{showLearningRecords ? '收起' : '展开'}}</view>
+			</view>
 			<view class="record-grid" v-if="report.learningStats">
 				<view><text>{{report.learningStats.todayText || '0分钟'}}</text><small>今日学习</small></view>
 				<view><text>{{report.learningStats.weekText || '0分钟'}}</text><small>本周学习</small></view>
 				<view><text>{{report.learningStats.totalText || '0分钟'}}</text><small>累计时长</small></view>
 			</view>
-			<view class="record-list">
-				<view class="record" v-for="item in learningRecords" :key="item.lessonTitle + item.updatedAt">
-					<text>{{item.lessonTitle || '课程学习'}}</text>
-					<text>{{item.duration || item.updatedAt || ''}}</text>
+			<view class="learning-body" v-if="showLearningRecords">
+				<view class="record-tools">
+					<picker mode="date" :value="recordDateFilter" @change="onRecordDateChange">
+						<view class="date-filter">{{recordDateFilter || '全部日期'}}</view>
+					</picker>
+					<view class="clear-filter" v-if="recordDateFilter" @click.stop="recordDateFilter = ''">清除</view>
 				</view>
+				<view class="record-list">
+					<view class="record video-record" v-for="item in filteredLearningRecords" :key="item.key">
+						<view class="record-main">
+							<view class="record-title">{{item.title}}</view>
+							<view class="record-time">记录时间：{{item.timeText}}</view>
+						</view>
+						<view class="record-duration">学习时长 {{item.durationText}}</view>
+					</view>
+				</view>
+				<view class="empty" v-if="!filteredLearningRecords.length">{{recordDateFilter ? '该日期暂无学习记录' : '暂无学习记录'}}</view>
 			</view>
-			<view class="empty" v-if="!learningRecords.length">暂无学习记录</view>
 		</view>
 
 		<view class="summary-grid">
@@ -138,7 +155,9 @@ export default {
 			userId: '',
 			readOnly: false,
 			showPractice: false,
+			showLearningRecords: false,
 			showCourseRecords: false,
+			recordDateFilter: '',
 			selectedPractice: null,
 			offlineReviews: []
 		}
@@ -169,6 +188,15 @@ export default {
 		},
 		learningRecords() {
 			return (this.report.learningStats && this.report.learningStats.records) || this.report.learningRecords || [];
+		},
+		sortedLearningRecords() {
+			return this.learningRecords
+				.map((item, index) => this.normalizeLearningRecord(item, index))
+				.sort((a, b) => b.timeValue - a.timeValue);
+		},
+		filteredLearningRecords() {
+			if (!this.recordDateFilter) return this.sortedLearningRecords;
+			return this.sortedLearningRecords.filter(item => item.dateText === this.recordDateFilter);
 		},
 		practiceCount() {
 			if (this.report.practiceCount !== undefined) return this.report.practiceCount;
@@ -243,6 +271,50 @@ export default {
 				this.report = this.localReport();
 				this.selectedPractice = this.practiceRows[0] || null;
 			}
+		},
+		onRecordDateChange(e) {
+			this.recordDateFilter = e.detail.value || '';
+		},
+		normalizeLearningRecord(item = {}, index = 0) {
+			const rawTime = item.recordTime || item.learnTime || item.watchTime || item.updatedAt || item.createdAt || item.time || item.date || '';
+			const date = this.toValidDate(rawTime);
+			const title = item.lessonTitle || item.videoTitle || item.videoName || item.chapterTitle || item.chapterName || item.title || item.name || '课程视频';
+			return {
+				key: item.id || item.recordId || `${title}-${rawTime}-${index}`,
+				title,
+				timeValue: date ? date.getTime() : 0,
+				timeText: this.formatDateTime(date, rawTime),
+				dateText: this.formatDate(date, rawTime),
+				durationText: this.formatDuration(item.duration || item.watchDuration || item.learnDuration || item.seconds || item.studySeconds || item.studyTime || item.timeLong)
+			};
+		},
+		toValidDate(value) {
+			if (!value) return null;
+			const date = value instanceof Date ? value : new Date(String(value).replace(/-/g, '/'));
+			return Number.isNaN(date.getTime()) ? null : date;
+		},
+		formatDate(date, fallback = '') {
+			if (!date) return String(fallback).slice(0, 10) || '--';
+			const pad = value => String(value).padStart(2, '0');
+			return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+		},
+		formatDateTime(date, fallback = '') {
+			if (!date) return fallback || '--';
+			const pad = value => String(value).padStart(2, '0');
+			return `${this.formatDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+		},
+		formatDuration(value) {
+			if (value === undefined || value === null || value === '') return '--';
+			if (typeof value === 'string' && /[分秒小时]/.test(value)) return value;
+			const seconds = Number(value);
+			if (!Number.isFinite(seconds)) return String(value);
+			if (seconds >= 3600) {
+				const hours = Math.floor(seconds / 3600);
+				const minutes = Math.round((seconds % 3600) / 60);
+				return minutes ? `${hours}小时${minutes}分钟` : `${hours}小时`;
+			}
+			if (seconds >= 60) return `${Math.round(seconds / 60)}分钟`;
+			return `${Math.max(0, Math.round(seconds))}秒`;
 		},
 		buildTestStats(name, rows = [], actionLabel = '测试', scoreLabel = '平均得分') {
 			const todayRows = this.todayRows(rows);
@@ -351,7 +423,12 @@ export default {
 					todayText: '5秒',
 					weekText: '25秒',
 					totalText: '25秒',
-					records: [{ lessonTitle:'知识点巩固', duration:'25秒', updatedAt:'2026-05-26 09:28' }]
+					records: [
+						{ lessonTitle:'根据实际问题选择函数类型', duration:'5秒', updatedAt:'2026-06-01 16:25' },
+						{ lessonTitle:'33.端点效应解题大招', duration:'5秒', updatedAt:'2026-06-01 16:18' },
+						{ lessonTitle:'2.复数加减的模（图解法）', duration:'5秒', updatedAt:'2026-05-31 20:12' },
+						{ lessonTitle:'1.复数乘除的模（三角法）', duration:'5秒', updatedAt:'2026-05-30 18:06' }
+					]
 				},
 				averageScore: 100,
 				wrongCount: 3,
@@ -397,8 +474,38 @@ page { background:#f5f7fa; }
 	border-color:#dfe7f0;
 	box-shadow:0 12rpx 28rpx rgba(31,41,51,.045);
 }
-.learning-panel .panel-title {
-	margin-bottom:20rpx;
+.learning-panel .record-grid {
+	margin-top:18rpx;
+}
+.learning-body { margin-top:16rpx; }
+.record-tools {
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap:16rpx;
+	margin-bottom:14rpx;
+}
+.date-filter {
+	min-width:160rpx;
+	height:56rpx;
+	line-height:56rpx;
+	padding:0 22rpx;
+	border-radius:999rpx;
+	background:#eef5ff;
+	color:#1677ff;
+	font-size:24rpx;
+	font-weight:900;
+	box-sizing:border-box;
+}
+.clear-filter {
+	height:52rpx;
+	line-height:52rpx;
+	padding:0 18rpx;
+	border-radius:999rpx;
+	background:#f3f6fa;
+	color:#667085;
+	font-size:23rpx;
+	font-weight:800;
 }
 .record-list {
 	margin-top:10rpx;
@@ -409,6 +516,36 @@ page { background:#f5f7fa; }
 .record-list .record {
 	padding:18rpx 20rpx;
 	background:#fff;
+}
+.video-record {
+	align-items:flex-start;
+}
+.record-main {
+	flex:1;
+	min-width:0;
+}
+.record-title {
+	color:#111827;
+	font-size:27rpx;
+	font-weight:800;
+	line-height:1.45;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+.record-time {
+	margin-top:8rpx;
+	color:#667085;
+	font-size:23rpx;
+	line-height:1.35;
+}
+.record-duration {
+	flex-shrink:0;
+	color:#111827;
+	font-size:25rpx;
+	font-weight:800;
+	line-height:1.45;
+	text-align:right;
 }
 .panel-head {
 	display:flex;
