@@ -15,7 +15,7 @@
 				:poster="poster"
 				:initial-time="initialTime"
 				controls
-				:show-fullscreen-btn="true"
+				:show-fullscreen-btn="!isDesktopH5"
 				:show-play-btn="true"
 				:enable-progress-gesture="true"
 				@loadedmetadata="onLoadedMeta"
@@ -23,8 +23,14 @@
 				@pause="onPause"
 				@timeupdate="onTimeUpdate"
 				@ended="onEnded"
+				@fullscreenchange="onNativeFullscreenChange"
 				@error="onVideoError"
 			></video>
+			<view class="desktop-video-tools" v-if="isDesktopH5">
+				<view class="fullscreen-toggle" :class="{active:isWebFullscreen}" @click.stop="toggleWebFullscreen">
+					{{isWebFullscreen ? '退出全屏' : '网页全屏'}}
+				</view>
+			</view>
 			<view class="video-error" v-if="videoError">
 				<view class="video-error-title">视频暂时无法加载</view>
 				<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
@@ -59,41 +65,33 @@
 
 		<view class="rating-panel">
 			<view class="rating-head">
-				<text class="rating-title">收藏课程</text>
-				<text class="rating-state">{{favoriteSaved ? '已收藏' : '未收藏'}}</text>
+				<text class="rating-title">课程评分</text>
+				<text class="rating-state">{{myRating ? `${myRating}星` : '1到5颗星'}}</text>
 			</view>
-			<view class="favorite-desc">收藏后可在会员中心的“我的收藏”查看。课程权限到期或被关闭后，收藏记录仍保留，但不能继续观看。</view>
-			<view class="rating-btn" :class="{saved: favoriteSaved, disabled: favoriteLoading}" @click="toggleCourseFavorite">{{favoriteSaved ? '取消收藏' : '收藏课程'}}</view>
-		</view>
-
-		<view class="content">
-			<view class="lesson-card-panel" v-if="lessonCard">
-				<view class="lesson-card-title">{{lessonCard.title}}</view>
-				<view class="lesson-card-item" v-for="(item, index) in lessonCard.items" :key="item">
-					<view class="lesson-card-index">{{index + 1}}</view>
-					<view class="lesson-card-text">{{item}}</view>
+			<view class="star-row">
+				<view
+					class="star-item"
+					v-for="star in ratingOptions"
+					:key="star"
+					:class="{active: myRating >= star, disabled: ratingLoading}"
+					@click="submitLessonRating(star)"
+				>
+					<text class="star-icon">★</text>
+					<text class="star-label">{{star}}星</text>
 				</view>
 			</view>
-			<view class="next-fab">
-				<text class="fab-arrow">→</text>
-				<text class="fab-text">下一关</text>
-			</view>
+			<view class="rating-desc">{{ratingHint}}</view>
 		</view>
 
 		<!-- 底部 -->
 		<view class="footer">
-			<view class="card-btn" @click="showCard">
-				<view class="card-ico">🗂</view>
-				<text class="card-text">讲点卡</text>
-			</view>
-			<view class="prev-btn" :class="{active: prevTitle}" @click="goPrev">上一讲</view>
-			<view class="next-btn active" @click="goNext">下一讲</view>
+			<view class="return-btn" @click="returnToCatalog">返回课程目录</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { getFavorites, getLessonVideo, isLoggedIn, saveLessonProgress, toggleFavorite } from '@/common/api.js'
+import { getLessonRatingApi, getLessonVideo, isLoggedIn, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
 export default {
 	data() {
 		return {
@@ -116,13 +114,17 @@ export default {
 			videoContext: null,
 			playbackRate: 1,
 			playbackRates: [1, 1.2, 1.5, 0.75],
+			isDesktopH5: false,
+			isWebFullscreen: false,
+			fullscreenListener: null,
 			prevTitle: '',
 			nextTitle: '',
 			lessonCard: null,
 			page: 1,
 			pageTotal: 1,
-			favoriteSaved: false,
-			favoriteLoading: false,
+			myRating: 0,
+			ratingLoading: false,
+			ratingOptions: [1, 2, 3, 4, 5],
 			userInfo: {}
 		}
 	},
@@ -133,14 +135,21 @@ export default {
 		if (opts && opts.chapterTitle) this.chapterTitle = decodeURIComponent(opts.chapterTitle);
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		await this.loadLesson();
-		if (isLoggedIn()) await this.loadFavoriteState();
+		if (isLoggedIn()) await this.loadRatingState();
 	},
 	onReady() {
+		this.detectDesktopH5();
+		this.bindFullscreenListener();
 		this.videoContext = uni.createVideoContext('lessonVideo', this);
 		this.applyPlaybackRate();
 	},
 	onUnload() {
+		this.unbindFullscreenListener();
+		this.exitWebFullscreen(false);
 		this.persistProgress(false);
+	},
+	onHide() {
+		this.exitWebFullscreen(false);
 	},
 	computed: {
 		watermarkText() {
@@ -150,6 +159,11 @@ export default {
 		},
 		showWatermark() {
 			return this.videoPlaying && !!this.watermarkText && !this.videoError;
+		},
+		ratingHint() {
+			if (this.myRating) return '已记录本节课程体验，可重新点击星级修改。';
+			if (this.percent < 90) return '学习进度达到90%后即可提交评分。';
+			return '看完课程后点击星级，1星到5星都可评价。';
 		}
 	},
 	methods: {
@@ -175,15 +189,78 @@ export default {
 				console.warn('视频接口不可用', err);
 			}
 		},
-		async loadFavoriteState() {
+		async loadRatingState() {
 			try {
-				const data = await getFavorites();
-				this.favoriteSaved = (data.courses || []).some(item => item.targetId === this.courseId);
+				const data = await getLessonRatingApi(this.title);
+				this.myRating = Number(data.rating && data.rating.rating) || 0;
 			} catch (err) {
-				console.warn('收藏接口不可用', err);
+				console.warn('评分接口不可用', err);
 			}
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); },
+		goBack() {
+			if (this.isWebFullscreen) {
+				this.exitWebFullscreen();
+				return;
+			}
+			uni.navigateBack({ fail:()=>this.returnToCatalog(true) });
+		},
+		detectDesktopH5() {
+			if (typeof window === 'undefined') return;
+			this.isDesktopH5 = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+		},
+		bindFullscreenListener() {
+			if (typeof document === 'undefined' || this.fullscreenListener) return;
+			this.fullscreenListener = () => {
+				const active = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+				this.isWebFullscreen = !!active;
+			};
+			['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(name => {
+				document.addEventListener(name, this.fullscreenListener);
+			});
+		},
+		unbindFullscreenListener() {
+			if (typeof document === 'undefined' || !this.fullscreenListener) return;
+			['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(name => {
+				document.removeEventListener(name, this.fullscreenListener);
+			});
+			this.fullscreenListener = null;
+		},
+		videoShell() {
+			if (typeof document === 'undefined') return null;
+			return document.querySelector('.video-wrap');
+		},
+		toggleWebFullscreen() {
+			if (this.isWebFullscreen) {
+				this.exitWebFullscreen();
+			} else {
+				this.enterWebFullscreen();
+			}
+		},
+		enterWebFullscreen() {
+			const el = this.videoShell();
+			if (!el) return;
+			const request = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+			if (request) {
+				request.call(el);
+				this.isWebFullscreen = true;
+			}
+		},
+		exitWebFullscreen(showToast = true) {
+			if (typeof document === 'undefined') return;
+			const active = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+			if (!active) {
+				this.isWebFullscreen = false;
+				return;
+			}
+			const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+			if (exit) exit.call(document);
+			this.isWebFullscreen = false;
+			if (showToast) uni.showToast({ title:'已退出全屏', icon:'none' });
+		},
+		onNativeFullscreenChange(e) {
+			const detail = e.detail || {};
+			this.isWebFullscreen = !!detail.fullScreen;
+		},
 		onLoadedMeta(e) {
 			const duration = Number(e.detail && e.detail.duration) || this.durationSeconds;
 			if (duration) {
@@ -261,10 +338,6 @@ export default {
 			const sec = String(safe % 60).padStart(2, '0');
 			return `${min}:${sec}`;
 		},
-		showCard() {
-			const items = this.lessonCard && this.lessonCard.items ? this.lessonCard.items.join('\n') : '暂无讲点卡';
-			uni.showModal({ title: this.lessonCard ? this.lessonCard.title : '讲点卡', content: items, showCancel: false });
-		},
 		goNext() {
 			if (!this.nextTitle || this.nextTitle === '下一讲') {
 				uni.showToast({ title:'已到当前示例下一讲', icon:'none' });
@@ -279,27 +352,42 @@ export default {
 			}
 			uni.redirectTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(this.prevTitle)}` });
 		},
+		returnToCatalog(fromBackFail = false) {
+			if (this.isWebFullscreen) {
+				this.exitWebFullscreen();
+				return;
+			}
+			if (!fromBackFail) {
+				const stack = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+				if (stack && stack.length > 1) {
+					uni.navigateBack({ fail:()=>this.returnToCatalog(true) });
+					return;
+				}
+			}
+			const page = this.courseId && this.courseId.endsWith('-trial') ? 'course-detail' : 'course-full';
+			const title = this.courseTitle || this.title;
+			uni.redirectTo({ url:`/pages/${page}/${page}?title=${encodeURIComponent(title)}&courseId=${encodeURIComponent(this.courseId)}` });
+		},
 		toast(title) { uni.showToast({ title, icon:'none' }); },
-		async toggleCourseFavorite() {
+		async submitLessonRating(star) {
 			if (!isLoggedIn()) {
 				uni.showToast({ title:'请先登录', icon:'none' });
 				return;
 			}
-			if (this.favoriteLoading) return;
-			this.favoriteLoading = true;
+			if (this.ratingLoading) return;
+			this.ratingLoading = true;
 			try {
-				const result = await toggleFavorite({
-					type: 'course',
-					targetId: this.courseId,
-					title: this.courseTitle || this.title,
-					courseId: this.courseId
+				await saveLessonRatingApi(this.title, star, this.title, {
+					courseId: this.courseId,
+					courseTitle: this.courseTitle,
+					chapterTitle: this.chapterTitle
 				});
-				this.favoriteSaved = !!result.favorited;
-				uni.showToast({ title:this.favoriteSaved ? '已收藏' : '已取消收藏', icon:'success' });
+				this.myRating = star;
+				uni.showToast({ title:'评分已保存', icon:'success' });
 			} catch (err) {
-				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
+				uni.showToast({ title: err.message || '评分失败', icon:'none' });
 			} finally {
-				this.favoriteLoading = false;
+				this.ratingLoading = false;
 			}
 		}
 	}
@@ -308,7 +396,7 @@ export default {
 
 <style lang="scss">
 page { background:#fff; }
-.page { min-height:100vh; background:#fff; padding-bottom:240rpx; }
+.page { min-height:100vh; background:#fff; padding-bottom:150rpx; }
 
 .nav {
 	position:relative;
@@ -330,6 +418,30 @@ page { background:#fff; }
 	height:420rpx;
 	background:#000;
 	display:block;
+}
+.desktop-video-tools {
+	position:absolute;
+	right:22rpx;
+	top:22rpx;
+	z-index:8;
+	display:none;
+}
+.fullscreen-toggle {
+	height:54rpx;
+	line-height:54rpx;
+	padding:0 22rpx;
+	border-radius:30rpx;
+	background:rgba(17,24,39,.72);
+	color:#f8fafc;
+	font-size:22rpx;
+	font-weight:800;
+	border:1rpx solid rgba(255,255,255,.28);
+	box-shadow:0 8rpx 20rpx rgba(15,23,42,.22);
+	cursor:pointer;
+}
+.fullscreen-toggle.active {
+	background:#2563eb;
+	border-color:#2563eb;
 }
 .moving-watermark {
 	position:absolute;
@@ -603,6 +715,19 @@ page { background:#fff; }
 	display:flex; align-items:center;
 	padding: 0 24rpx;
 }
+.return-btn {
+	width:100%;
+	height:80rpx;
+	line-height:80rpx;
+	text-align:center;
+	background:#eef6ff;
+	color:#1677d2;
+	border:1rpx solid #b9dcff;
+	font-size:28rpx;
+	font-weight:800;
+	border-radius:14rpx;
+	cursor:pointer;
+}
 .card-btn {
 	display:flex; flex-direction:column; align-items:center;
 	width:120rpx;
@@ -628,5 +753,43 @@ page { background:#fff; }
 .next-btn.active {
 	background:#3aa3f5;
 	color:#fff;
+}
+
+@media (hover:hover) and (pointer:fine) {
+	.page {
+		max-width:680px;
+		margin:0 auto;
+		box-shadow:0 0 0 1px #e5e7eb;
+	}
+	.desktop-video-tools {
+		display:block;
+	}
+	.video-wrap:fullscreen {
+		width:100vw;
+		height:100vh;
+		background:#0f172a;
+		display:flex;
+		flex-direction:column;
+	}
+	.video-wrap:fullscreen .video-player {
+		flex:1;
+		width:100vw;
+		height:auto;
+		min-height:0;
+	}
+	.video-wrap:fullscreen .video-info,
+	.video-wrap:fullscreen .speed-panel {
+		flex-shrink:0;
+	}
+	.video-wrap:fullscreen .fullscreen-toggle {
+		background:#2563eb;
+		border-color:#2563eb;
+	}
+	.footer {
+		left:50%;
+		width:680px;
+		right:auto;
+		transform:translateX(-50%);
+	}
 }
 </style>
