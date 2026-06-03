@@ -454,7 +454,8 @@ export default {
 		},
 		goQuiz(q) {
 			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` });
+			const ids = Array.isArray(q.questionIds) ? q.questionIds.join(',') : '';
+			uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(ids)}` });
 		},
 		goWrongBook() {
 			this.collapseCheckinPanel();
@@ -488,7 +489,10 @@ export default {
 				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex) : (lesson.title || lesson);
 				const type = this.versionIndex === 0 ? 'reinforce' : 'practice';
 				const practiceTitle = lesson.title || lesson;
-				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}` });
+				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
+					? child.questionIds
+					: (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
+				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });

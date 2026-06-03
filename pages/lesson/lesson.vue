@@ -15,6 +15,7 @@
 				:poster="poster"
 				:initial-time="initialTime"
 				controls
+				:muted="muted"
 				:show-fullscreen-btn="!isDesktopH5"
 				:show-play-btn="true"
 				:enable-progress-gesture="true"
@@ -36,24 +37,45 @@
 				<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
 			</view>
 			<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
+			<view class="video-quick-tools">
+				<view class="speed-menu" v-if="showSpeedMenu">
+					<view
+						class="speed-menu-item"
+						v-for="rate in playbackRates"
+						:key="rate"
+						:class="{active: playbackRate === rate}"
+						@click.stop="setPlaybackRate(rate)"
+					>{{rateLabel(rate)}}</view>
+				</view>
+				<view class="quick-tools-row">
+					<view class="quick-tool speed-trigger" :class="{active: showSpeedMenu}" @click.stop="toggleSpeedMenu">{{rateLabel(playbackRate)}}</view>
+					<view class="volume-control">
+						<view class="volume-panel" v-if="showVolumePanel">
+							<slider
+								class="volume-slider"
+								:min="0"
+								:max="100"
+								:step="1"
+								:value="volume"
+								activeColor="#3aa3f5"
+								backgroundColor="rgba(255,255,255,.32)"
+								block-color="#ffffff"
+								:block-size="18"
+								@changing="onVolumeChanging"
+								@change="onVolumeChange"
+							/>
+							<view class="volume-mute" @click.stop="toggleMute">{{muted || volume === 0 ? '恢复' : '静音'}}</view>
+						</view>
+						<view class="quick-tool volume-trigger" :class="{muted: muted || volume === 0}" @click.stop="toggleVolumePanel">{{volumeIcon}}</view>
+					</view>
+				</view>
+			</view>
 			<view class="video-info">
 				<view>
 					<view class="video-title">{{title}}</view>
 					<view class="video-sub">已学 {{percent}}% · {{curTime}} / {{totalTime}}</view>
 				</view>
 				<view class="save-state">{{progressSaved ? '进度已同步' : '学习中'}}</view>
-			</view>
-			<view class="speed-panel">
-				<text class="speed-label">倍速</text>
-				<view class="speed-options">
-					<view
-						class="speed-btn"
-						v-for="rate in playbackRates"
-						:key="rate"
-						:class="{active: playbackRate === rate}"
-						@click="setPlaybackRate(rate)"
-					>{{rateLabel(rate)}}</view>
-				</view>
 			</view>
 		</view>
 
@@ -73,7 +95,7 @@
 					class="star-item"
 					v-for="star in ratingOptions"
 					:key="star"
-					:class="{active: myRating >= star, disabled: ratingLoading}"
+					:class="{active: myRating >= star, disabled: ratingLoading || !!myRating}"
 					@click="submitLessonRating(star)"
 				>
 					<text class="star-icon">★</text>
@@ -113,7 +135,12 @@ export default {
 			lastSavedAt: 0,
 			videoContext: null,
 			playbackRate: 1,
-			playbackRates: [1, 1.2, 1.5, 0.75],
+			playbackRates: [2, 1.5, 1, 0.75, 0.5],
+			showSpeedMenu: false,
+			showVolumePanel: false,
+			volume: 80,
+			lastVolume: 80,
+			muted: false,
 			isDesktopH5: false,
 			isWebFullscreen: false,
 			fullscreenListener: null,
@@ -142,6 +169,7 @@ export default {
 		this.bindFullscreenListener();
 		this.videoContext = uni.createVideoContext('lessonVideo', this);
 		this.applyPlaybackRate();
+		this.applyVolume();
 	},
 	onUnload() {
 		this.unbindFullscreenListener();
@@ -160,10 +188,13 @@ export default {
 		showWatermark() {
 			return this.videoPlaying && !!this.watermarkText && !this.videoError;
 		},
+		volumeIcon() {
+			return this.muted || this.volume === 0 ? '🔇' : '🔊';
+		},
 		ratingHint() {
-			if (this.myRating) return '已记录本节课程体验，可重新点击星级修改。';
+			if (this.myRating) return '已记录本节课程评分，不可更改。';
 			if (this.percent < 90) return '学习进度达到90%后即可提交评分。';
-			return '看完课程后点击星级，1星到5星都可评价。';
+			return '看完课程后点击星级，每节课只能评价一次。';
 		}
 	},
 	methods: {
@@ -229,6 +260,10 @@ export default {
 			if (typeof document === 'undefined') return null;
 			return document.querySelector('.video-wrap');
 		},
+		nativeVideoElement() {
+			if (typeof document === 'undefined') return null;
+			return document.querySelector('#lessonVideo video') || document.querySelector('uni-video#lessonVideo video');
+		},
 		toggleWebFullscreen() {
 			if (this.isWebFullscreen) {
 				this.exitWebFullscreen();
@@ -268,6 +303,7 @@ export default {
 				this.totalTime = this.formatTime(duration);
 			}
 			this.applyPlaybackRate();
+			this.applyVolume();
 		},
 		onPlay() {
 			this.videoPlaying = true;
@@ -297,6 +333,11 @@ export default {
 		setPlaybackRate(rate) {
 			this.playbackRate = Number(rate) || 1;
 			this.applyPlaybackRate();
+			this.showSpeedMenu = false;
+		},
+		toggleSpeedMenu() {
+			this.showSpeedMenu = !this.showSpeedMenu;
+			if (this.showSpeedMenu) this.showVolumePanel = false;
 		},
 		applyPlaybackRate() {
 			this.$nextTick(() => {
@@ -305,14 +346,51 @@ export default {
 				if (ctx && typeof ctx.playbackRate === 'function') {
 					ctx.playbackRate(this.playbackRate);
 				}
-				if (typeof document !== 'undefined') {
-					const video = document.querySelector('#lessonVideo video') || document.querySelector('uni-video#lessonVideo video');
-					if (video) video.playbackRate = this.playbackRate;
-				}
+				const video = this.nativeVideoElement();
+				if (video) video.playbackRate = this.playbackRate;
 			});
 		},
 		rateLabel(rate) {
-			return `${rate}倍`;
+			return `${rate}x`;
+		},
+		toggleVolumePanel() {
+			this.showVolumePanel = !this.showVolumePanel;
+			if (this.showVolumePanel) this.showSpeedMenu = false;
+		},
+		onVolumeChanging(e) {
+			this.setVolume(e.detail && e.detail.value);
+		},
+		onVolumeChange(e) {
+			this.setVolume(e.detail && e.detail.value);
+		},
+		setVolume(value) {
+			const next = Math.max(0, Math.min(100, Number(value) || 0));
+			this.volume = next;
+			if (next > 0) {
+				this.lastVolume = next;
+				this.muted = false;
+			} else {
+				this.muted = true;
+			}
+			this.applyVolume();
+		},
+		toggleMute() {
+			if (this.muted || this.volume === 0) {
+				this.volume = this.lastVolume || 80;
+				this.muted = false;
+			} else {
+				this.lastVolume = this.volume || 80;
+				this.muted = true;
+			}
+			this.applyVolume();
+		},
+		applyVolume() {
+			this.$nextTick(() => {
+				const video = this.nativeVideoElement();
+				if (!video) return;
+				video.muted = this.muted || this.volume === 0;
+				video.volume = Math.max(0, Math.min(1, this.volume / 100));
+			});
 		},
 		async persistProgress(ended) {
 			if (!isLoggedIn() || !this.videoUrl) return;
@@ -372,6 +450,10 @@ export default {
 		async submitLessonRating(star) {
 			if (!isLoggedIn()) {
 				uni.showToast({ title:'请先登录', icon:'none' });
+				return;
+			}
+			if (this.myRating) {
+				uni.showToast({ title:'本节已评分，不可更改', icon:'none' });
 				return;
 			}
 			if (this.ratingLoading) return;
@@ -504,40 +586,93 @@ page { background:#fff; }
 	color:#dbeafe;
 	font-size:22rpx;
 }
-.speed-panel {
+.video-quick-tools {
+	position:absolute;
+	right:24rpx;
+	top:112rpx;
+	z-index:10;
 	display:flex;
-	align-items:center;
-	padding:0 28rpx 24rpx;
-	color:#dbeafe;
+	flex-direction:column;
+	align-items:flex-end;
+	gap:10rpx;
+	pointer-events:none;
 }
-.speed-label {
-	font-size:24rpx;
-	color:#cbd5e1;
-	margin-right:18rpx;
+.speed-menu {
+	width:126rpx;
+	padding:8rpx 0;
+	border-radius:10rpx;
+	background:rgba(15,23,42,.68);
+	backdrop-filter:blur(8px);
+	border:1rpx solid rgba(255,255,255,.18);
+	box-shadow:0 12rpx 28rpx rgba(0,0,0,.22);
+	pointer-events:auto;
 }
-.speed-options {
-	display:flex;
-	align-items:center;
-	flex-wrap:wrap;
-	gap:12rpx;
-}
-.speed-btn {
-	min-width:92rpx;
+.speed-menu-item {
 	height:48rpx;
 	line-height:48rpx;
 	text-align:center;
-	border-radius:24rpx;
-	background:rgba(255,255,255,.1);
-	color:#dbeafe;
-	font-size:23rpx;
+	color:#e5edf7;
+	font-size:25rpx;
 	font-weight:700;
-	border:1rpx solid rgba(255,255,255,.16);
 	cursor:pointer;
 }
-.speed-btn.active {
-	background:#3aa3f5;
-	color:#fff;
-	border-color:#3aa3f5;
+.speed-menu-item.active {
+	color:#ff595f;
+	background:rgba(255,255,255,.12);
+}
+.quick-tools-row {
+	display:flex;
+	align-items:flex-end;
+	gap:12rpx;
+	pointer-events:auto;
+}
+.quick-tool {
+	min-width:62rpx;
+	height:58rpx;
+	line-height:58rpx;
+	text-align:center;
+	border-radius:12rpx;
+	background:rgba(15,23,42,.72);
+	color:#f8fafc;
+	font-size:24rpx;
+	font-weight:800;
+	border:1rpx solid rgba(255,255,255,.2);
+	box-shadow:0 8rpx 20rpx rgba(0,0,0,.2);
+	cursor:pointer;
+}
+.quick-tool.active,
+.quick-tool.muted {
+	background:#2563eb;
+	border-color:#2563eb;
+}
+.volume-control {
+	position:relative;
+}
+.volume-panel {
+	position:absolute;
+	right:0;
+	bottom:72rpx;
+	width:250rpx;
+	padding:14rpx 14rpx 12rpx;
+	border-radius:12rpx;
+	background:rgba(15,23,42,.78);
+	border:1rpx solid rgba(255,255,255,.18);
+	box-shadow:0 12rpx 28rpx rgba(0,0,0,.22);
+}
+.volume-slider {
+	width:100%;
+}
+.volume-mute {
+	margin-top:4rpx;
+	height:42rpx;
+	line-height:42rpx;
+	text-align:center;
+	border-radius:8rpx;
+	background:rgba(255,255,255,.12);
+	color:#e5edf7;
+	font-size:22rpx;
+	font-weight:700;
+	cursor:pointer;
 }
 
 /* 本节内容 */
@@ -643,7 +778,7 @@ page { background:#fff; }
 	cursor:pointer;
 }
 .star-item.active { color:#f5b42a; }
-.star-item.disabled { opacity:.5; }
+.star-item.disabled { opacity:.65; cursor:default; }
 .star-icon {
 	font-size:44rpx;
 	line-height:48rpx;
@@ -778,8 +913,13 @@ page { background:#fff; }
 		min-height:0;
 	}
 	.video-wrap:fullscreen .video-info,
-	.video-wrap:fullscreen .speed-panel {
+	.video-wrap:fullscreen .video-quick-tools {
 		flex-shrink:0;
+	}
+	.video-wrap:fullscreen .video-quick-tools {
+		top:auto;
+		right:34rpx;
+		bottom:128rpx;
 	}
 	.video-wrap:fullscreen .fullscreen-toggle {
 		background:#2563eb;

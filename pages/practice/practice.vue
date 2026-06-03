@@ -67,6 +67,7 @@ export default {
 			count: 5,
 			source: '全部',
 			courseId: 'gk-math-full',
+			questionIds: [],
 			sourceWrongIds: [],
 			questions: [],
 			answers: {},
@@ -95,6 +96,7 @@ export default {
 		this.count = Number(opts.count || 5);
 		this.source = decodeURIComponent(opts.source || '全部');
 		this.courseId = decodeURIComponent(opts.courseId || 'gk-math-full');
+		this.questionIds = String(decodeURIComponent(opts.questionIds || '')).split(',').map(item => item.trim()).filter(Boolean);
 		this.loadData();
 	},
 	methods: {
@@ -103,12 +105,12 @@ export default {
 				const practiceLookupTitle = this.practiceTitle || this.title;
 				const usePracticeLookup = this.type === 'reinforce' && !this.pointId;
 				const data = this.type === 'quiz'
-					? await getQuiz(this.title)
+					? await getQuiz(this.title, this.courseId, this.questionIds)
 					: this.type === 'reinforce' && !usePracticeLookup
 						? await getReinforcePractice(this.pointId)
 						: this.type === 'wrongRetry'
 							? await getWrongRetry(this.count, this.source, this.courseId)
-							: await getPractice(practiceLookupTitle);
+							: await getPractice(practiceLookupTitle, this.questionIds);
 				if (!usePracticeLookup) this.title = data.title || this.title;
 				this.questions = data.questions || [];
 				this.sourceWrongIds = data.sourceWrongIds || [];

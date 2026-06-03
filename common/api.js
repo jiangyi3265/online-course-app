@@ -202,8 +202,8 @@ export function getAdminDashboard() {
 	return request('/dashboard', { admin: true })
 }
 
-export function getPractice(title) {
-	return request('/practice', { params: { title } })
+export function getPractice(title, questionIds = []) {
+	return request('/practice', { params: { title, questionIds: questionIds.join(',') } })
 }
 
 export function submitPractice(payload) {
@@ -213,8 +213,8 @@ export function submitPractice(payload) {
 	})
 }
 
-export function getQuiz(quizId) {
-	return request('/quiz', { params: { quizId } })
+export function getQuiz(quizId, courseId = '', questionIds = []) {
+	return request('/quiz', { params: { quizId, courseId, questionIds: questionIds.join(',') } })
 }
 
 export function submitQuiz(payload) {
