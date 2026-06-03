@@ -51,7 +51,7 @@
 			<!-- 技巧干货 -->
 			<block v-if="tab===0">
 				<view class="chip-row">
-					<view class="chip" v-for="(v,i) in versions" :key="v.name || v" :class="{active: versionIndex===i}" @click="setVersion(i)">{{versionLabel(v, i)}}</view>
+					<view class="chip" v-for="(v,i) in visibleVersions" :key="v.name || v" :class="{active: versionIndex===i}" @click="setVersion(i)">{{versionLabel(v, i)}}</view>
 				</view>
 
 				<view class="chap-list">
@@ -82,16 +82,6 @@
 										<view class="child-actions">
 											<view class="child-btn go" @click.stop="goLesson(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
 											<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
-										</view>
-										<view class="knowledge-panel" v-if="isKnowledgeChild(child)">
-											<view class="knowledge-item" @click.stop="goLesson(c, s, child, j)">
-												<text class="knowledge-type video">视频</text>
-												<text class="knowledge-name">视频课程</text>
-											</view>
-											<view class="knowledge-item" @click.stop="goDocs">
-												<text class="knowledge-type doc">讲义</text>
-												<text class="knowledge-name">文字讲义</text>
-											</view>
 										</view>
 									</view>
 								</view>
@@ -276,6 +266,9 @@ export default {
 		},
 		displayUpdateDate() {
 			return this.formatCourseDate(this.updatedAt);
+		},
+		visibleVersions() {
+			return this.versions.slice(0, 2);
 		}
 	},
 	async onLoad(opts) {
@@ -323,9 +316,21 @@ export default {
 			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
 			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = course.quizzes || this.quizzes;
-			this.locked = course.subject === 'gaokao-math' ? false : this.locked;
-			this.showFooter = course.subject === 'gaokao-math' ? false : this.showFooter;
+			this.applyCourseAccess(course);
 			this.setVersion(0);
+		},
+		applyCourseAccess(course = {}) {
+			const unlocked = this.hasCourseAccess(course);
+			this.locked = !unlocked;
+			this.showFooter = !unlocked;
+		},
+		hasCourseAccess(course = {}) {
+			if (course.subject === 'gaokao-math') return true;
+			if (course.kind && course.kind !== 'full') return true;
+			return ['available', 'activated', 'authorized', 'enrolled', 'hasAccess'].some(key => {
+				const value = course[key];
+				return value === true || value === 'true' || value === 1 || value === '1';
+			});
 		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); },
 		setCover(value) {
@@ -456,16 +461,13 @@ export default {
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
 		versionLabel(version, index) {
-			return index === 0 ? '复习加强课' : '技巧绝招课';
+			return (version && version.name) || (index === 0 ? '复习加强课' : '技巧绝招课');
 		},
 		childName(child, chapter, lesson, lessonIndex) {
 			if (this.versionIndex === 0) {
 				return child.type === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex) : '知识点巩固';
 			}
 			return child.type === 2 ? '真题讲练' : '技巧绝招课';
-		},
-		isKnowledgeChild(child) {
-			return this.versionIndex === 0 && child.type !== 2;
 		},
 		knowledgeChildName(child) {
 			if (child.type === 2) return child.name || child.questionBankName || '巩固练习';
@@ -776,39 +778,6 @@ page { background:#f5f7fa; }
 }
 .child-btn.go { background:#3aa3f5; }
 .child-btn.ai { background:#2bb673; }
-.knowledge-panel {
-	width:calc(100% - 56rpx);
-	margin:14rpx 0 2rpx 56rpx;
-	padding:14rpx 16rpx;
-	background:#f8fafc;
-	border:1rpx solid #edf0f3;
-	border-radius:10rpx;
-	display:flex;
-	gap:14rpx;
-}
-.knowledge-item {
-	flex:1;
-	min-width:0;
-	height:56rpx;
-	padding:0 14rpx;
-	border-radius:8rpx;
-	background:#fff;
-	display:flex;
-	align-items:center;
-	cursor:pointer;
-}
-.knowledge-type {
-	flex-shrink:0;
-	margin-right:10rpx;
-	padding:4rpx 8rpx;
-	border-radius:6rpx;
-	font-size:20rpx;
-	font-weight:800;
-}
-.knowledge-type.video { background:#eaf3fc; color:#3aa3f5; }
-.knowledge-type.doc { background:#eafbe6; color:#2bb673; }
-.knowledge-name { color:#333; font-size:24rpx; font-weight:700; }
-
 /* 章节扫雷 */
 .quiz-list { padding: 16rpx 24rpx; }
 .quiz {
