@@ -112,6 +112,8 @@ export default {
 	async onShow() {
 		this.logined = isLoggedIn();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
+		if (this.funcs[5]) this.funcs[5].route = '/pages/agreement/agreement?type=privacy';
+		if (this.funcs[6]) this.funcs[6].route = '/pages/agreement/agreement?type=user';
 		if (!this.logined) this.showModal = true;
 	},
 	methods: {

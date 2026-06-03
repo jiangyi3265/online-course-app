@@ -42,9 +42,9 @@
 			<view class="agree-row">
 				<view class="checkbox" :class="{checked: agree}" @click="agree = !agree"><text v-if="agree">✓</text></view>
 				<text class="agree-text">我已阅读并同意</text>
-				<text class="link">用户隐私协议</text>
+				<text class="link" @click="openProtocol">用户隐私协议</text>
 				<text class="agree-text">和</text>
-				<text class="link">用户隐私政策</text>
+				<text class="link" @click="openPolicy">用户隐私政策</text>
 			</view>
 
 			<button class="register-btn" :loading="loading" @click="onSubmit">注册并登录</button>
@@ -81,6 +81,12 @@
 		methods: {
 			goBack() {
 				uni.navigateBack({ fail: () => uni.redirectTo({ url: '/pages/login/login' }) })
+			},
+			openProtocol() {
+				uni.navigateTo({ url: '/pages/agreement/agreement?type=user' })
+			},
+			openPolicy() {
+				uni.navigateTo({ url: '/pages/agreement/agreement?type=privacy' })
 			},
 			validate() {
 				if (!this.name) {

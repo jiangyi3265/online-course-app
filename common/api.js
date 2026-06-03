@@ -148,6 +148,10 @@ export function submitFeedback(payload) {
 	})
 }
 
+export function getFrontendSettings() {
+	return request('/settings')
+}
+
 export function getCourses(params = {}) {
 	return request('/courses', { params })
 }

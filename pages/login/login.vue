@@ -127,10 +127,10 @@
 				}
 			},
 			openProtocol() {
-				uni.showToast({ title: '用户隐私协议', icon: 'none' });
+				uni.navigateTo({ url: '/pages/agreement/agreement?type=user' });
 			},
 			openPolicy() {
-				uni.showToast({ title: '用户隐私政策', icon: 'none' });
+				uni.navigateTo({ url: '/pages/agreement/agreement?type=privacy' });
 			},
 			async getResetCode() {
 				if (!/^1\d{10}$/.test(this.reset.phone)) {

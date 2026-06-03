@@ -165,6 +165,14 @@
 				"navigationStyle": "custom"
 			}
 		}
+		,
+		{
+			"path": "pages/agreement/agreement",
+			"style": {
+				"navigationBarTitleText": "协议详情",
+				"navigationStyle": "custom"
+			}
+		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",

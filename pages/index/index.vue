@@ -1,8 +1,12 @@
 <template>
 	<view class="page">
-		<!-- Hero Banner (real asset) -->
+		<!-- Hero Banner -->
 		<view class="banner">
-			<image class="banner-img" src="/static/home-banner.png" mode="widthFix" />
+			<swiper class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
+				<swiper-item v-for="item in homeBanners" :key="item.id || item.imageUrl">
+					<image class="banner-img" :src="item.imageUrl" mode="aspectFill" @click="openBanner(item)" />
+				</swiper-item>
+			</swiper>
 		</view>
 
 		<!-- 4 categories -->
@@ -52,7 +56,7 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { GAOKAO_MATH_TRIAL, stripCourseYear } from '@/common/course-data.js'
-import { getCourses } from '@/common/api.js'
+import { getCourses, getFrontendSettings } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() {
@@ -62,6 +66,9 @@ export default {
 				{ icon:'/static/cats/2.png', text:'中考课程' },
 				{ icon:'/static/cats/3.png', text:'高考试听' },
 				{ icon:'/static/cats/4.png', text:'高考课程' }
+			],
+			homeBanners: [
+				{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }
 			],
 			list: [
 				{ full:'中考语文', learn:1086, cover:'/static/courses/zk-yuwen.jpg', kind:'trial', isTry:true },
@@ -78,9 +85,19 @@ export default {
 		}
 	},
 	onLoad() {
+		this.loadFrontendSettings();
 		this.loadCourses();
 	},
 	methods: {
+		async loadFrontendSettings() {
+			try {
+				const settings = await getFrontendSettings();
+				const banners = Array.isArray(settings.homeBanners) ? settings.homeBanners.filter(item => item && item.imageUrl) : [];
+				if (banners.length) this.homeBanners = banners;
+			} catch (err) {
+				console.warn('前端配置接口不可用，使用默认首页图', err);
+			}
+		},
 		async loadCourses() {
 			try {
 				const courses = await getCourses({ kind: 'trial' });
@@ -97,6 +114,15 @@ export default {
 			} catch (err) {
 				console.warn('课程接口不可用，使用本地课程数据', err);
 			}
+		},
+		openBanner(item = {}) {
+			const url = String(item.linkUrl || '').trim();
+			if (!url) return;
+			if (/^https?:\/\//i.test(url)) {
+				if (typeof window !== 'undefined') window.location.href = url;
+				return;
+			}
+			uni.navigateTo({ url, fail: () => uni.switchTab({ url, fail: () => uni.redirectTo({ url }) }) });
 		},
 		accessLabel(it) {
 			return it.kind === 'full' || it.isTry === false ? '激活课程' : '试听免费';
@@ -120,7 +146,8 @@ page { background:#f7f8fa; }
 .page { padding-bottom:130rpx; background:#f7f8fa; min-height:100vh; }
 
 .banner { padding: 20rpx 24rpx 8rpx; }
-.banner-img { width:100%; display:block; border-radius:14rpx; }
+.banner-swiper { width:100%; height:210rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
+.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; }
 
 .cats { display:flex; justify-content:space-around; padding:24rpx 0 14rpx; background:#f7f8fa; }
 .cat { display:flex; flex-direction:column; align-items:center; cursor:pointer; }
