@@ -25,13 +25,18 @@
 			<view class="question-card" v-for="item in questions" :key="item.id">
 				<view class="tag">{{item.knowledge || '题目'}}</view>
 				<view class="stem">{{item.stem}}</view>
-				<view class="option" v-for="(opt, idx) in item.options" :key="opt" :class="{active: answers[item.id] === idx}" @click="answers[item.id] = idx">
-					<text class="radio">{{answers[item.id] === idx ? '●' : '○'}}</text>
-					<text>{{opt}}</text>
+				<block v-if="questionType(item) === 'choice'">
+					<view class="option" v-for="(opt, idx) in item.options" :key="opt" :class="{active: answers[item.id] === idx}" @click="answers[item.id] = idx">
+						<text class="radio">{{answers[item.id] === idx ? '●' : '○'}}</text>
+						<text>{{opt}}</text>
+					</view>
+				</block>
+				<view class="text-answer" v-else>
+					<textarea class="answer-textarea" v-model="answers[item.id]" :auto-height="true" :placeholder="questionType(item) === 'fill' ? '请输入填空答案' : '请输入你的解题思路或答案'" />
 				</view>
 				<view class="analysis" v-if="results[item.id]">
-					<view :class="results[item.id].correct ? 'ok' : 'bad'">{{results[item.id].correct ? '回答正确' : '回答错误'}}</view>
-					<view class="ana-text">正确答案：{{optionText(item, results[item.id].answer)}}</view>
+					<view :class="results[item.id].manualReview ? 'review' : (results[item.id].correct ? 'ok' : 'bad')">{{results[item.id].manualReview ? '已提交，查看参考答案自评' : (results[item.id].correct ? '回答正确' : '回答错误')}}</view>
+					<view class="ana-text">参考答案：{{answerText(item, results[item.id])}}</view>
 					<analysis-viewer :item="results[item.id]" :text="results[item.id].analysis" />
 				</view>
 				<view class="answer-btn" @click="submitQuestion(item)">提交作答</view>
@@ -76,12 +81,12 @@ export default {
 			uni.navigateTo({ url:`/pages/course-full/course-full?id=${encodeURIComponent(item.targetId)}&subject=${encodeURIComponent(item.subject || '')}&kind=${encodeURIComponent(item.kind || 'full')}` });
 		},
 		async submitQuestion(item) {
-			if (this.answers[item.id] === undefined) {
-				uni.showToast({ title:'请选择答案', icon:'none' });
+			if (this.isAnswerMissing(item)) {
+				uni.showToast({ title:'请完成作答', icon:'none' });
 				return;
 			}
 			try {
-				const result = await answerFavoriteQuestion({ questionId: item.id, selected: this.answers[item.id] });
+				const result = await answerFavoriteQuestion({ questionId: item.id, selected: this.answers[item.id], answer: this.answers[item.id] });
 				this.results = { ...this.results, [item.id]: result };
 			} catch (err) {
 				uni.showToast({ title: err.message || '提交失败', icon:'none' });
@@ -89,6 +94,20 @@ export default {
 		},
 		optionText(item, index) {
 			return item.options && item.options[index] !== undefined ? item.options[index] : '--';
+		},
+		questionType(item = {}) {
+			const value = item.questionType || item.type || 'choice';
+			if (value === 'fill' || value === '填空' || value === '填空题') return 'fill';
+			if (value === 'subjective' || value === '主观' || value === '主观题') return 'subjective';
+			return 'choice';
+		},
+		isAnswerMissing(item) {
+			const value = this.answers[item.id];
+			return this.questionType(item) === 'choice' ? value === undefined : String(value || '').trim().length === 0;
+		},
+		answerText(item, result = {}) {
+			if (this.questionType(item) === 'choice') return this.optionText(item, result.answer);
+			return result.answerText || result.answer || '--';
 		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); }
 	}
@@ -120,9 +139,12 @@ page { background:#f5f7fa; }
 .option { display:flex; align-items:center; min-height:72rpx; padding:0 18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
 .radio { margin-right:14rpx; }
+.text-answer { margin-top:12rpx; }
+.answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }
 .analysis { margin-top:18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; font-size:26rpx; line-height:1.5; }
 .ok { color:#0f9f6e; font-weight:700; }
 .bad { color:#e5484d; font-weight:700; }
+.review { color:#1677ff; font-weight:700; }
 .ana-text { margin-top:8rpx; color:#596272; }
 .answer-btn { margin-top:20rpx; height:70rpx; line-height:70rpx; text-align:center; border-radius:12rpx; background:#1677ff; color:#fff; font-size:28rpx; }
 </style>

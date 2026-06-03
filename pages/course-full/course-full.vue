@@ -130,19 +130,52 @@
 				<view class="reinforce-head">
 					<view>
 						<view class="reinforce-title">{{displayCourseName}}</view>
-						<view class="reinforce-sub">共{{reinforceList.length || 17}}个知识点</view>
+						<view class="reinforce-sub">共{{knowledgeChapters.length ? countChapters(knowledgeChapters) : (reinforceList.length || 17)}}个知识点</view>
 					</view>
 					<view class="reinforce-time">共xx小时xx分钟</view>
 				</view>
-				<view class="reinforce-empty" v-if="!reinforceList.length">暂无复习加强内容</view>
-				<view class="reinforce-row" v-for="item in reinforceList" :key="item.id">
-					<view class="point-badge">知</view>
-					<view class="point-main">
-						<view class="point-title">{{item.title}}</view>
-						<view class="point-status">{{item.status || '未学'}}-添加日期：{{formatDateTime(item.createdAt)}}</view>
+				<view class="chap-list knowledge-chapter-list" v-if="knowledgeChapters.length">
+					<view class="chap" v-for="(c,i) in knowledgeChapters" :key="i">
+						<view class="chap-head" @click="toggleKnowledge(i)">
+							<text class="chap-title">{{c.title}}</text>
+							<view class="chap-right">
+								<text class="lock" v-if="locked">🔒</text>
+								<text class="caret" :class="{open: c.open}">{{c.open ? '⌄' : '›'}}</text>
+							</view>
+						</view>
+						<view class="chap-sub" v-if="c.open">
+							<view class="sub-row" v-for="(s,j) in c.items" :key="j">
+								<text class="sub-title">{{s.title || s}}</text>
+								<view class="lesson-children" v-if="s.children && s.children.length">
+									<view class="lesson-child" v-for="(child,k) in s.children" :key="k">
+										<view class="child-left">
+											<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
+											<view>
+												<view class="child-name">{{knowledgeChildName(child)}}</view>
+												<view class="child-progress">已学习：{{progressText(child)}}</view>
+											</view>
+										</view>
+										<view class="child-actions">
+											<view class="child-btn go" @click.stop="goKnowledgeChild(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
+											<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
+										</view>
+									</view>
+								</view>
+							</view>
+						</view>
 					</view>
-					<view class="point-btn" @click="startReinforce(item)">去学习</view>
 				</view>
+				<block v-else>
+					<view class="reinforce-empty" v-if="!reinforceList.length">暂无复习加强内容</view>
+					<view class="reinforce-row" v-for="item in reinforceList" :key="item.id">
+						<view class="point-badge">知</view>
+						<view class="point-main">
+							<view class="point-title">{{item.title}}</view>
+							<view class="point-status">{{item.status || '未学'}}-添加日期：{{formatDateTime(item.createdAt)}}</view>
+						</view>
+						<view class="point-btn" @click="startReinforce(item)">去学习</view>
+					</view>
+				</block>
 			</view>
 
 			<view style="height:160rpx"></view>
@@ -203,6 +236,7 @@ export default {
 			courseId: 'gk-math-full',
 			reinforceList: [],
 			reinforceLoaded: false,
+			knowledgeChapters: [],
 			chapters: [
 				{ title:'一、基础运用提升系列', open:true, items:[
 					'巧辨字音字形','词语理解运用','病句辨析解题技巧','文学文化常识突破','句子的连贯得体',
@@ -287,6 +321,7 @@ export default {
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
 			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
+			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = course.quizzes || this.quizzes;
 			this.locked = course.subject === 'gaokao-math' ? false : this.locked;
 			this.showFooter = course.subject === 'gaokao-math' ? false : this.showFooter;
@@ -311,6 +346,10 @@ export default {
 			this.collapseCheckinPanel();
 			this.chapters[i].open = !this.chapters[i].open;
 		},
+		toggleKnowledge(i) {
+			this.collapseCheckinPanel();
+			this.knowledgeChapters[i].open = !this.knowledgeChapters[i].open;
+		},
 		applyMathCourse() {
 			const course = getGaokaoMathCourse('full');
 			this.courseId = 'gk-math-full';
@@ -328,6 +367,7 @@ export default {
 			this.learntCount = course.readStudyCount;
 			this.learntDuration = course.readDuration;
 			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
+			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = course.quizzes;
 			this.locked = false;
 			this.showFooter = false;
@@ -344,15 +384,18 @@ export default {
 			const normalized = source.map((item, index) => ({
 				...(typeof item === 'object' ? item : { name: item }),
 				name: index === 0 ? '复习加强课' : '技巧绝招课',
-				chapters: (item && item.chapters) || baseChapters
+				chapters: (item && item.chapters) || (index === 2 ? [] : baseChapters)
 			}));
-			while (normalized.length < 2) {
+			while (normalized.length < 3) {
 				normalized.push({
-					name: normalized.length === 0 ? '复习加强课' : '技巧绝招课',
-					chapters: baseChapters
+					name: normalized.length === 0 ? '复习加强课' : (normalized.length === 1 ? '技巧绝招课' : '知识巩固'),
+					chapters: normalized.length === 2 ? [] : baseChapters
 				});
 			}
-			return normalized.slice(0, 2);
+			normalized[0].name = '复习加强课';
+			normalized[1].name = '技巧绝招课';
+			normalized[2].name = '知识巩固';
+			return normalized.slice(0, 3);
 		},
 		resolveCourseId(title = '', kind = 'full') {
 			const level = /中考/.test(title) ? 'zk' : 'gk';
@@ -374,7 +417,7 @@ export default {
 		setTab(i) {
 			this.collapseCheckinPanel();
 			this.tab = i;
-			if (i === 3) this.loadReinforce();
+			if (i === 3 && !this.knowledgeChapters.length) this.loadReinforce();
 		},
 		async loadReinforce() {
 			if (this.reinforceLoaded) return;
@@ -424,6 +467,10 @@ export default {
 		isKnowledgeChild(child) {
 			return this.versionIndex === 0 && child.type !== 2;
 		},
+		knowledgeChildName(child) {
+			if (child.type === 2) return child.name || child.questionBankName || '巩固练习';
+			return child.name || '视频课程';
+		},
 		reinforceTestName(chapter, lesson, lessonIndex) {
 			return `复习测试【${this.chapterShortName(chapter)}】${this.lessonNo(lesson, lessonIndex)}`;
 		},
@@ -468,6 +515,18 @@ export default {
 		startReinforce(item) {
 			this.collapseCheckinPanel();
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}` });
+		},
+		goKnowledgeChild(chapter, lesson, child, lessonIndex) {
+			this.collapseCheckinPanel();
+			if (child.type === 2) {
+				const title = child.name || child.questionBankName || `知识巩固${this.lessonNo(lesson, lessonIndex)}`;
+				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
+					? child.questionIds
+					: (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
+				uni.navigateTo({ url:`/pages/practice/practice?type=reinforce&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(lesson.title || title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
+				return;
+			}
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}` });
 		},
 		goActivate() {
 			this.collapseCheckinPanel();

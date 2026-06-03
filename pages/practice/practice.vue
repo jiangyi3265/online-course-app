@@ -15,14 +15,26 @@
 				<view class="q-title">{{i + 1}}. {{q.stem}}</view>
 				<view class="collect-btn" @click="collectQuestion(q)">收藏</view>
 			</view>
-			<view class="option" v-for="(opt, idx) in q.options" :key="opt" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
-				<text class="radio">{{answers[q.id] === idx ? '●' : '○'}}</text>
-				<text>{{opt}}</text>
+			<block v-if="questionType(q) === 'choice'">
+				<view class="option" v-for="(opt, idx) in q.options" :key="opt" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
+					<text class="radio">{{answers[q.id] === idx ? '●' : '○'}}</text>
+					<text>{{opt}}</text>
+				</view>
+			</block>
+			<view class="text-answer" v-else>
+				<textarea
+					class="answer-textarea"
+					v-model="answers[q.id]"
+					:auto-height="true"
+					:placeholder="questionType(q) === 'fill' ? '请输入填空答案' : '请输入你的解题思路或答案'"
+				/>
 			</view>
 			<view class="analysis" v-if="result">
-				<view :class="resultMap[q.id] && resultMap[q.id].correct ? 'ok' : 'bad'">
-					{{resultMap[q.id] && resultMap[q.id].correct ? '回答正确' : '回答错误'}}
+				<view :class="resultStatusClass(resultMap[q.id])">
+					{{resultStatusText(resultMap[q.id])}}
 				</view>
+				<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
+				<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
 				<analysis-viewer :item="resultMap[q.id]" :text="resultMap[q.id] && resultMap[q.id].analysis" />
 			</view>
 		</view>
@@ -30,6 +42,7 @@
 		<view class="result" v-if="result">
 			<view class="score">{{result.score}}分</view>
 			<view class="result-text">答对 {{result.correct}} / {{result.total}} 题</view>
+			<view class="result-text" v-if="result.manualReviewCount">主观题 {{result.manualReviewCount}} 道，请查看参考答案自评</view>
 			<view class="result-actions">
 				<view class="ghost-btn" @click="goWrongBook">查看错题与巩固</view>
 				<view class="primary-btn" @click="reload">再练一次</view>
@@ -40,8 +53,8 @@
 			<view class="overview-title">题目总览</view>
 			<view class="overview-row" v-for="(item, index) in resultDetails" :key="item.id">
 				<view class="overview-count">题目数：{{index + 1}}/{{resultDetails.length}}</view>
-				<view>我的答案：{{answerLetter(item.selected)}}</view>
-				<view>正确答案：{{answerLetter(item.answer)}}</view>
+				<view>我的答案：{{displayAnswer(item, 'selected')}}</view>
+				<view>参考答案：{{displayAnswer(item, 'answer')}}</view>
 				<analysis-viewer :item="item" :text="item.analysis" />
 			</view>
 		</view>
@@ -110,7 +123,7 @@ export default {
 						? await getReinforcePractice(this.pointId)
 						: this.type === 'wrongRetry'
 							? await getWrongRetry(this.count, this.source, this.courseId)
-							: await getPractice(practiceLookupTitle, this.questionIds);
+							: await getPractice(practiceLookupTitle, this.questionIds, this.type, this.courseId);
 				if (!usePracticeLookup) this.title = data.title || this.title;
 				this.questions = data.questions || [];
 				this.sourceWrongIds = data.sourceWrongIds || [];
@@ -129,7 +142,7 @@ export default {
 				uni.showToast({ title: '当前没有可提交的题目', icon: 'none' });
 				return;
 			}
-			if (this.questions.some(q => this.answers[q.id] === undefined)) {
+			if (this.questions.some(q => this.isAnswerMissing(q))) {
 				uni.showToast({ title: '请完成全部题目', icon: 'none' });
 				return;
 			}
@@ -165,6 +178,34 @@ export default {
 			const index = Number(value);
 			return Number.isFinite(index) && index >= 0 ? String.fromCharCode(65 + index) : '--';
 		},
+		questionType(question = {}) {
+			const value = question.questionType || question.type || 'choice';
+			if (value === 'fill' || value === '填空' || value === '填空题') return 'fill';
+			if (value === 'subjective' || value === '主观' || value === '主观题') return 'subjective';
+			return 'choice';
+		},
+		isAnswerMissing(question) {
+			const value = this.answers[question.id];
+			return this.questionType(question) === 'choice'
+				? value === undefined
+				: String(value || '').trim().length === 0;
+		},
+		displayAnswer(item = {}, field = 'selected') {
+			if (!item) return '--';
+			const type = this.questionType(item);
+			if (field === 'selected') {
+				return item.selectedText || (type === 'choice' ? this.answerLetter(item.selected) : String(item.selected || '').trim()) || '--';
+			}
+			return item.answerText || (type === 'choice' ? this.answerLetter(item.answer) : String(item.answer || '').trim()) || '--';
+		},
+		resultStatusText(item = {}) {
+			if (item && item.manualReview) return '已提交，查看参考答案自评';
+			return item && item.correct ? '回答正确' : '回答错误';
+		},
+		resultStatusClass(item = {}) {
+			if (item && item.manualReview) return 'review';
+			return item && item.correct ? 'ok' : 'bad';
+		},
 		reload() { this.loadData(); },
 		goWrongBook() {
 			uni.navigateTo({ url: `/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId || 'gk-math-full')}` });
@@ -190,9 +231,13 @@ page { background:#f5f7fa; }
 .option { display:flex; align-items:center; min-height:72rpx; padding:0 18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
 .radio { margin-right:14rpx; }
+.text-answer { margin-top:12rpx; }
+.answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }
 .analysis { margin-top:18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; font-size:26rpx; line-height:1.5; }
 .ok { color:#0f9f6e; font-weight:700; }
 .bad { color:#e5484d; font-weight:700; }
+.review { color:#1677ff; font-weight:700; }
+.answer-line { margin-top:8rpx; color:#334155; font-size:25rpx; }
 .ana-text { margin-top:8rpx; color:#596272; }
 .result { margin:24rpx; padding:30rpx; background:#fff; border-radius:16rpx; text-align:center; border:1rpx solid #edf0f4; }
 .score { color:#1677ff; font-size:64rpx; font-weight:900; }

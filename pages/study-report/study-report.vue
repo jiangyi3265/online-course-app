@@ -111,7 +111,7 @@
 				<view class="detail-title">{{selectedPractice.title || '练习详情'}}｜评分 {{selectedPractice.score || selectedPractice.averageScore || 0}} 分</view>
 				<view class="question" v-for="detail in selectedPractice.details || []" :key="detail.id || detail.stem">
 					<view class="question-stem">{{detail.stem}}</view>
-					<view class="question-result" :class="{wrong: !detail.correct}">{{detail.correct ? '正确' : '错误'}}</view>
+					<view class="question-result" :class="{wrong: !detail.correct && !detail.manualReview, review: detail.manualReview}">{{detail.manualReview ? '已提交' : (detail.correct ? '正确' : '错误')}}</view>
 					<analysis-viewer :item="detail" :text="detail.analysis" />
 				</view>
 			</view>
@@ -607,6 +607,7 @@ page { background:#f5f7fa; }
 .question-stem { color:#222; font-size:26rpx; line-height:1.5; font-weight:700; }
 .question-result { display:inline-block; margin-top:10rpx; color:#0f9f6e; font-size:24rpx; font-weight:800; }
 .question-result.wrong { color:#e5484d; }
+.question-result.review { color:#1677ff; }
 .question-line { color:#596272; font-size:24rpx; line-height:1.5; margin-top:8rpx; }
 .record-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12rpx; margin-bottom:10rpx; }
 .record-grid view { background:#f8fafc; border-radius:12rpx; padding:16rpx 8rpx; text-align:center; }

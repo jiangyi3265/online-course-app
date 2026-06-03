@@ -202,8 +202,8 @@ export function getAdminDashboard() {
 	return request('/dashboard', { admin: true })
 }
 
-export function getPractice(title, questionIds = []) {
-	return request('/practice', { params: { title, questionIds: questionIds.join(',') } })
+export function getPractice(title, questionIds = [], type = 'practice', courseId = '') {
+	return request('/practice', { params: { title, questionIds: questionIds.join(','), type, courseId } })
 }
 
 export function submitPractice(payload) {

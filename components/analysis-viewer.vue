@@ -2,10 +2,15 @@
 	<view class="analysis-viewer">
 		<view class="analysis-tabs">
 			<view class="analysis-tab" :class="{active: mode === 'text'}" @click="mode = 'text'">文字解析</view>
+			<view class="analysis-tab" :class="{active: mode === 'image'}" @click="openImage">图片解析</view>
 			<view class="analysis-tab" :class="{active: mode === 'video'}" @click="openVideo">视频讲解</view>
 		</view>
 		<view class="analysis-body" v-if="mode === 'text'">
 			<text>{{text || '暂无解析'}}</text>
+		</view>
+		<view class="analysis-body" v-else-if="mode === 'image'">
+			<image v-if="resolvedImageUrl" class="analysis-image" :src="resolvedImageUrl" mode="widthFix" @click="previewImage"></image>
+			<view v-else class="analysis-empty">暂无图片解析</view>
 		</view>
 		<view class="analysis-body" v-else>
 			<video v-if="resolvedVideoUrl" class="analysis-video" :src="resolvedVideoUrl" controls></video>
@@ -29,6 +34,10 @@ export default {
 		videoUrl: {
 			type: String,
 			default: ''
+		},
+		imageUrl: {
+			type: String,
+			default: ''
 		}
 	},
 	data() {
@@ -40,14 +49,28 @@ export default {
 		resolvedVideoUrl() {
 			const item = this.item || {};
 			return this.videoUrl || item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl || item.videoUrl || '';
+		},
+		resolvedImageUrl() {
+			const item = this.item || {};
+			return this.imageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl || item.imageUrl || '';
 		}
 	},
 	methods: {
+		openImage() {
+			this.mode = 'image';
+			if (!this.resolvedImageUrl) {
+				uni.showToast({ title: '暂无图片解析', icon: 'none' });
+			}
+		},
 		openVideo() {
 			this.mode = 'video';
 			if (!this.resolvedVideoUrl) {
 				uni.showToast({ title: '暂无视频解析', icon: 'none' });
 			}
+		},
+		previewImage() {
+			if (!this.resolvedImageUrl) return;
+			uni.previewImage({ urls: [this.resolvedImageUrl], current: this.resolvedImageUrl });
 		}
 	}
 }
@@ -84,6 +107,12 @@ export default {
 	border-radius:12rpx;
 	background:#111827;
 	overflow:hidden;
+}
+.analysis-image {
+	width:100%;
+	border-radius:12rpx;
+	background:#f1f5f9;
+	display:block;
 }
 .analysis-empty {
 	height:120rpx;
