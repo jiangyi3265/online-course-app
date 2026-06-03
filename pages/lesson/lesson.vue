@@ -22,6 +22,7 @@
 				@loadedmetadata="onLoadedMeta"
 				@play="onPlay"
 				@pause="onPause"
+				@click="toggleVideoPlayback"
 				@timeupdate="onTimeUpdate"
 				@ended="onEnded"
 				@fullscreenchange="onNativeFullscreenChange"
@@ -107,7 +108,7 @@
 
 		<!-- 底部 -->
 		<view class="footer">
-			<view class="return-btn" @click="returnToCatalog">返回课程目录</view>
+			<view class="return-btn" @click="goBack">返回上一页</view>
 		</view>
 	</view>
 </template>
@@ -311,6 +312,18 @@ export default {
 		onPause() {
 			this.videoPlaying = false;
 		},
+		toggleVideoPlayback() {
+			if (this.videoError || !this.videoUrl) return;
+			const ctx = this.videoContext || uni.createVideoContext('lessonVideo', this);
+			this.videoContext = ctx;
+			if (this.videoPlaying) {
+				if (ctx && typeof ctx.pause === 'function') ctx.pause();
+				this.videoPlaying = false;
+			} else {
+				if (ctx && typeof ctx.play === 'function') ctx.play();
+				this.videoPlaying = true;
+			}
+		},
 		onTimeUpdate(e) {
 			const detail = e.detail || {};
 			this.currentSeconds = Number(detail.currentTime) || 0;
@@ -500,6 +513,7 @@ page { background:#fff; }
 	height:420rpx;
 	background:#000;
 	display:block;
+	cursor:pointer;
 }
 .desktop-video-tools {
 	position:absolute;
@@ -589,12 +603,13 @@ page { background:#fff; }
 .video-quick-tools {
 	position:absolute;
 	right:24rpx;
-	top:112rpx;
+	top:auto;
+	bottom:104rpx;
 	z-index:10;
 	display:flex;
 	flex-direction:column;
 	align-items:flex-end;
-	gap:10rpx;
+	gap:8rpx;
 	pointer-events:none;
 }
 .speed-menu {
@@ -919,7 +934,7 @@ page { background:#fff; }
 	.video-wrap:fullscreen .video-quick-tools {
 		top:auto;
 		right:34rpx;
-		bottom:128rpx;
+		bottom:146rpx;
 	}
 	.video-wrap:fullscreen .fullscreen-toggle {
 		background:#2563eb;
