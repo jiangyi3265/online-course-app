@@ -122,6 +122,7 @@ export default {
 			playbackRate: 1,
 			playbackRates: [2, 1.5, 1, 0.75, 0.5],
 			showSpeedMenu: false,
+			speedMenuTimer: null,
 			volume: 80,
 			lastVolume: 80,
 			muted: false,
@@ -156,11 +157,13 @@ export default {
 		this.applyVolume();
 	},
 	onUnload() {
+		this.clearSpeedMenuTimer();
 		this.unbindFullscreenListener();
 		this.exitWebFullscreen(false);
 		this.persistProgress(false);
 	},
 	onHide() {
+		this.closeSpeedMenu();
 		this.exitWebFullscreen(false);
 	},
 	computed: {
@@ -217,7 +220,37 @@ export default {
 				this.exitWebFullscreen();
 				return;
 			}
-			uni.navigateBack({ fail:()=>this.returnToCatalog(true) });
+			this.closeSpeedMenu();
+			this.persistProgress(false);
+			const before = this.currentRouteSignature();
+			const stack = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+			if (stack && stack.length > 1) {
+				this.armBackFallback(before);
+				uni.navigateBack({ fail:()=>this.browserBackOrCatalog(before) });
+				return;
+			}
+			this.browserBackOrCatalog(before);
+		},
+		currentRouteSignature() {
+			if (typeof window !== 'undefined' && window.location) {
+				return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+			}
+			const stack = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+			const page = stack && stack.length ? stack[stack.length - 1] : null;
+			return page ? `${page.route || ''}${JSON.stringify(page.options || {})}` : '';
+		},
+		armBackFallback(before) {
+			setTimeout(() => {
+				if (this.currentRouteSignature() === before) this.browserBackOrCatalog(before, true);
+			}, 800);
+		},
+		browserBackOrCatalog(before, forceCatalog = false) {
+			if (!forceCatalog && typeof window !== 'undefined' && window.history && window.history.length > 1) {
+				window.history.back();
+				this.armBackFallback(before);
+				return;
+			}
+			this.returnToCatalog(true);
 		},
 		detectDesktopH5() {
 			if (typeof window === 'undefined') return;
@@ -329,10 +362,31 @@ export default {
 		setPlaybackRate(rate) {
 			this.playbackRate = Number(rate) || 1;
 			this.applyPlaybackRate();
-			this.showSpeedMenu = false;
+			this.closeSpeedMenu();
 		},
 		toggleSpeedMenu() {
 			this.showSpeedMenu = !this.showSpeedMenu;
+			if (this.showSpeedMenu) {
+				this.scheduleSpeedMenuClose();
+			} else {
+				this.clearSpeedMenuTimer();
+			}
+		},
+		scheduleSpeedMenuClose() {
+			this.clearSpeedMenuTimer();
+			this.speedMenuTimer = setTimeout(() => {
+				this.showSpeedMenu = false;
+				this.speedMenuTimer = null;
+			}, 3000);
+		},
+		clearSpeedMenuTimer() {
+			if (!this.speedMenuTimer) return;
+			clearTimeout(this.speedMenuTimer);
+			this.speedMenuTimer = null;
+		},
+		closeSpeedMenu() {
+			this.showSpeedMenu = false;
+			this.clearSpeedMenuTimer();
 		},
 		applyPlaybackRate() {
 			this.$nextTick(() => {
