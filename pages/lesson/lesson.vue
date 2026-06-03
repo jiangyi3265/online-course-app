@@ -51,23 +51,7 @@
 				<view class="quick-tools-row">
 					<view class="quick-tool speed-trigger" :class="{active: showSpeedMenu}" @click.stop="toggleSpeedMenu">{{rateLabel(playbackRate)}}</view>
 					<view class="volume-control">
-						<view class="volume-panel" v-if="showVolumePanel">
-							<slider
-								class="volume-slider"
-								:min="0"
-								:max="100"
-								:step="1"
-								:value="volume"
-								activeColor="#3aa3f5"
-								backgroundColor="rgba(255,255,255,.32)"
-								block-color="#ffffff"
-								:block-size="18"
-								@changing="onVolumeChanging"
-								@change="onVolumeChange"
-							/>
-							<view class="volume-mute" @click.stop="toggleMute">{{muted || volume === 0 ? '恢复' : '静音'}}</view>
-						</view>
-						<view class="quick-tool volume-trigger" :class="{muted: muted || volume === 0}" @click.stop="toggleVolumePanel">{{volumeIcon}}</view>
+						<view class="quick-tool volume-trigger" :class="{muted: muted || volume === 0}" @click.stop="toggleMute">{{volumeIcon}}</view>
 					</view>
 				</view>
 			</view>
@@ -138,7 +122,6 @@ export default {
 			playbackRate: 1,
 			playbackRates: [2, 1.5, 1, 0.75, 0.5],
 			showSpeedMenu: false,
-			showVolumePanel: false,
 			volume: 80,
 			lastVolume: 80,
 			muted: false,
@@ -350,7 +333,6 @@ export default {
 		},
 		toggleSpeedMenu() {
 			this.showSpeedMenu = !this.showSpeedMenu;
-			if (this.showSpeedMenu) this.showVolumePanel = false;
 		},
 		applyPlaybackRate() {
 			this.$nextTick(() => {
@@ -365,27 +347,6 @@ export default {
 		},
 		rateLabel(rate) {
 			return `${rate}x`;
-		},
-		toggleVolumePanel() {
-			this.showVolumePanel = !this.showVolumePanel;
-			if (this.showVolumePanel) this.showSpeedMenu = false;
-		},
-		onVolumeChanging(e) {
-			this.setVolume(e.detail && e.detail.value);
-		},
-		onVolumeChange(e) {
-			this.setVolume(e.detail && e.detail.value);
-		},
-		setVolume(value) {
-			const next = Math.max(0, Math.min(100, Number(value) || 0));
-			this.volume = next;
-			if (next > 0) {
-				this.lastVolume = next;
-				this.muted = false;
-			} else {
-				this.muted = true;
-			}
-			this.applyVolume();
 		},
 		toggleMute() {
 			if (this.muted || this.volume === 0) {
@@ -662,32 +623,6 @@ page { background:#fff; }
 }
 .volume-control {
 	position:relative;
-}
-.volume-panel {
-	position:absolute;
-	right:0;
-	bottom:72rpx;
-	width:250rpx;
-	padding:14rpx 14rpx 12rpx;
-	border-radius:12rpx;
-	background:rgba(15,23,42,.78);
-	border:1rpx solid rgba(255,255,255,.18);
-	box-shadow:0 12rpx 28rpx rgba(0,0,0,.22);
-}
-.volume-slider {
-	width:100%;
-}
-.volume-mute {
-	margin-top:4rpx;
-	height:42rpx;
-	line-height:42rpx;
-	text-align:center;
-	border-radius:8rpx;
-	background:rgba(255,255,255,.12);
-	color:#e5edf7;
-	font-size:22rpx;
-	font-weight:700;
-	cursor:pointer;
 }
 
 /* 本节内容 */
