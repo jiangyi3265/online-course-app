@@ -78,6 +78,40 @@ function request(path, options = {}) {
 	})
 }
 
+export function uploadAnswerImage(filePath) {
+	if (!filePath) return Promise.resolve('')
+	if (/^(https?:\/\/|\/profile\/)/i.test(filePath)) return Promise.resolve(filePath)
+	const token = getToken()
+	return new Promise((resolve, reject) => {
+		uni.uploadFile({
+			url: `${getBaseUrl(false)}/upload`,
+			filePath,
+			name: 'file',
+			header: token ? { Authorization: `Bearer ${token}` } : {},
+			success(res) {
+				let body = res.data || {}
+				if (typeof body === 'string') {
+					try {
+						body = JSON.parse(body)
+					} catch (e) {
+						reject(new Error('上传返回格式异常'))
+						return
+					}
+				}
+				const data = body.data || body
+				if (res.statusCode >= 200 && res.statusCode < 300 && (body.code === 200 || body.code === 0 || data.url)) {
+					resolve(data.url || '')
+					return
+				}
+				reject(new Error(body.msg || `图片上传失败：${res.statusCode}`))
+			},
+			fail(err) {
+				reject(new Error(err.errMsg || '图片上传失败'))
+			}
+		})
+	})
+}
+
 export function getToken() {
 	return uni.getStorageSync(TOKEN_KEY) || ''
 }
@@ -212,6 +246,13 @@ export function getPractice(title, questionIds = [], type = 'practice', courseId
 
 export function submitPractice(payload) {
 	return request('/practice/submit', {
+		method: 'POST',
+		data: payload
+	})
+}
+
+export function submitPracticeSelfReview(payload) {
+	return request('/practice/self-review', {
 		method: 'POST',
 		data: payload
 	})

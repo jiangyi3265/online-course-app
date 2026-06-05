@@ -4,7 +4,7 @@
 		<view class="panel">
 			<view class="title">激活课程</view>
 			<view class="hint">请填写激活码和学生信息，全部为必填。验证成功后课程会加入“我的课程”。</view>
-			<input class="input" v-model="code" placeholder="输入激活码，例如 GK-MATH-2026" confirm-type="next" />
+			<input class="input" v-model="code" placeholder="输入激活码，例如 a1b2c3d4e" confirm-type="next" />
 			<input class="input" v-model="studentName" placeholder="输入学生名字" confirm-type="next" />
 			<view class="gender-field">
 				<view class="gender-label">学生性别</view>
@@ -68,7 +68,7 @@ export default {
 	onLoad(opts = {}) { this.courseId = opts.courseId || 'gk-math-full'; },
 	methods: {
 		async activate() {
-			const code = this.code.trim().toUpperCase();
+			const code = this.code.trim().toLowerCase();
 			const studentName = this.studentName.trim();
 			const gender = this.gender;
 			const recentExamScore = this.recentExamScore.trim();

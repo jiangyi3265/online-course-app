@@ -12,7 +12,10 @@
 
 		<view class="question" v-for="(q, i) in questions" :key="q.id">
 			<view class="q-head">
-				<view class="q-title">{{i + 1}}. {{q.stem}}</view>
+				<view class="q-title">
+					<text class="difficulty-stars">{{difficultyStars(q)}}</text>
+					<text>{{i + 1}}. {{q.stem}}</text>
+				</view>
 				<view class="collect-btn" @click="collectQuestion(q)">收藏</view>
 			</view>
 			<block v-if="questionType(q) === 'choice'">
@@ -22,20 +25,69 @@
 				</view>
 			</block>
 			<view class="text-answer" v-else>
+				<view class="manual-answer-row" v-if="!result">
+					<textarea
+						class="answer-textarea"
+						v-model="answers[q.id]"
+						:auto-height="true"
+						:disabled="!!skipped[q.id]"
+						:placeholder="questionType(q) === 'fill' ? '请输入填空答案' : '手动输入解题过程或答案'"
+					/>
+					<view class="photo-btn" :class="{disabled: uploadingImages[q.id]}" @click="chooseAnswerImage(q)">
+						{{uploadingImages[q.id] ? '上传中' : '拍照自评'}}
+					</view>
+					<view class="skip-btn" :class="{active: skipped[q.id]}" @click="toggleSkip(q)">
+						{{questionType(q) === 'subjective' ? '暂不上传' : '跳过'}}
+					</view>
+				</view>
 				<textarea
+					v-else
 					class="answer-textarea"
 					v-model="answers[q.id]"
 					:auto-height="true"
-					:placeholder="questionType(q) === 'fill' ? '请输入填空答案' : '请输入你的解题思路或答案'"
+					:disabled="true"
+					:placeholder="questionType(q) === 'fill' ? '请输入填空答案' : '手动输入解题过程或答案'"
 				/>
+				<image v-if="answerImages[q.id]" class="answer-photo" :src="answerImages[q.id]" mode="aspectFit" />
+				<view class="skip-note" v-if="skipped[q.id] && !result">已选择暂不作答，提交后本题计为错误。</view>
 			</view>
 			<view class="analysis" v-if="result">
-				<view :class="resultStatusClass(resultMap[q.id])">
-					{{resultStatusText(resultMap[q.id])}}
+				<view v-if="isFeedbackResult(resultMap[q.id])" class="feedback-panel">
+					<view class="feedback-title">答案反馈</view>
+					<view class="feedback-options" v-if="needsSelfReview(resultMap[q.id])">
+						<view class="feedback-option" :class="{active: reviewResult(resultMap[q.id]) === 'correct'}" @click="submitSelfReview(resultMap[q.id], 'correct')">
+							<text>正确</text><text class="feedback-dot"></text>
+						</view>
+						<view class="feedback-option" :class="{active: reviewResult(resultMap[q.id]) === 'wrong'}" @click="submitSelfReview(resultMap[q.id], 'wrong')">
+							<text>错误</text><text class="feedback-dot"></text>
+						</view>
+						<view class="feedback-option" :class="{active: reviewResult(resultMap[q.id]) === 'partial'}" @click="submitSelfReview(resultMap[q.id], 'partial')">
+							<text>半对</text><text class="feedback-dot"></text>
+						</view>
+					</view>
+					<view v-else :class="resultStatusClass(resultMap[q.id])">{{resultStatusText(resultMap[q.id])}}</view>
+					<view class="feedback-toggle" @click="toggleAnalysis(q.id)">
+						<text>查看答案/解析</text>
+						<text>{{expandedAnalysis[q.id] ? '收起' : '展开'}} ›</text>
+					</view>
+					<view class="feedback-body" v-if="expandedAnalysis[q.id]">
+						<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
+						<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="resultMap[q.id].studentAnswerImageUrl" mode="aspectFit" />
+						<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
+						<image v-if="resultMap[q.id] && resultMap[q.id].answerImageUrl" class="answer-photo" :src="resultMap[q.id].answerImageUrl" mode="aspectFit" />
+						<analysis-viewer :item="resultMap[q.id]" :text="resultMap[q.id] && resultMap[q.id].analysis" />
+					</view>
 				</view>
-				<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
-				<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
-				<analysis-viewer :item="resultMap[q.id]" :text="resultMap[q.id] && resultMap[q.id].analysis" />
+				<view v-else>
+					<view :class="resultStatusClass(resultMap[q.id])">
+						{{resultStatusText(resultMap[q.id])}}
+					</view>
+					<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
+					<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="resultMap[q.id].studentAnswerImageUrl" mode="aspectFit" />
+					<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
+					<image v-if="resultMap[q.id] && resultMap[q.id].answerImageUrl" class="answer-photo" :src="resultMap[q.id].answerImageUrl" mode="aspectFit" />
+					<analysis-viewer :item="resultMap[q.id]" :text="resultMap[q.id] && resultMap[q.id].analysis" />
+				</view>
 			</view>
 		</view>
 
@@ -66,7 +118,7 @@
 </template>
 
 <script>
-import { getPractice, getQuiz, getReinforcePractice, getWrongRetry, submitPractice, submitQuiz, toggleFavorite } from '@/common/api.js'
+import { getPractice, getQuiz, getReinforcePractice, getWrongRetry, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 
 export default {
@@ -84,6 +136,10 @@ export default {
 			sourceWrongIds: [],
 			questions: [],
 			answers: {},
+			answerImages: {},
+			uploadingImages: {},
+			expandedAnalysis: {},
+			skipped: {},
 			result: null
 		}
 	},
@@ -128,6 +184,10 @@ export default {
 				this.questions = data.questions || [];
 				this.sourceWrongIds = data.sourceWrongIds || [];
 				this.answers = {};
+				this.answerImages = {};
+				this.uploadingImages = {};
+				this.expandedAnalysis = {};
+				this.skipped = {};
 				this.result = null;
 				if (this.type === 'wrongRetry' && this.questions.length === 0) {
 					uni.showToast({ title: '当前没有可重练的错题', icon: 'none' });
@@ -151,6 +211,8 @@ export default {
 					title: this.title,
 					type: this.type,
 					answers: this.answers,
+					answerImages: this.answerImages,
+					skipped: this.skipped,
 					questionIds: this.questions.map(item => item.id),
 					sourceWrongIds: this.sourceWrongIds,
 					courseId: this.courseId,
@@ -174,6 +236,72 @@ export default {
 				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
 			}
 		},
+		setMapValue(map, key, value) {
+			if (this.$set) {
+				this.$set(map, key, value);
+			} else {
+				map[key] = value;
+				if (this.$forceUpdate) this.$forceUpdate();
+			}
+		},
+		chooseAnswerImage(question) {
+			if (this.result || this.uploadingImages[question.id]) return;
+			uni.chooseImage({
+				count: 1,
+				sourceType: ['album', 'camera'],
+				success: async res => {
+					const path = (res.tempFilePaths && res.tempFilePaths[0]) || '';
+					if (path) {
+						this.setMapValue(this.uploadingImages, question.id, true);
+						this.setMapValue(this.answerImages, question.id, path);
+						this.setMapValue(this.skipped, question.id, false);
+						try {
+							const url = await uploadAnswerImage(path);
+							if (url) this.setMapValue(this.answerImages, question.id, url);
+							uni.showToast({ title: '答案图片已上传', icon: 'success' });
+						} catch (err) {
+							this.setMapValue(this.answerImages, question.id, '');
+							uni.showToast({ title: err.message || '图片上传失败', icon:'none' });
+						} finally {
+							this.setMapValue(this.uploadingImages, question.id, false);
+						}
+					}
+				},
+				fail: () => {}
+			});
+		},
+		toggleSkip(question) {
+			if (this.result) return;
+			const next = !this.skipped[question.id];
+			this.setMapValue(this.skipped, question.id, next);
+			if (next) {
+				this.setMapValue(this.answers, question.id, '');
+				this.setMapValue(this.answerImages, question.id, '');
+				uni.showModal({
+					title: '答案反馈',
+					content: '已选择暂不作答，提交后本题计为错误；提交后可展开查看参考答案和解析。',
+					showCancel: false,
+					confirmText: '知道了'
+				});
+			}
+		},
+		async submitSelfReview(item, reviewResult) {
+			if (!item || !this.result) return;
+			const normalized = reviewResult === 'partial' ? 'partial' : (reviewResult === 'correct' ? 'correct' : 'wrong');
+			try {
+				const data = await submitPracticeSelfReview({
+					attemptId: this.result.id,
+					questionId: item.id,
+					reviewResult: normalized,
+					correct: normalized === 'correct'
+				});
+				this.result = data.attempt || this.result;
+				this.setMapValue(this.expandedAnalysis, item.id, true);
+				uni.showToast({ title: this.reviewToastText(normalized), icon:'success' });
+			} catch (err) {
+				uni.showToast({ title: err.message || '自评保存失败', icon:'none' });
+			}
+		},
 		answerLetter(value) {
 			const index = Number(value);
 			return Number.isFinite(index) && index >= 0 ? String.fromCharCode(65 + index) : '--';
@@ -185,26 +313,57 @@ export default {
 			return 'choice';
 		},
 		isAnswerMissing(question) {
+			if (this.skipped[question.id]) return false;
 			const value = this.answers[question.id];
 			return this.questionType(question) === 'choice'
 				? value === undefined
-				: String(value || '').trim().length === 0;
+				: String(value || '').trim().length === 0 && !this.answerImages[question.id];
 		},
 		displayAnswer(item = {}, field = 'selected') {
 			if (!item) return '--';
 			const type = this.questionType(item);
 			if (field === 'selected') {
-				return item.selectedText || (type === 'choice' ? this.answerLetter(item.selected) : String(item.selected || '').trim()) || '--';
+				if (item.skipped) return '已跳过';
+				return item.selectedText || (type === 'choice' ? this.answerLetter(item.selected) : String(item.selected || '').trim()) || (item.studentAnswerImageUrl ? '已上传图片答案' : '--');
 			}
-			return item.answerText || (type === 'choice' ? this.answerLetter(item.answer) : String(item.answer || '').trim()) || '--';
+			return item.answerText || (type === 'choice' ? this.answerLetter(item.answer) : String(item.answer || '').trim()) || (item.answerImageUrl ? '见参考答案图片' : '--');
+		},
+		isFeedbackResult(item = {}) {
+			return !!(item && (item.manualReview || item.skipped || this.questionType(item) !== 'choice'));
+		},
+		needsSelfReview(item = {}) {
+			return !!(item && item.manualReview && !item.selfReviewed && !item.skipped);
+		},
+		reviewResult(item = {}) {
+			if (item && item.reviewResult) return item.reviewResult;
+			if (item && item.selfReviewed) return item.correct ? 'correct' : 'wrong';
+			return '';
+		},
+		reviewToastText(result) {
+			if (result === 'correct') return '已记为正确';
+			if (result === 'partial') return '已记为半对';
+			return '已记为错误';
 		},
 		resultStatusText(item = {}) {
+			if (item && item.skipped) return '已跳过，计为错误';
+			if (item && item.selfReviewed) {
+				if (item.reviewResult === 'partial') return '已自评：半对';
+				return item.correct ? '已自评：正确' : '已自评：错误';
+			}
 			if (item && item.manualReview) return '已提交，查看参考答案自评';
 			return item && item.correct ? '回答正确' : '回答错误';
 		},
 		resultStatusClass(item = {}) {
+			if (item && item.reviewResult === 'partial') return 'partial';
 			if (item && item.manualReview) return 'review';
 			return item && item.correct ? 'ok' : 'bad';
+		},
+		difficultyStars(question = {}) {
+			const value = Math.max(1, Math.min(5, Number(question.difficulty || 1)));
+			return '★'.repeat(value) + '☆'.repeat(5 - value);
+		},
+		toggleAnalysis(questionId) {
+			this.setMapValue(this.expandedAnalysis, questionId, !this.expandedAnalysis[questionId]);
 		},
 		reload() { this.loadData(); },
 		goWrongBook() {
@@ -227,18 +386,49 @@ page { background:#f5f7fa; }
 .question { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
 .q-head { display:flex; align-items:flex-start; gap:16rpx; margin-bottom:18rpx; }
 .q-title { flex:1; min-width:0; font-size:30rpx; color:#222; font-weight:700; line-height:1.5; }
+.difficulty-stars { display:inline-block; margin-right:12rpx; color:#f59e0b; font-size:24rpx; letter-spacing:0; vertical-align:2rpx; }
 .collect-btn { flex-shrink:0; padding:8rpx 18rpx; border-radius:24rpx; background:#eef6ff; color:#1677ff; font-size:24rpx; font-weight:700; }
 .option { display:flex; align-items:center; min-height:72rpx; padding:0 18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
 .radio { margin-right:14rpx; }
 .text-answer { margin-top:12rpx; }
+.manual-answer-row { display:grid; grid-template-columns:minmax(0, 1fr) 160rpx 104rpx; gap:12rpx; align-items:stretch; }
 .answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }
+.answer-photo { width:100%; max-height:360rpx; margin-top:14rpx; border-radius:12rpx; background:#eef2f7; }
+.photo-btn,
+.skip-btn { min-height:118rpx; display:flex; align-items:center; justify-content:center; text-align:center; border-radius:12rpx; font-size:26rpx; font-weight:800; box-sizing:border-box; padding:0 10rpx; }
+.photo-btn { border:2rpx solid #1677ff; color:#1677ff; background:#fff; }
+.photo-btn.disabled { opacity:.58; background:#f8fafc; }
+.skip-btn { border:2rpx solid #ef4444; color:#ef4444; background:#fff; }
+.skip-btn.active { background:#fff1f2; }
+.skip-note { margin-top:12rpx; color:#ef4444; font-size:24rpx; }
+.subjective-actions,
+.review-actions { display:flex; gap:14rpx; margin-top:16rpx; }
+.outline-btn,
+.review-btn { flex:1; height:68rpx; line-height:68rpx; text-align:center; border-radius:10rpx; font-size:26rpx; font-weight:800; box-sizing:border-box; }
+.outline-btn { border:2rpx solid #1677ff; color:#1677ff; background:#fff; }
+.outline-btn.danger { border-color:#ef4444; color:#ef4444; }
+.outline-btn.active { background:#fff1f2; }
+.review-btn { background:#fff; }
+.ok-btn { border:2rpx solid #1677ff; color:#1677ff; }
+.bad-btn { border:2rpx solid #ef4444; color:#ef4444; }
 .analysis { margin-top:18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; font-size:26rpx; line-height:1.5; }
 .ok { color:#0f9f6e; font-weight:700; }
 .bad { color:#e5484d; font-weight:700; }
 .review { color:#1677ff; font-weight:700; }
+.partial { color:#f59e0b; font-weight:700; }
 .answer-line { margin-top:8rpx; color:#334155; font-size:25rpx; }
 .ana-text { margin-top:8rpx; color:#596272; }
+.feedback-panel { padding:6rpx 0 0; }
+.feedback-title { color:#111827; font-size:28rpx; font-weight:900; margin-bottom:18rpx; }
+.feedback-options { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14rpx; margin-bottom:20rpx; }
+.feedback-option { min-height:68rpx; padding:0 16rpx; display:flex; align-items:center; justify-content:space-between; border:2rpx solid #e5e9ef; border-radius:12rpx; background:#fff; color:#111827; font-size:26rpx; font-weight:800; box-sizing:border-box; }
+.feedback-option.active { border-color:#1677ff; color:#1677ff; background:#edf5ff; }
+.feedback-dot { width:34rpx; height:34rpx; border-radius:50%; border:3rpx solid #e5e9ef; box-sizing:border-box; }
+.feedback-option.active .feedback-dot { border-color:#1677ff; box-shadow:inset 0 0 0 8rpx #fff; background:#1677ff; }
+.feedback-toggle { margin-top:18rpx; padding-top:18rpx; border-top:1rpx solid #edf0f4; display:flex; align-items:center; justify-content:space-between; color:#111827; font-size:28rpx; font-weight:900; }
+.feedback-toggle text:last-child { color:#596272; font-size:26rpx; }
+.feedback-body { padding-top:8rpx; }
 .result { margin:24rpx; padding:30rpx; background:#fff; border-radius:16rpx; text-align:center; border:1rpx solid #edf0f4; }
 .score { color:#1677ff; font-size:64rpx; font-weight:900; }
 .result-text { margin-top:8rpx; color:#596272; font-size:28rpx; }
