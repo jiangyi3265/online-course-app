@@ -16,7 +16,7 @@
 					<text class="difficulty-stars">{{difficultyStars(q)}}</text>
 					<text>{{i + 1}}. {{q.stem}}</text>
 				</view>
-				<view class="collect-btn" @click="collectQuestion(q)">收藏</view>
+				<view class="collect-btn" :class="{active: q.favorited}" @click="collectQuestion(q)">{{q.favorited ? '已收藏' : '收藏'}}</view>
 			</view>
 			<block v-if="questionType(q) === 'choice'">
 				<view class="option" v-for="(opt, idx) in q.options" :key="opt" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
@@ -30,14 +30,14 @@
 						class="answer-textarea"
 						v-model="answers[q.id]"
 						:auto-height="true"
-						:disabled="!!skipped[q.id]"
+						:disabled="false"
 						:placeholder="questionType(q) === 'fill' ? '请输入填空答案' : '手动输入解题过程或答案'"
 					/>
 					<view class="photo-btn" :class="{disabled: uploadingImages[q.id]}" @click="chooseAnswerImage(q)">
 						{{uploadingImages[q.id] ? '上传中' : '拍照自评'}}
 					</view>
-					<view class="skip-btn" :class="{active: skipped[q.id]}" @click="toggleSkip(q)">
-						{{questionType(q) === 'subjective' ? '暂不上传' : '跳过'}}
+					<view class="skip-btn" :class="{active: noUploads[q.id]}" @click="toggleNoUpload(q)">
+						暂不上传
 					</view>
 				</view>
 				<textarea
@@ -49,7 +49,30 @@
 					:placeholder="questionType(q) === 'fill' ? '请输入填空答案' : '手动输入解题过程或答案'"
 				/>
 				<image v-if="answerImages[q.id]" class="answer-photo" :src="answerImages[q.id]" mode="aspectFit" />
-				<view class="skip-note" v-if="skipped[q.id] && !result">已选择暂不作答，提交后本题计为错误。</view>
+				<view class="skip-note" v-if="noUploads[q.id] && !result">已选择暂不上传，请对照参考答案完成自评。</view>
+				<view class="inline-review" v-if="showInlineReview(q)">
+					<view class="feedback-title">答案自评</view>
+					<view class="feedback-options">
+						<view class="feedback-option" :class="{active: preReviewResult(q.id) === 'correct'}" @click="setSelfReview(q, 'correct')">
+							<text>正确</text><text class="feedback-dot"></text>
+						</view>
+						<view class="feedback-option" :class="{active: preReviewResult(q.id) === 'wrong'}" @click="setSelfReview(q, 'wrong')">
+							<text>错误</text><text class="feedback-dot"></text>
+						</view>
+						<view class="feedback-option" :class="{active: preReviewResult(q.id) === 'partial'}" @click="setSelfReview(q, 'partial')">
+							<text>半对</text><text class="feedback-dot"></text>
+						</view>
+					</view>
+					<view class="feedback-toggle" @click="toggleAnalysis(q.id)">
+						<text>查看答案/解析</text>
+						<text>{{expandedAnalysis[q.id] ? '收起' : '展开'}} ›</text>
+					</view>
+					<view class="feedback-body" v-if="expandedAnalysis[q.id]">
+						<view class="answer-line">参考答案：{{displayQuestionAnswer(q)}}</view>
+						<image v-if="q.answerImageUrl" class="answer-photo" :src="q.answerImageUrl" mode="aspectFit" />
+						<analysis-viewer :item="q" :text="q.analysis" />
+					</view>
+				</view>
 			</view>
 			<view class="analysis" v-if="result">
 				<view v-if="isFeedbackResult(resultMap[q.id])" class="feedback-panel">
@@ -112,13 +135,14 @@
 		</view>
 
 		<view class="footer">
-			<view class="submit" @click="submit">{{result ? '已提交' : '提交答案'}}</view>
+			<view class="submit" :class="{submitted: result}" @click="submit">{{result ? '已提交' : '提交答案'}}</view>
+			<view v-if="result" class="footer-back" @click="goBack">返回上一页</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { getPractice, getQuiz, getReinforcePractice, getWrongRetry, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
+import { getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 
 export default {
@@ -139,7 +163,9 @@ export default {
 			answerImages: {},
 			uploadingImages: {},
 			expandedAnalysis: {},
-			skipped: {},
+			noUploads: {},
+			selfReviews: {},
+			reviewVisible: {},
 			result: null
 		}
 	},
@@ -187,8 +213,11 @@ export default {
 				this.answerImages = {};
 				this.uploadingImages = {};
 				this.expandedAnalysis = {};
-				this.skipped = {};
+				this.noUploads = {};
+				this.selfReviews = {};
+				this.reviewVisible = {};
 				this.result = null;
+				this.syncFavoriteState();
 				if (this.type === 'wrongRetry' && this.questions.length === 0) {
 					uni.showToast({ title: '当前没有可重练的错题', icon: 'none' });
 				}
@@ -206,13 +235,18 @@ export default {
 				uni.showToast({ title: '请完成全部题目', icon: 'none' });
 				return;
 			}
+			if (this.questions.some(q => this.needsPreSubmitReview(q))) {
+				uni.showToast({ title: '请先完成拍照自评或暂不上传后的答案自评', icon: 'none' });
+				return;
+			}
 			try {
 				const payload = {
 					title: this.title,
 					type: this.type,
 					answers: this.answers,
 					answerImages: this.answerImages,
-					skipped: this.skipped,
+					noUploads: this.noUploads,
+					selfReviews: this.selfReviews,
 					questionIds: this.questions.map(item => item.id),
 					sourceWrongIds: this.sourceWrongIds,
 					courseId: this.courseId,
@@ -223,6 +257,16 @@ export default {
 				uni.showToast({ title: err.message || '提交失败', icon: 'none' });
 			}
 		},
+		async syncFavoriteState() {
+			try {
+				const data = await getFavorites();
+				const favoriteIds = new Set(((data && data.questions) || []).map(item => String(item.id || item.targetId || '')));
+				this.questions.forEach(question => {
+					question.favorited = favoriteIds.has(String(question.id || ''));
+				});
+				if (this.$forceUpdate) this.$forceUpdate();
+			} catch (err) {}
+		},
 		async collectQuestion(q) {
 			try {
 				const result = await toggleFavorite({
@@ -231,6 +275,8 @@ export default {
 					title: q.stem,
 					courseId: this.courseId || 'gk-math-full'
 				});
+				q.favorited = !!result.favorited;
+				if (this.$forceUpdate) this.$forceUpdate();
 				uni.showToast({ title: result.favorited ? '已收藏' : '已取消收藏', icon:'success' });
 			} catch (err) {
 				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
@@ -254,10 +300,11 @@ export default {
 					if (path) {
 						this.setMapValue(this.uploadingImages, question.id, true);
 						this.setMapValue(this.answerImages, question.id, path);
-						this.setMapValue(this.skipped, question.id, false);
+						this.setMapValue(this.noUploads, question.id, false);
 						try {
 							const url = await uploadAnswerImage(path);
 							if (url) this.setMapValue(this.answerImages, question.id, url);
+							this.openSelfReview(question);
 							uni.showToast({ title: '答案图片已上传', icon: 'success' });
 						} catch (err) {
 							this.setMapValue(this.answerImages, question.id, '');
@@ -270,20 +317,37 @@ export default {
 				fail: () => {}
 			});
 		},
-		toggleSkip(question) {
+		toggleNoUpload(question) {
 			if (this.result) return;
-			const next = !this.skipped[question.id];
-			this.setMapValue(this.skipped, question.id, next);
+			const next = !this.noUploads[question.id];
+			this.setMapValue(this.noUploads, question.id, next);
 			if (next) {
-				this.setMapValue(this.answers, question.id, '');
 				this.setMapValue(this.answerImages, question.id, '');
-				uni.showModal({
-					title: '答案反馈',
-					content: '已选择暂不作答，提交后本题计为错误；提交后可展开查看参考答案和解析。',
-					showCancel: false,
-					confirmText: '知道了'
-				});
+				this.openSelfReview(question);
+			} else {
+				this.setMapValue(this.selfReviews, question.id, '');
+				this.setMapValue(this.reviewVisible, question.id, false);
 			}
+		},
+		openSelfReview(question) {
+			if (!question || this.questionType(question) === 'choice') return;
+			this.setMapValue(this.reviewVisible, question.id, true);
+			this.setMapValue(this.expandedAnalysis, question.id, true);
+		},
+		setSelfReview(question, reviewResult) {
+			if (!question || this.result) return;
+			this.openSelfReview(question);
+			const normalized = reviewResult === 'partial' ? 'partial' : (reviewResult === 'correct' ? 'correct' : 'wrong');
+			this.setMapValue(this.selfReviews, question.id, normalized);
+		},
+		preReviewResult(questionId) {
+			return this.selfReviews[questionId] || '';
+		},
+		showInlineReview(question) {
+			return !this.result && this.questionType(question) !== 'choice' && !!this.reviewVisible[question.id];
+		},
+		needsPreSubmitReview(question) {
+			return this.questionType(question) !== 'choice' && !this.selfReviews[question.id];
 		},
 		async submitSelfReview(item, reviewResult) {
 			if (!item || !this.result) return;
@@ -313,7 +377,7 @@ export default {
 			return 'choice';
 		},
 		isAnswerMissing(question) {
-			if (this.skipped[question.id]) return false;
+			if (this.noUploads[question.id]) return false;
 			const value = this.answers[question.id];
 			return this.questionType(question) === 'choice'
 				? value === undefined
@@ -323,10 +387,15 @@ export default {
 			if (!item) return '--';
 			const type = this.questionType(item);
 			if (field === 'selected') {
+				if (item.noUpload) return '暂不上传';
 				if (item.skipped) return '已跳过';
 				return item.selectedText || (type === 'choice' ? this.answerLetter(item.selected) : String(item.selected || '').trim()) || (item.studentAnswerImageUrl ? '已上传图片答案' : '--');
 			}
 			return item.answerText || (type === 'choice' ? this.answerLetter(item.answer) : String(item.answer || '').trim()) || (item.answerImageUrl ? '见参考答案图片' : '--');
+		},
+		displayQuestionAnswer(question = {}) {
+			if (!question) return '--';
+			return question.answerText || String(question.answer || '').trim() || (question.answerImageUrl ? '见参考答案图片' : '--');
 		},
 		isFeedbackResult(item = {}) {
 			return !!(item && (item.manualReview || item.skipped || this.questionType(item) !== 'choice'));
@@ -369,7 +438,17 @@ export default {
 		goWrongBook() {
 			uni.navigateTo({ url: `/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId || 'gk-math-full')}` });
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() {
+			const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+			if (pages.length > 1) {
+				uni.navigateBack({ fail: () => this.goHome() });
+				return;
+			}
+			this.goHome();
+		},
+		goHome() {
+			uni.reLaunch({ url: '/pages/index/index' });
+		}
 	}
 }
 </script>
@@ -387,21 +466,22 @@ page { background:#f5f7fa; }
 .q-head { display:flex; align-items:flex-start; gap:16rpx; margin-bottom:18rpx; }
 .q-title { flex:1; min-width:0; font-size:30rpx; color:#222; font-weight:700; line-height:1.5; }
 .difficulty-stars { display:inline-block; margin-right:12rpx; color:#f59e0b; font-size:24rpx; letter-spacing:0; vertical-align:2rpx; }
-.collect-btn { flex-shrink:0; padding:8rpx 18rpx; border-radius:24rpx; background:#eef6ff; color:#1677ff; font-size:24rpx; font-weight:700; }
+.collect-btn { flex-shrink:0; padding:8rpx 18rpx; border-radius:24rpx; border:1rpx solid #d7e6ff; background:#eef6ff; color:#1677ff; font-size:24rpx; font-weight:700; }
+.collect-btn.active { border-color:#f6d365; background:#fff8e6; color:#d97706; }
 .option { display:flex; align-items:center; min-height:72rpx; padding:0 18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
 .radio { margin-right:14rpx; }
 .text-answer { margin-top:12rpx; }
-.manual-answer-row { display:grid; grid-template-columns:minmax(0, 1fr) 160rpx 104rpx; gap:12rpx; align-items:stretch; }
+.manual-answer-row { display:grid; grid-template-columns:minmax(0, 1fr) 148rpx 130rpx; gap:10rpx; align-items:stretch; }
 .answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }
 .answer-photo { width:100%; max-height:360rpx; margin-top:14rpx; border-radius:12rpx; background:#eef2f7; }
 .photo-btn,
-.skip-btn { min-height:118rpx; display:flex; align-items:center; justify-content:center; text-align:center; border-radius:12rpx; font-size:26rpx; font-weight:800; box-sizing:border-box; padding:0 10rpx; }
+.skip-btn { min-height:118rpx; display:flex; align-items:center; justify-content:center; text-align:center; border-radius:12rpx; font-size:25rpx; line-height:1.25; font-weight:800; box-sizing:border-box; padding:0 12rpx; }
 .photo-btn { border:2rpx solid #1677ff; color:#1677ff; background:#fff; }
 .photo-btn.disabled { opacity:.58; background:#f8fafc; }
-.skip-btn { border:2rpx solid #ef4444; color:#ef4444; background:#fff; }
-.skip-btn.active { background:#fff1f2; }
-.skip-note { margin-top:12rpx; color:#ef4444; font-size:24rpx; }
+.skip-btn { border:2rpx solid #f97316; color:#ea580c; background:#fff; }
+.skip-btn.active { background:#fff7ed; }
+.skip-note { margin-top:12rpx; color:#ea580c; font-size:24rpx; }
 .subjective-actions,
 .review-actions { display:flex; gap:14rpx; margin-top:16rpx; }
 .outline-btn,
@@ -420,6 +500,7 @@ page { background:#f5f7fa; }
 .answer-line { margin-top:8rpx; color:#334155; font-size:25rpx; }
 .ana-text { margin-top:8rpx; color:#596272; }
 .feedback-panel { padding:6rpx 0 0; }
+.inline-review { margin-top:16rpx; padding:18rpx; border-radius:14rpx; border:1rpx solid #e5e9ef; background:#f8fafc; }
 .feedback-title { color:#111827; font-size:28rpx; font-weight:900; margin-bottom:18rpx; }
 .feedback-options { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14rpx; margin-bottom:20rpx; }
 .feedback-option { min-height:68rpx; padding:0 16rpx; display:flex; align-items:center; justify-content:space-between; border:2rpx solid #e5e9ef; border-radius:12rpx; background:#fff; color:#111827; font-size:26rpx; font-weight:800; box-sizing:border-box; }
@@ -442,6 +523,8 @@ page { background:#f5f7fa; }
 .overview-row:last-child { border-bottom:0; padding-bottom:0; }
 .overview-count { font-weight:800; color:#222; }
 .overview-analysis { margin-top:8rpx; color:#596272; }
-.footer { position:fixed; left:0; right:0; bottom:0; padding:20rpx 24rpx 34rpx; background:#fff; box-shadow:0 -4rpx 16rpx rgba(0,0,0,.05); }
-.submit { height:88rpx; line-height:88rpx; text-align:center; border-radius:44rpx; background:#1677ff; color:#fff; font-size:30rpx; font-weight:800; }
+.footer { position:fixed; left:0; right:0; bottom:0; padding:20rpx 24rpx 34rpx; display:flex; gap:16rpx; background:#fff; box-shadow:0 -4rpx 16rpx rgba(0,0,0,.05); box-sizing:border-box; }
+.submit,
+.footer-back { flex:1; height:88rpx; line-height:88rpx; text-align:center; border-radius:44rpx; background:#1677ff; color:#fff; font-size:30rpx; font-weight:800; box-sizing:border-box; }
+.submit.submitted { opacity:.92; }
 </style>

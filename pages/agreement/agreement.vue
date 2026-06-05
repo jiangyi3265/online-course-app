@@ -10,7 +10,7 @@
 			<view class="doc-card">
 				<view class="doc-title">{{doc.title}}</view>
 				<view class="doc-time" v-if="doc.updatedAt">更新时间：{{formatTime(doc.updatedAt)}}</view>
-				<text class="doc-body">{{doc.content || '暂无内容'}}</text>
+				<rich-text class="doc-body" :nodes="docContentHtml"></rich-text>
 			</view>
 		</view>
 	</view>
@@ -34,6 +34,11 @@ export default {
 		this.type = opts.type === 'user' ? 'user' : 'privacy'
 		this.doc = this.fallbackDoc()
 		this.loadDoc()
+	},
+	computed: {
+		docContentHtml() {
+			return this.toRichText(this.doc.content || '暂无内容')
+		}
 	},
 	methods: {
 		fallbackDoc() {
@@ -67,6 +72,19 @@ export default {
 		formatTime(value) {
 			if (!value) return ''
 			return String(value).replace('T', ' ').slice(0, 16)
+		},
+		toRichText(value = '') {
+			const content = String(value || '')
+			if (/<[a-z][\s\S]*>/i.test(content)) return content
+			return this.escapeHtml(content).replace(/\r?\n/g, '<br/>')
+		},
+		escapeHtml(value = '') {
+			return String(value)
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;')
 		}
 	}
 }
