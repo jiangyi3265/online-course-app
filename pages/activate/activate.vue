@@ -46,7 +46,7 @@
 </template>
 
 <script>
-import { activateCourse } from '@/common/api.js'
+import { activateCourse, getMyCourses, getProfile } from '@/common/api.js'
 export default {
 	data() {
 		return {
@@ -65,8 +65,50 @@ export default {
 			activatedCourse:''
 		}
 	},
-	onLoad(opts = {}) { this.courseId = opts.courseId || 'gk-math-full'; },
+	onLoad(opts = {}) {
+		this.courseId = opts.courseId || 'gk-math-full';
+		this.prefillStudentInfo();
+	},
 	methods: {
+		async prefillStudentInfo() {
+			const cached = uni.getStorageSync('userInfo') || {};
+			this.applyStudentInfo(cached);
+			try {
+				const profile = await getProfile();
+				this.applyStudentInfo(profile || {});
+			} catch (err) {}
+			try {
+				const courses = await getMyCourses();
+				const list = Array.isArray(courses) ? courses : [];
+				const latest = [...list].reverse().find(item => item && (item.studentName || item.gender || item.grade || item.schoolName || item.region));
+				if (latest) this.applyStudentInfo(latest);
+			} catch (err) {}
+		},
+		applyStudentInfo(source = {}) {
+			if (!this.studentName) this.studentName = this.firstText(source.studentName, source.name);
+			if (!this.gender) this.gender = this.normalizeGender(source.gender);
+			if (!this.grade) this.grade = this.firstText(source.grade);
+			if (!this.schoolName) this.schoolName = this.firstText(source.schoolName, source.school);
+			if (!this.region) this.region = this.firstText(source.region, source.area);
+		},
+		firstText(...values) {
+			for (const value of values) {
+				const text = String(value || '').trim();
+				if (text) return text;
+			}
+			return '';
+		},
+		normalizeGender(value) {
+			const text = String(value || '').trim();
+			if (!text) return '';
+			if (text.includes('男') || /^m(ale)?$/i.test(text)) return '男';
+			if (text.includes('女') || /^f(emale)?$/i.test(text)) return '女';
+			return this.genderOptions.includes(text) ? text : '';
+		},
+		cacheStudentInfo(payload = {}) {
+			const user = uni.getStorageSync('userInfo') || {};
+			uni.setStorageSync('userInfo', { ...user, ...payload });
+		},
 		async activate() {
 			const code = this.code.trim().toLowerCase();
 			const studentName = this.studentName.trim();
@@ -84,6 +126,7 @@ export default {
 			try {
 				const result = await activateCourse({ code, studentName, gender, recentExamScore, grade, schoolName, region, courseId: this.courseId });
 				this.code = code;
+				this.cacheStudentInfo({ studentName, gender, recentExamScore, grade, schoolName, region });
 				this.activatedCourse = result.courseTitle || result.courseId || '课程';
 				uni.showToast({ title:'开通成功', icon:'success' });
 			}
