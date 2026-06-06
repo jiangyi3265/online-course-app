@@ -79,8 +79,12 @@
 					<view class="tag latest-tag">最新收录时间：{{formatFullTime(item.updatedAt)}}</view>
 				</view>
 				<view class="stem">{{item.stem}}</view>
+				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<view class="option-list" v-if="showOptions(item)">
-					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">{{optionLetter(optionIndex)}}. {{option}}</view>
+					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
+						<view>{{optionLetter(optionIndex)}}. {{option || '图片选项'}}</view>
+						<image v-if="optionImage(item, optionIndex)" class="option-image" :src="optionImage(item, optionIndex)" mode="aspectFit" @click="previewMedia(optionImage(item, optionIndex))" />
+					</view>
 				</view>
 				<view class="answer ok">正确答案：{{item.answerText || optionText(item, item.answer)}}</view>
 				<view class="answer bad">我的答案：{{item.selectedText || optionText(item, item.selected)}}</view>
@@ -111,7 +115,8 @@
 				<view class="detail-list" v-if="activeRecordId === record.id">
 					<view class="detail-row" v-for="detail in record.details" :key="detail.questionNo">
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
-						<view class="detail-stem">{{detail.stem || '题目内容暂未返回'}}</view>
+						<view class="detail-stem">{{detail.stem || (detail.stemImageUrl ? '图片题干' : '题目内容暂未返回')}}</view>
+						<image v-if="detail.stemImageUrl" class="question-image compact" :src="detail.stemImageUrl" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" />
 						<view class="detail-answer bad">我的答案：{{detailMyAnswer(detail)}}</view>
 						<view class="test-record-strip" v-if="showTestRecordDetail(detail)">
 							<view class="test-record-title">查看测试记录</view>
@@ -145,6 +150,7 @@
 				<view class="source-title">温习错题来源：</view>
 				<view class="tag-row"><view class="tag">{{source}}</view></view>
 				<view class="stem">{{item.stem}}</view>
+				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 			</view>
 		</view>
 
@@ -171,8 +177,12 @@
 					<view class="tag" v-for="tag in item.sourceTags" :key="tag">{{tag}}</view>
 				</view>
 				<view class="stem">{{item.stem}}</view>
+				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<view class="option-list" v-if="showOptions(item)">
-					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">{{optionLetter(optionIndex)}}. {{option}}</view>
+					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
+						<view>{{optionLetter(optionIndex)}}. {{option || '图片选项'}}</view>
+						<image v-if="optionImage(item, optionIndex)" class="option-image" :src="optionImage(item, optionIndex)" mode="aspectFit" @click="previewMedia(optionImage(item, optionIndex))" />
+					</view>
 				</view>
 				<view class="row-actions weak-actions">
 					<view class="state" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
@@ -409,6 +419,18 @@ export default {
 			}
 			uni.previewImage({ urls: [url], current: url })
 		},
+		mediaList(value) {
+			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean)
+			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean)
+		},
+		optionImage(item = {}, index) {
+			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl)
+			return urls[index] || ''
+		},
+		previewMedia(url) {
+			if (!url) return
+			uni.previewImage({ urls: [url], current: url })
+		},
 		optionText(item, index) {
 			const options = item.options || []
 			return options[index] !== undefined ? `${String.fromCharCode(65 + Number(index))}. ${options[index]}` : '--'
@@ -522,8 +544,12 @@ page { background:#f4f6f8; }
 .tag { padding:6rpx 12rpx; border-radius:6rpx; background:#eef5ff; color:#1d4ed8; font-size:22rpx; font-weight:700; }
 .tag.latest-tag { background:#fff1f2; color:#be123c; }
 .stem { margin-top:18rpx; font-size:29rpx; line-height:1.55; font-weight:800; color:#1f2933; }
+.question-image { width:100%; max-height:420rpx; margin:14rpx 0 4rpx; border-radius:12rpx; background:#eef2f7; }
+.question-image.compact { max-height:260rpx; margin:10rpx 0; }
 .option-list { margin-top:14rpx; padding:14rpx 16rpx; background:#f8fafc; border:1rpx solid #edf0f2; border-radius:8rpx; }
 .option-row { color:#475467; font-size:24rpx; line-height:1.65; }
+.option-row + .option-row { margin-top:12rpx; }
+.option-image { width:100%; max-height:300rpx; margin-top:8rpx; border-radius:10rpx; background:#eef2f7; }
 .answer { margin-top:12rpx; font-size:26rpx; line-height:1.45; }
 .answer.ok { color:#047857; }
 .answer.bad { color:#dc2626; }

@@ -18,10 +18,15 @@
 				</view>
 				<view class="collect-btn" :class="{active: q.favorited}" @click="collectQuestion(q)">{{q.favorited ? '已收藏' : '收藏'}}</view>
 			</view>
+			<image v-if="q.stemImageUrl" class="question-image" :src="q.stemImageUrl" mode="aspectFit" @click="previewMedia(q.stemImageUrl)" />
 			<block v-if="questionType(q) === 'choice'">
-				<view class="option" v-for="(opt, idx) in q.options" :key="opt" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
+				<view class="option" v-for="(opt, idx) in q.options" :key="idx" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
 					<text class="radio">{{answers[q.id] === idx ? '●' : '○'}}</text>
-					<text>{{opt}}</text>
+					<view class="option-body">
+						<text v-if="opt">{{opt}}</text>
+						<text v-else class="image-option-label">图片选项</text>
+						<image v-if="optionImage(q, idx)" class="option-image" :src="optionImage(q, idx)" mode="aspectFit" @click.stop="previewMedia(optionImage(q, idx))" />
+					</view>
 				</view>
 			</block>
 			<view class="text-answer" v-else>
@@ -128,6 +133,7 @@
 			<view class="overview-title">题目总览</view>
 			<view class="overview-row" v-for="(item, index) in resultDetails" :key="item.id">
 				<view class="overview-count">题目数：{{index + 1}}/{{resultDetails.length}}</view>
+				<image v-if="item.stemImageUrl" class="question-image compact" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<view>我的答案：{{displayAnswer(item, 'selected')}}</view>
 				<view>参考答案：{{displayAnswer(item, 'answer')}}</view>
 				<analysis-viewer :item="item" :text="item.analysis" />
@@ -366,6 +372,18 @@ export default {
 				uni.showToast({ title: err.message || '自评保存失败', icon:'none' });
 			}
 		},
+		mediaList(value) {
+			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
+			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+		},
+		optionImage(item = {}, index) {
+			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
+			return urls[index] || '';
+		},
+		previewMedia(url) {
+			if (!url) return;
+			uni.previewImage({ urls: [url], current: url });
+		},
 		answerLetter(value) {
 			const index = Number(value);
 			return Number.isFinite(index) && index >= 0 ? String.fromCharCode(65 + index) : '--';
@@ -468,9 +486,14 @@ page { background:#f5f7fa; }
 .difficulty-stars { display:inline-block; margin-right:12rpx; color:#f59e0b; font-size:24rpx; letter-spacing:0; vertical-align:2rpx; }
 .collect-btn { flex-shrink:0; padding:8rpx 18rpx; border-radius:24rpx; border:1rpx solid #d7e6ff; background:#eef6ff; color:#1677ff; font-size:24rpx; font-weight:700; }
 .collect-btn.active { border-color:#f6d365; background:#fff8e6; color:#d97706; }
-.option { display:flex; align-items:center; min-height:72rpx; padding:0 18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; }
+.question-image { width:100%; max-height:420rpx; margin:4rpx 0 16rpx; border-radius:12rpx; background:#eef2f7; }
+.question-image.compact { max-height:260rpx; margin:10rpx 0; }
+.option { display:flex; align-items:flex-start; min-height:72rpx; padding:18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; box-sizing:border-box; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
-.radio { margin-right:14rpx; }
+.radio { flex-shrink:0; margin-right:14rpx; line-height:1.5; }
+.option-body { flex:1; min-width:0; display:grid; gap:12rpx; line-height:1.5; }
+.option-image { width:100%; max-height:300rpx; border-radius:10rpx; background:#eef2f7; }
+.image-option-label { color:#64748b; font-size:25rpx; }
 .text-answer { margin-top:12rpx; }
 .manual-answer-row { display:grid; grid-template-columns:minmax(0, 1fr) 148rpx 130rpx; gap:10rpx; align-items:stretch; }
 .answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }

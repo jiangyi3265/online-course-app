@@ -25,10 +25,15 @@
 			<view class="question-card" v-for="item in questions" :key="item.id">
 				<view class="tag">{{item.knowledge || '题目'}}</view>
 				<view class="stem">{{item.stem}}</view>
+				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<block v-if="questionType(item) === 'choice'">
-					<view class="option" v-for="(opt, idx) in item.options" :key="opt" :class="{active: answers[item.id] === idx}" @click="answers[item.id] = idx">
+					<view class="option" v-for="(opt, idx) in item.options" :key="idx" :class="{active: answers[item.id] === idx}" @click="answers[item.id] = idx">
 						<text class="radio">{{answers[item.id] === idx ? '●' : '○'}}</text>
-						<text>{{opt}}</text>
+						<view class="option-body">
+							<text v-if="opt">{{opt}}</text>
+							<text v-else class="image-option-label">图片选项</text>
+							<image v-if="optionImage(item, idx)" class="option-image" :src="optionImage(item, idx)" mode="aspectFit" @click.stop="previewMedia(optionImage(item, idx))" />
+						</view>
 					</view>
 				</block>
 				<view class="text-answer" v-else>
@@ -95,6 +100,18 @@ export default {
 		optionText(item, index) {
 			return item.options && item.options[index] !== undefined ? item.options[index] : '--';
 		},
+		mediaList(value) {
+			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
+			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+		},
+		optionImage(item = {}, index) {
+			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
+			return urls[index] || '';
+		},
+		previewMedia(url) {
+			if (!url) return;
+			uni.previewImage({ urls: [url], current: url });
+		},
 		questionType(item = {}) {
 			const value = item.questionType || item.type || 'choice';
 			if (value === 'fill' || value === '填空' || value === '填空题') return 'fill';
@@ -136,9 +153,13 @@ page { background:#f5f7fa; }
 .course-btn.disabled { background:#d8dde5; color:#8a929c; }
 .tag { display:inline-block; padding:6rpx 14rpx; border-radius:8rpx; background:#eef6ff; color:#1677ff; font-size:22rpx; }
 .stem { margin-top:18rpx; font-size:30rpx; line-height:1.5; font-weight:700; color:#222; }
-.option { display:flex; align-items:center; min-height:72rpx; padding:0 18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; }
+.question-image { width:100%; max-height:420rpx; margin:14rpx 0 4rpx; border-radius:12rpx; background:#eef2f7; }
+.option { display:flex; align-items:flex-start; min-height:72rpx; padding:18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; box-sizing:border-box; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
-.radio { margin-right:14rpx; }
+.radio { flex-shrink:0; margin-right:14rpx; line-height:1.5; }
+.option-body { flex:1; min-width:0; display:grid; gap:12rpx; line-height:1.5; }
+.option-image { width:100%; max-height:300rpx; border-radius:10rpx; background:#eef2f7; }
+.image-option-label { color:#64748b; font-size:25rpx; }
 .text-answer { margin-top:12rpx; }
 .answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }
 .analysis { margin-top:18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; font-size:26rpx; line-height:1.5; }
