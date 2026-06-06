@@ -112,7 +112,15 @@
 					<view class="detail-row" v-for="detail in record.details" :key="detail.questionNo">
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
 						<view class="detail-stem">{{detail.stem || '题目内容暂未返回'}}</view>
-						<view class="detail-answer bad">我的答案：{{detail.myAnswerText || detail.myAnswer || '--'}}</view>
+						<view class="detail-answer bad">我的答案：{{detailMyAnswer(detail)}}</view>
+						<view class="test-record-strip" v-if="showTestRecordDetail(detail)">
+							<view class="test-record-title">查看测试记录</view>
+							<view class="test-record-actions">
+								<view class="record-pill muted" v-if="detail.noUpload">暂不上传</view>
+								<view class="record-pill link" v-if="detail.studentAnswerImageUrl" @click.stop="previewDetailImage(detail)">查看图片</view>
+								<view class="record-pill" v-if="detail.reviewResult" :class="reviewResultClass(detail)">自评{{reviewResultText(detail)}}</view>
+							</view>
+						</view>
 						<view class="detail-answer ok">正确答案：{{detail.correctAnswerText || detail.correctAnswer || '--'}}</view>
 						<analysis-viewer :item="detail" :text="detail.analysis" />
 					</view>
@@ -362,6 +370,45 @@ export default {
 		toggleRecord(id) {
 			this.activeRecordId = this.activeRecordId === id ? '' : id
 		},
+		detailMyAnswer(detail = {}) {
+			const answer = detail.myAnswerText || detail.myAnswer || detail.selectedText || ''
+			if (answer && answer !== '--') return answer
+			return detail.noUpload ? '暂不上传' : '--'
+		},
+		showTestRecordDetail(detail = {}) {
+			return detail.questionType !== 'choice' && (
+				!!detail.studentAnswerImageUrl ||
+				!!detail.reviewResult ||
+				!!detail.noUpload ||
+				!!detail.skipped
+			)
+		},
+		reviewResultText(detail = {}) {
+			if (detail.reviewResultText) return detail.reviewResultText
+			const result = String(detail.reviewResult || '').toLowerCase()
+			if (result === 'correct') return '对'
+			if (result === 'partial') return '半对'
+			if (result === 'wrong') return '错'
+			if (result === 'pending') return '待自评'
+			return ''
+		},
+		reviewResultClass(detail = {}) {
+			const result = String(detail.reviewResult || '').toLowerCase()
+			return {
+				'ok': result === 'correct',
+				'partial': result === 'partial',
+				'bad': result === 'wrong',
+				'pending': result === 'pending'
+			}
+		},
+		previewDetailImage(detail = {}) {
+			const url = detail.studentAnswerImageUrl || ''
+			if (!url) {
+				uni.showToast({ title: '暂无作答图片', icon: 'none' })
+				return
+			}
+			uni.previewImage({ urls: [url], current: url })
+		},
 		optionText(item, index) {
 			const options = item.options || []
 			return options[index] !== undefined ? `${String.fromCharCode(65 + Number(index))}. ${options[index]}` : '--'
@@ -503,6 +550,48 @@ page { background:#f4f6f8; }
 .detail-answer { margin-top:8rpx; font-size:25rpx; line-height:1.45; }
 .detail-answer.ok { color:#047857; }
 .detail-answer.bad { color:#dc2626; }
+.test-record-strip {
+	margin-top:12rpx;
+	padding:12rpx;
+	border-radius:10rpx;
+	background:#f8fafc;
+	border:1rpx solid #e2e8f0;
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap:12rpx;
+}
+.test-record-title {
+	flex-shrink:0;
+	color:#475569;
+	font-size:23rpx;
+	font-weight:900;
+}
+.test-record-actions {
+	min-width:0;
+	flex:1;
+	display:flex;
+	flex-wrap:wrap;
+	justify-content:flex-end;
+	gap:10rpx;
+}
+.record-pill {
+	height:44rpx;
+	line-height:44rpx;
+	padding:0 14rpx;
+	border-radius:8rpx;
+	background:#fff;
+	border:1rpx solid #cbd5e1;
+	color:#475569;
+	font-size:22rpx;
+	font-weight:800;
+}
+.record-pill.link { color:#2563eb; border-color:#93c5fd; background:#eff6ff; }
+.record-pill.ok { color:#047857; border-color:#86efac; background:#ecfdf5; }
+.record-pill.partial { color:#b45309; border-color:#fcd34d; background:#fffbeb; }
+.record-pill.bad { color:#dc2626; border-color:#fecaca; background:#fff1f2; }
+.record-pill.pending,
+.record-pill.muted { color:#64748b; border-color:#cbd5e1; background:#f1f5f9; }
 .panel-title { font-size:32rpx; font-weight:900; color:#1f2933; }
 .panel-sub, .notice, .retry-meta { margin-top:10rpx; color:#667085; font-size:25rpx; line-height:1.5; }
 .setting-title { margin-top:24rpx; font-size:26rpx; font-weight:900; color:#1f2933; }
