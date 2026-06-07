@@ -193,7 +193,7 @@
 
 <script>
 import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
-import { getCourse, getReinforce } from '@/common/api.js'
+import { getCourse, getReinforce, resolveMediaUrl } from '@/common/api.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
 	components: { StudyCheckinCard },
@@ -334,8 +334,9 @@ export default {
 		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); },
 		setCover(value) {
-			if (value === this.cover) return;
-			this.cover = value || '';
+			const next = resolveMediaUrl(value || '');
+			if (next === this.cover) return;
+			this.cover = next;
 			this.coverRatio = 0;
 		},
 		onCoverLoad(event) {

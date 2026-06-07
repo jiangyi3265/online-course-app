@@ -42,6 +42,22 @@ function getBaseUrl(admin = false) {
 	return getDefaultBaseUrl(admin)
 }
 
+function getApiOrigin() {
+	const base = getBaseUrl(false)
+	if (/^https?:\/\//i.test(base)) {
+		return trimTrailingSlash(base.replace(/\/course\/app$/i, '').replace(/\/course\/admin$/i, ''))
+	}
+	return ''
+}
+
+export function resolveMediaUrl(url = '') {
+	const value = String(url || '').trim()
+	if (!value || /^(https?:\/\/|data:|blob:|file:)/i.test(value)) return value
+	if (/^\/static\//i.test(value)) return value
+	if (/^\/profile\//i.test(value)) return `${getApiOrigin()}${value}`
+	return value
+}
+
 function buildQuery(params = {}) {
 	const query = Object.keys(params)
 		.filter(key => params[key] !== undefined && params[key] !== null && params[key] !== '')
@@ -100,7 +116,7 @@ export function uploadAnswerImage(filePath) {
 				}
 				const data = body.data || body
 				if (res.statusCode >= 200 && res.statusCode < 300 && (body.code === 200 || body.code === 0 || data.url)) {
-					resolve(data.url || '')
+					resolve(resolveMediaUrl(data.url || data.fileName || ''))
 					return
 				}
 				reject(new Error(body.msg || `图片上传失败：${res.statusCode}`))

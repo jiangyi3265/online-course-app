@@ -56,7 +56,7 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { GAOKAO_MATH_TRIAL, stripCourseYear } from '@/common/course-data.js'
-import { getCourses, getFrontendSettings } from '@/common/api.js'
+import { getCourses, getFrontendSettings, resolveMediaUrl } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() {
@@ -93,7 +93,7 @@ export default {
 			try {
 				const settings = await getFrontendSettings();
 				const banners = Array.isArray(settings.homeBanners) ? settings.homeBanners.filter(item => item && item.imageUrl) : [];
-				if (banners.length) this.homeBanners = banners;
+				if (banners.length) this.homeBanners = banners.map(item => ({ ...item, imageUrl: resolveMediaUrl(item.imageUrl) }));
 			} catch (err) {
 				console.warn('前端配置接口不可用，使用默认首页图', err);
 			}
@@ -106,7 +106,7 @@ export default {
 					id: item.id,
 					full: stripCourseYear(item.full),
 					learn: item.studyCount || item.learn || 0,
-					cover: item.cover,
+					cover: resolveMediaUrl(item.cover),
 					subject: item.subject,
 					kind: item.kind,
 					isTry: item.isTry

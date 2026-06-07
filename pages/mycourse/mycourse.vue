@@ -41,7 +41,7 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
-import { getMyCourses, isLoggedIn } from '@/common/api.js'
+import { getMyCourses, isLoggedIn, resolveMediaUrl } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() { return { logined:false, showModal:false, courses: AUTHORIZED_COURSES } },
@@ -59,7 +59,7 @@ export default {
 					title: stripCourseYear(item.courseName || item.sub || `《${item.full}》`),
 					sub: stripCourseYear(item.sub),
 					expiry: item.expiry,
-					cover: item.cover,
+					cover: resolveMediaUrl(item.cover),
 					subject: item.subject,
 					kind: item.kind
 				}));

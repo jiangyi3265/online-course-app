@@ -13,19 +13,37 @@
 		<view class="question" v-for="(q, i) in questions" :key="q.id">
 			<view class="q-head">
 				<view class="q-title">
-					<text class="difficulty-stars">{{difficultyStars(q)}}</text>
-					<text>{{i + 1}}. {{q.stem}}</text>
+					<view class="q-meta">
+						<text class="difficulty-stars">{{difficultyStars(q)}}</text>
+						<text class="q-index">第 {{i + 1}} 题</text>
+					</view>
+					<text class="q-stem">{{q.stem}}</text>
 				</view>
 				<view class="collect-btn" :class="{active: q.favorited}" @click="collectQuestion(q)">{{q.favorited ? '已收藏' : '收藏'}}</view>
 			</view>
-			<image v-if="q.stemImageUrl" class="question-image" :src="q.stemImageUrl" mode="aspectFit" @click="previewMedia(q.stemImageUrl)" />
+			<view v-if="imageList(q.stemImageUrl).length" class="image-stack">
+				<image
+					v-for="(url, imageIndex) in imageList(q.stemImageUrl)"
+					:key="`${q.id}-stem-${imageIndex}`"
+					class="question-image"
+					:src="url"
+					mode="widthFix"
+					@click="previewMedia(url, imageList(q.stemImageUrl))"
+				/>
+			</view>
+			<view v-if="fileList(q.stemFileUrl).length" class="doc-stack">
+				<view v-for="(url, fileIndex) in fileList(q.stemFileUrl)" :key="`${q.id}-stem-file-${fileIndex}`" class="doc-card" @click="openFile(url)">
+					<text class="doc-type">{{fileExt(url)}}</text>
+					<text class="doc-name">题干资料 {{fileIndex + 1}}</text>
+				</view>
+			</view>
 			<block v-if="questionType(q) === 'choice'">
 				<view class="option" v-for="(opt, idx) in q.options" :key="idx" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
 					<text class="radio">{{answers[q.id] === idx ? '●' : '○'}}</text>
 					<view class="option-body">
 						<text v-if="opt">{{opt}}</text>
 						<text v-else class="image-option-label">图片选项</text>
-						<image v-if="optionImage(q, idx)" class="option-image" :src="optionImage(q, idx)" mode="aspectFit" @click.stop="previewMedia(optionImage(q, idx))" />
+						<image v-if="optionImage(q, idx)" class="option-image" :src="optionImage(q, idx)" mode="widthFix" @click.stop="previewMedia(optionImage(q, idx), imageList(q.optionImageUrls || q.optionImages || q.optionImageUrl))" />
 					</view>
 				</view>
 			</block>
@@ -53,7 +71,7 @@
 					:disabled="true"
 					:placeholder="questionType(q) === 'fill' ? '请输入填空答案' : '手动输入解题过程或答案'"
 				/>
-				<image v-if="answerImages[q.id]" class="answer-photo" :src="answerImages[q.id]" mode="aspectFit" />
+				<image v-if="answerImages[q.id]" class="answer-photo" :src="mediaUrl(answerImages[q.id])" mode="widthFix" @click="previewMedia(answerImages[q.id])" />
 				<view class="skip-note" v-if="noUploads[q.id] && !result">已选择暂不上传，请对照参考答案完成自评。</view>
 				<view class="inline-review" v-if="showInlineReview(q)">
 					<view class="feedback-title">答案自评</view>
@@ -74,7 +92,15 @@
 					</view>
 					<view class="feedback-body" v-if="expandedAnalysis[q.id]">
 						<view class="answer-line">参考答案：{{displayQuestionAnswer(q)}}</view>
-						<image v-if="q.answerImageUrl" class="answer-photo" :src="q.answerImageUrl" mode="aspectFit" />
+						<view v-if="imageList(q.answerImageUrl).length" class="image-stack answer-stack">
+							<image v-for="(url, imageIndex) in imageList(q.answerImageUrl)" :key="`${q.id}-answer-${imageIndex}`" class="answer-photo" :src="url" mode="widthFix" @click="previewMedia(url, imageList(q.answerImageUrl))" />
+						</view>
+						<view v-if="fileList(q.answerFileUrl).length" class="doc-stack">
+							<view v-for="(url, fileIndex) in fileList(q.answerFileUrl)" :key="`${q.id}-answer-file-${fileIndex}`" class="doc-card" @click="openFile(url)">
+								<text class="doc-type">{{fileExt(url)}}</text>
+								<text class="doc-name">参考答案文档 {{fileIndex + 1}}</text>
+							</view>
+						</view>
 						<analysis-viewer :item="q" :text="q.analysis" />
 					</view>
 				</view>
@@ -100,9 +126,17 @@
 					</view>
 					<view class="feedback-body" v-if="expandedAnalysis[q.id]">
 						<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
-						<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="resultMap[q.id].studentAnswerImageUrl" mode="aspectFit" />
+						<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="mediaUrl(resultMap[q.id].studentAnswerImageUrl)" mode="widthFix" @click="previewMedia(resultMap[q.id].studentAnswerImageUrl)" />
 						<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
-						<image v-if="resultMap[q.id] && resultMap[q.id].answerImageUrl" class="answer-photo" :src="resultMap[q.id].answerImageUrl" mode="aspectFit" />
+						<view v-if="resultMap[q.id] && imageList(resultMap[q.id].answerImageUrl).length" class="image-stack answer-stack">
+							<image v-for="(url, imageIndex) in imageList(resultMap[q.id].answerImageUrl)" :key="`${q.id}-result-answer-${imageIndex}`" class="answer-photo" :src="url" mode="widthFix" @click="previewMedia(url, imageList(resultMap[q.id].answerImageUrl))" />
+						</view>
+						<view v-if="resultMap[q.id] && fileList(resultMap[q.id].answerFileUrl).length" class="doc-stack">
+							<view v-for="(url, fileIndex) in fileList(resultMap[q.id].answerFileUrl)" :key="`${q.id}-result-answer-file-${fileIndex}`" class="doc-card" @click="openFile(url)">
+								<text class="doc-type">{{fileExt(url)}}</text>
+								<text class="doc-name">参考答案文档 {{fileIndex + 1}}</text>
+							</view>
+						</view>
 						<analysis-viewer :item="resultMap[q.id]" :text="resultMap[q.id] && resultMap[q.id].analysis" />
 					</view>
 				</view>
@@ -111,9 +145,17 @@
 						{{resultStatusText(resultMap[q.id])}}
 					</view>
 					<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
-					<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="resultMap[q.id].studentAnswerImageUrl" mode="aspectFit" />
+					<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="mediaUrl(resultMap[q.id].studentAnswerImageUrl)" mode="widthFix" @click="previewMedia(resultMap[q.id].studentAnswerImageUrl)" />
 					<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
-					<image v-if="resultMap[q.id] && resultMap[q.id].answerImageUrl" class="answer-photo" :src="resultMap[q.id].answerImageUrl" mode="aspectFit" />
+					<view v-if="resultMap[q.id] && imageList(resultMap[q.id].answerImageUrl).length" class="image-stack answer-stack">
+						<image v-for="(url, imageIndex) in imageList(resultMap[q.id].answerImageUrl)" :key="`${q.id}-plain-answer-${imageIndex}`" class="answer-photo" :src="url" mode="widthFix" @click="previewMedia(url, imageList(resultMap[q.id].answerImageUrl))" />
+					</view>
+					<view v-if="resultMap[q.id] && fileList(resultMap[q.id].answerFileUrl).length" class="doc-stack">
+						<view v-for="(url, fileIndex) in fileList(resultMap[q.id].answerFileUrl)" :key="`${q.id}-plain-answer-file-${fileIndex}`" class="doc-card" @click="openFile(url)">
+							<text class="doc-type">{{fileExt(url)}}</text>
+							<text class="doc-name">参考答案文档 {{fileIndex + 1}}</text>
+						</view>
+					</view>
 					<analysis-viewer :item="resultMap[q.id]" :text="resultMap[q.id] && resultMap[q.id].analysis" />
 				</view>
 			</view>
@@ -133,7 +175,7 @@
 			<view class="overview-title">题目总览</view>
 			<view class="overview-row" v-for="(item, index) in resultDetails" :key="item.id">
 				<view class="overview-count">题目数：{{index + 1}}/{{resultDetails.length}}</view>
-				<image v-if="item.stemImageUrl" class="question-image compact" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="imageList(item.stemImageUrl).length" class="question-image compact" :src="imageList(item.stemImageUrl)[0]" mode="widthFix" @click="previewMedia(imageList(item.stemImageUrl)[0], imageList(item.stemImageUrl))" />
 				<view>我的答案：{{displayAnswer(item, 'selected')}}</view>
 				<view>参考答案：{{displayAnswer(item, 'answer')}}</view>
 				<analysis-viewer :item="item" :text="item.analysis" />
@@ -148,7 +190,7 @@
 </template>
 
 <script>
-import { getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
+import { getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 
 export default {
@@ -213,7 +255,7 @@ export default {
 							? await getWrongRetry(this.count, this.source, this.courseId)
 							: await getPractice(practiceLookupTitle, this.questionIds, this.type, this.courseId);
 				if (!usePracticeLookup) this.title = data.title || this.title;
-				this.questions = data.questions || [];
+				this.questions = (data.questions || []).map(item => this.normalizeQuestionMedia(item));
 				this.sourceWrongIds = data.sourceWrongIds || [];
 				this.answers = {};
 				this.answerImages = {};
@@ -258,7 +300,8 @@ export default {
 					courseId: this.courseId,
 					quizId: this.title
 				};
-				this.result = this.type === 'quiz' ? await submitQuiz(payload) : await submitPractice(payload);
+				const result = this.type === 'quiz' ? await submitQuiz(payload) : await submitPractice(payload);
+				this.result = this.normalizeAttemptMedia(result);
 			} catch (err) {
 				uni.showToast({ title: err.message || '提交失败', icon: 'none' });
 			}
@@ -365,7 +408,7 @@ export default {
 					reviewResult: normalized,
 					correct: normalized === 'correct'
 				});
-				this.result = data.attempt || this.result;
+				this.result = this.normalizeAttemptMedia(data.attempt || this.result);
 				this.setMapValue(this.expandedAnalysis, item.id, true);
 				uni.showToast({ title: this.reviewToastText(normalized), icon:'success' });
 			} catch (err) {
@@ -376,13 +419,58 @@ export default {
 			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
 			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
 		},
+		mediaUrl(url) {
+			return resolveMediaUrl(url);
+		},
+		imageList(value) {
+			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(Boolean);
+		},
+		fileList(value) {
+			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(Boolean);
+		},
+		normalizeQuestionMedia(item = {}) {
+			return {
+				...item,
+				stemImageUrl: this.imageList(item.stemImageUrl || item.questionImageUrl || item.stemImage).join(','),
+				stemFileUrl: this.fileList(item.stemFileUrl || item.questionFileUrl || item.stemFile).join(','),
+				optionImageUrls: this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl),
+				answerImageUrl: this.imageList(item.answerImageUrl).join(','),
+				answerFileUrl: this.fileList(item.answerFileUrl).join(','),
+				analysisImageUrl: this.imageList(item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl).join(','),
+				analysisFileUrl: this.fileList(item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl).join(','),
+				videoAnalysisUrl: this.mediaUrl(item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl)
+			};
+		},
+		normalizeAttemptMedia(attempt = null) {
+			if (!attempt) return attempt;
+			return {
+				...attempt,
+				details: ((attempt && attempt.details) || []).map(item => this.normalizeQuestionMedia(item))
+			};
+		},
 		optionImage(item = {}, index) {
-			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
+			const urls = this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
 			return urls[index] || '';
 		},
-		previewMedia(url) {
+		previewMedia(url, urls = []) {
 			if (!url) return;
-			uni.previewImage({ urls: [url], current: url });
+			const current = this.mediaUrl(url);
+			const list = (urls && urls.length ? urls : [current]).map(item => this.mediaUrl(item)).filter(Boolean);
+			uni.previewImage({ urls: list, current });
+		},
+		openFile(url) {
+			const fileUrl = this.mediaUrl(url);
+			if (!fileUrl) return;
+			if (typeof window !== 'undefined') {
+				window.open(fileUrl, '_blank');
+				return;
+			}
+			uni.showToast({ title: '请在浏览器中打开资料', icon: 'none' });
+		},
+		fileExt(url = '') {
+			const clean = String(url || '').split('?')[0];
+			const ext = clean.includes('.') ? clean.slice(clean.lastIndexOf('.') + 1).toUpperCase() : 'FILE';
+			return ext || 'FILE';
 		},
 		answerLetter(value) {
 			const index = Number(value);
@@ -409,11 +497,11 @@ export default {
 				if (item.skipped) return '已跳过';
 				return item.selectedText || (type === 'choice' ? this.answerLetter(item.selected) : String(item.selected || '').trim()) || (item.studentAnswerImageUrl ? '已上传图片答案' : '--');
 			}
-			return item.answerText || (type === 'choice' ? this.answerLetter(item.answer) : String(item.answer || '').trim()) || (item.answerImageUrl ? '见参考答案图片' : '--');
+			return item.answerText || (type === 'choice' ? this.answerLetter(item.answer) : String(item.answer || '').trim()) || (item.answerImageUrl ? '见参考答案图片' : '') || (item.answerFileUrl ? '见参考答案文档' : '--');
 		},
 		displayQuestionAnswer(question = {}) {
 			if (!question) return '--';
-			return question.answerText || String(question.answer || '').trim() || (question.answerImageUrl ? '见参考答案图片' : '--');
+			return question.answerText || String(question.answer || '').trim() || (question.answerImageUrl ? '见参考答案图片' : '') || (question.answerFileUrl ? '见参考答案文档' : '--');
 		},
 		isFeedbackResult(item = {}) {
 			return !!(item && (item.manualReview || item.skipped || this.questionType(item) !== 'choice'));
@@ -482,11 +570,15 @@ page { background:#f5f7fa; }
 .hero-sub { margin-top:10rpx; font-size:24rpx; opacity:.9; }
 .question { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
 .q-head { display:flex; align-items:flex-start; gap:16rpx; margin-bottom:18rpx; }
-.q-title { flex:1; min-width:0; font-size:30rpx; color:#222; font-weight:700; line-height:1.5; }
-.difficulty-stars { display:inline-block; margin-right:12rpx; color:#f59e0b; font-size:24rpx; letter-spacing:0; vertical-align:2rpx; }
+.q-title { flex:1; min-width:0; display:grid; gap:10rpx; color:#222; }
+.q-meta { display:flex; align-items:center; flex-wrap:wrap; gap:12rpx; }
+.q-index { color:#64748b; font-size:23rpx; font-weight:700; }
+.q-stem { font-size:30rpx; color:#172033; font-weight:800; line-height:1.55; word-break:break-word; }
+.difficulty-stars { display:inline-block; color:#f59e0b; font-size:24rpx; letter-spacing:0; }
 .collect-btn { flex-shrink:0; padding:8rpx 18rpx; border-radius:24rpx; border:1rpx solid #d7e6ff; background:#eef6ff; color:#1677ff; font-size:24rpx; font-weight:700; }
 .collect-btn.active { border-color:#f6d365; background:#fff8e6; color:#d97706; }
-.question-image { width:100%; max-height:420rpx; margin:4rpx 0 16rpx; border-radius:12rpx; background:#eef2f7; }
+.image-stack { display:grid; gap:12rpx; margin:4rpx 0 16rpx; }
+.question-image { width:100%; border-radius:12rpx; background:#eef2f7; }
 .question-image.compact { max-height:260rpx; margin:10rpx 0; }
 .option { display:flex; align-items:flex-start; min-height:72rpx; padding:18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; box-sizing:border-box; }
 .option.active { border-color:#1677ff; background:#edf5ff; color:#1677ff; }
@@ -497,7 +589,12 @@ page { background:#f5f7fa; }
 .text-answer { margin-top:12rpx; }
 .manual-answer-row { display:grid; grid-template-columns:minmax(0, 1fr) 148rpx 130rpx; gap:10rpx; align-items:stretch; }
 .answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }
-.answer-photo { width:100%; max-height:360rpx; margin-top:14rpx; border-radius:12rpx; background:#eef2f7; }
+.answer-photo { width:100%; margin-top:14rpx; border-radius:12rpx; background:#eef2f7; }
+.answer-stack { margin-top:10rpx; }
+.doc-stack { display:grid; gap:10rpx; margin:12rpx 0 16rpx; }
+.doc-card { min-height:72rpx; display:flex; align-items:center; gap:14rpx; padding:0 18rpx; border:1rpx solid #dbe4ef; border-radius:12rpx; background:#f8fafc; color:#334155; box-sizing:border-box; }
+.doc-type { min-width:72rpx; height:40rpx; line-height:40rpx; text-align:center; border-radius:8rpx; background:#e8f2ff; color:#1677ff; font-size:22rpx; font-weight:900; }
+.doc-name { flex:1; min-width:0; font-size:25rpx; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .photo-btn,
 .skip-btn { min-height:118rpx; display:flex; align-items:center; justify-content:center; text-align:center; border-radius:12rpx; font-size:25rpx; line-height:1.25; font-weight:800; box-sizing:border-box; padding:0 12rpx; }
 .photo-btn { border:2rpx solid #1677ff; color:#1677ff; background:#fff; }

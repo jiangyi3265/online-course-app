@@ -19,7 +19,7 @@
 							<text class="access-title">{{openLabel(it)}}</text>
 							<text class="access-sub">{{openHint(it)}}</text>
 						</view>
-						<view class="go-btn">{{it.isTry ? '去体验' : '去开通'}}</view>
+						<view class="go-btn">{{goButtonText(it)}}</view>
 					</view>
 				</view>
 			</view>
@@ -34,7 +34,7 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { GAOKAO_MATH_TRIAL, GAOKAO_MATH_FULL, stripCourseYear } from '@/common/course-data.js'
-import { getCourses } from '@/common/api.js'
+import { getCourses, resolveMediaUrl } from '@/common/api.js'
 const ZK = {
 	yuwen:'/static/courses/zk-yuwen.jpg', shuxue:'/static/courses/zk-shuxue.jpg',
 	yingyu:'/static/courses/zk-yingyu.jpg', wuli:'/static/courses/zk-wuli.jpg',
@@ -104,8 +104,9 @@ export default {
 						full: stripCourseYear(item.full),
 						suffix: item.isTry ? '试听课' : '',
 						sub: stripCourseYear(item.sub),
-						cover: item.cover,
+						cover: resolveMediaUrl(item.cover),
 						isTry: item.isTry,
+						available: !!(item.available || item.activated || item.hasAccess),
 						subject: item.subject,
 						kind: item.kind
 					}));
@@ -115,10 +116,16 @@ export default {
 			}
 		},
 		openLabel(it) {
+			if (!it.isTry && it.available) return '已激活';
 			return it.isTry ? '试听免费' : '激活课程';
 		},
 		openHint(it) {
+			if (!it.isTry && it.available) return '可直接学习';
 			return it.isTry ? '直接体验' : '验证后学习';
+		},
+		goButtonText(it) {
+			if (it.isTry) return '去体验';
+			return it.available ? '去学习' : '去开通';
 		},
 		goDetail(it) {
 			const idPart = it.id ? `id=${encodeURIComponent(it.id)}&` : '';

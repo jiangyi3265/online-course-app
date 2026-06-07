@@ -1,16 +1,28 @@
 <template>
 	<view class="analysis-viewer">
 		<view class="analysis-tabs">
-			<view class="analysis-tab" :class="{active: mode === 'text'}" @click="mode = 'text'">文字解析</view>
-			<view class="analysis-tab" :class="{active: mode === 'image'}" @click="openImage">图片解析</view>
+			<view class="analysis-tab" :class="{active: mode === 'content'}" @click="openContent">解析</view>
 			<view class="analysis-tab" :class="{active: mode === 'video'}" @click="openVideo">视频讲解</view>
 		</view>
-		<view class="analysis-body" v-if="mode === 'text'">
-			<text>{{text || '暂无解析'}}</text>
-		</view>
-		<view class="analysis-body" v-else-if="mode === 'image'">
-			<image v-if="resolvedImageUrl" class="analysis-image" :src="resolvedImageUrl" mode="widthFix" @click="previewImage"></image>
-			<view v-else class="analysis-empty">暂无图片解析</view>
+		<view class="analysis-body" v-if="mode === 'content'">
+			<text v-if="text" class="analysis-text">{{text}}</text>
+			<view v-if="resolvedImageUrls.length" class="analysis-image-list">
+				<image
+					v-for="(url, index) in resolvedImageUrls"
+					:key="`${url}-${index}`"
+					class="analysis-image"
+					:src="url"
+					mode="widthFix"
+					@click="previewImage(url)"
+				></image>
+			</view>
+			<view v-if="resolvedFileUrls.length" class="analysis-doc-list">
+				<view v-for="(url, index) in resolvedFileUrls" :key="`${url}-${index}`" class="analysis-doc" @click="openFile(url)">
+					<text class="analysis-doc-type">{{fileExt(url)}}</text>
+					<text class="analysis-doc-name">解析文档 {{index + 1}}</text>
+				</view>
+			</view>
+			<view v-if="!hasContent" class="analysis-empty">暂无解析</view>
 		</view>
 		<view class="analysis-body" v-else>
 			<video v-if="resolvedVideoUrl" class="analysis-video" :src="resolvedVideoUrl" controls></video>
@@ -20,6 +32,8 @@
 </template>
 
 <script>
+import { resolveMediaUrl } from '@/common/api.js'
+
 export default {
 	name: 'AnalysisViewer',
 	props: {
@@ -42,24 +56,39 @@ export default {
 	},
 	data() {
 		return {
-			mode: 'text'
+			mode: 'content'
 		}
 	},
 	computed: {
 		resolvedVideoUrl() {
 			const item = this.item || {};
-			return this.videoUrl || item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl || item.videoUrl || '';
+			return resolveMediaUrl(this.videoUrl || item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl || item.videoUrl || '');
 		},
-		resolvedImageUrl() {
+		resolvedImageUrls() {
 			const item = this.item || {};
-			return this.imageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl || item.imageUrl || '';
+			return this.mediaList(this.imageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl || item.imageUrl)
+				.map(url => resolveMediaUrl(url))
+				.filter(Boolean);
+		},
+		resolvedFileUrls() {
+			const item = this.item || {};
+			return this.mediaList(item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl)
+				.map(url => resolveMediaUrl(url))
+				.filter(Boolean);
+		},
+		hasContent() {
+			return !!(this.text || this.resolvedImageUrls.length || this.resolvedFileUrls.length);
 		}
 	},
 	methods: {
-		openImage() {
-			this.mode = 'image';
-			if (!this.resolvedImageUrl) {
-				uni.showToast({ title: '暂无图片解析', icon: 'none' });
+		mediaList(value) {
+			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
+			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+		},
+		openContent() {
+			this.mode = 'content';
+			if (!this.hasContent) {
+				uni.showToast({ title: '暂无解析', icon: 'none' });
 			}
 		},
 		openVideo() {
@@ -68,9 +97,23 @@ export default {
 				uni.showToast({ title: '暂无视频解析', icon: 'none' });
 			}
 		},
-		previewImage() {
-			if (!this.resolvedImageUrl) return;
-			uni.previewImage({ urls: [this.resolvedImageUrl], current: this.resolvedImageUrl });
+		previewImage(url) {
+			const current = resolveMediaUrl(url);
+			if (!current) return;
+			uni.previewImage({ urls: this.resolvedImageUrls, current });
+		},
+		openFile(url) {
+			const fileUrl = resolveMediaUrl(url);
+			if (!fileUrl) return;
+			if (typeof window !== 'undefined') {
+				window.open(fileUrl, '_blank');
+				return;
+			}
+			uni.showToast({ title: '请在浏览器中打开解析文档', icon: 'none' });
+		},
+		fileExt(url = '') {
+			const clean = String(url || '').split('?')[0];
+			return clean.includes('.') ? clean.slice(clean.lastIndexOf('.') + 1).toUpperCase() : 'FILE';
 		}
 	}
 }
@@ -101,6 +144,12 @@ export default {
 	font-size:25rpx;
 	line-height:1.55;
 }
+.analysis-text {
+	display:block;
+	margin-bottom:12rpx;
+	white-space:pre-wrap;
+	word-break:break-word;
+}
 .analysis-video {
 	width:100%;
 	height:320rpx;
@@ -113,6 +162,43 @@ export default {
 	border-radius:12rpx;
 	background:#f1f5f9;
 	display:block;
+}
+.analysis-image-list,
+.analysis-doc-list {
+	display:grid;
+	gap:12rpx;
+}
+.analysis-doc {
+	min-height:72rpx;
+	display:flex;
+	align-items:center;
+	gap:14rpx;
+	padding:0 18rpx;
+	border:1rpx solid #dbe4ef;
+	border-radius:12rpx;
+	background:#f8fafc;
+	color:#334155;
+	box-sizing:border-box;
+}
+.analysis-doc-type {
+	min-width:72rpx;
+	height:40rpx;
+	line-height:40rpx;
+	text-align:center;
+	border-radius:8rpx;
+	background:#e8f2ff;
+	color:#1677ff;
+	font-size:22rpx;
+	font-weight:900;
+}
+.analysis-doc-name {
+	flex:1;
+	min-width:0;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+	font-size:25rpx;
+	font-weight:700;
 }
 .analysis-empty {
 	height:120rpx;
