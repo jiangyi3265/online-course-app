@@ -364,6 +364,10 @@ export function getMyStudents() {
 	return request('/my/students')
 }
 
+export function getMyAgency() {
+	return request('/my/agency')
+}
+
 export function bindStudent(payload) {
 	return request('/my/students/bind', {
 		method: 'POST',

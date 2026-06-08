@@ -71,7 +71,7 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { clearSession, isLoggedIn } from '@/common/api.js'
+import { clearSession, getProfile, isLoggedIn } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() {
@@ -112,11 +112,32 @@ export default {
 	async onShow() {
 		this.logined = isLoggedIn();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
+		if (this.logined) {
+			try {
+				const profile = await getProfile();
+				this.userInfo = { ...this.userInfo, ...(profile || {}) };
+				uni.setStorageSync('userInfo', this.userInfo);
+			} catch (err) {
+				console.warn('个人资料刷新失败', err);
+			}
+		}
 		if (this.funcs[5]) this.funcs[5].route = '/pages/agreement/agreement?type=privacy';
 		if (this.funcs[6]) this.funcs[6].route = '/pages/agreement/agreement?type=user';
+		this.syncAgencyFunc();
 		if (!this.logined) this.showModal = true;
 	},
 	methods: {
+		syncAgencyFunc() {
+			const route = '/pages/my-agency/my-agency';
+			const index = this.funcs.findIndex(item => item.route === route);
+			const enabled = this.userInfo && this.userInfo.role === 'agency_admin';
+			if (enabled && index < 0) {
+				this.funcs.push({ ico:'校', text:'我的校区', desc:'校区激活码统计', route });
+			}
+			if (!enabled && index >= 0) {
+				this.funcs.splice(index, 1);
+			}
+		},
 		cancel() { this.showModal=false; uni.switchTab({ url:'/pages/index/index', fail:()=>uni.redirectTo({ url:'/pages/index/index' }) }); },
 		goLogin() { this.showModal=false; uni.navigateTo({ url:'/pages/login/login' }); },
 		onLogout() {
@@ -565,6 +586,27 @@ page { background:#eef3f7; }
 }
 .func:nth-child(7) .f-ico::before {
 	border-color:#7c3aed;
+}
+.func:nth-child(8) .f-ico::before {
+	width:40rpx;
+	height:28rpx;
+	left:14rpx;
+	top:26rpx;
+	border:4rpx solid #1769ff;
+	border-radius:6rpx;
+	background:transparent;
+	box-shadow:none;
+}
+.func:nth-child(8) .f-ico::after {
+	width:22rpx;
+	height:18rpx;
+	left:23rpx;
+	top:13rpx;
+	border:4rpx solid #1769ff;
+	border-bottom:0;
+	border-radius:10rpx 10rpx 0 0;
+	background:transparent;
+	box-shadow:0 22rpx 0 -8rpx #22b07d;
 }
 
 /* Invite card typography polish */

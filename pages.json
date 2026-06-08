@@ -96,6 +96,13 @@
 			}
 		},
 		{
+			"path": "pages/my-agency/my-agency",
+			"style": {
+				"navigationBarTitleText": "我的校区",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/referrer/referrer",
 			"style": {
 				"navigationBarTitleText": "我的推荐人",

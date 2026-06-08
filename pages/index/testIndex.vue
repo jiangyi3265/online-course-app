@@ -19,7 +19,7 @@
 							<text class="access-title">{{openLabel(it)}}</text>
 							<text class="access-sub">{{openHint(it)}}</text>
 						</view>
-						<view class="go-btn">{{goButtonText(it)}}</view>
+						<view class="go-btn" :class="goButtonClass(it)">{{goButtonText(it)}}</view>
 					</view>
 				</view>
 			</view>
@@ -127,6 +127,10 @@ export default {
 			if (it.isTry) return '去体验';
 			return it.available ? '去学习' : '去开通';
 		},
+		goButtonClass(it) {
+			if (it.isTry) return 'trial';
+			return it.available ? 'active' : 'locked';
+		},
 		goDetail(it) {
 			const idPart = it.id ? `id=${encodeURIComponent(it.id)}&` : '';
 			const extra = it.subject ? `&subject=${it.subject}&kind=${it.kind || (it.isTry ? 'trial' : 'full')}` : '';
@@ -169,5 +173,8 @@ page { background:#f5f7fa; }
 .access.full .access-title { color:#2bb673; }
 .access-sub { color:#8a94a3; font-size:21rpx; margin-top:5rpx; }
 .go-btn { flex-shrink:0; min-width:112rpx; box-sizing:border-box; text-align:center; background:#1890e1; color:#fff; font-size:24rpx; padding:10rpx 28rpx; border-radius:30rpx; box-shadow:0 4rpx 10rpx rgba(24,144,225,0.35); cursor:pointer; }
+.go-btn.active { background:#18a66a; box-shadow:0 4rpx 10rpx rgba(24,166,106,0.28); }
+.go-btn.locked { background:#f59e0b; box-shadow:0 4rpx 10rpx rgba(245,158,11,0.28); }
+.go-btn.trial { background:#1890e1; }
 .end-tip { text-align:center; color:#bcc1c8; font-size:24rpx; padding:50rpx 0 20rpx; }
 </style>

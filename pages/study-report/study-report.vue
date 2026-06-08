@@ -117,16 +117,24 @@
 			</view>
 		</view>
 
-		<view class="panel">
-			<view class="panel-title">练习统计</view>
-			<view class="row practice-stat-row" v-for="item in recentRows" :key="item._key">
-				<view class="practice-stat-main">
-					<view class="practice-stat-title">{{item.title}}</view>
-					<view class="practice-stat-time">练习时间：{{item.practiceTimeText}}</view>
+		<view class="panel practice-stats-panel" :class="{collapsed: !showPracticeStats}">
+			<view class="panel-head" @click="showPracticeStats = !showPracticeStats">
+				<view>
+					<view class="panel-title">练习统计</view>
+					<view class="detail-sub">默认收起，展开后查看本课程练习、复习测试和线下自评统计。</view>
 				</view>
-				<view class="practice-stat-score">平均{{item.averageScore || item.score || 0}}分，错题{{item.wrongCount || 0}}道</view>
+				<view class="panel-toggle">{{showPracticeStats ? '收起' : '展开'}}</view>
 			</view>
-			<view class="empty" v-if="!recentRows.length">暂无练习统计</view>
+			<view class="practice-stats-body" v-if="showPracticeStats">
+				<view class="row practice-stat-row" v-for="item in recentRows" :key="item._key">
+					<view class="practice-stat-main">
+						<view class="practice-stat-title">{{item.title}}</view>
+						<view class="practice-stat-time">练习时间：{{item.practiceTimeText}}</view>
+					</view>
+					<view class="practice-stat-score">平均{{item.averageScore || item.score || 0}}分，错题{{item.wrongCount || 0}}道</view>
+				</view>
+				<view class="empty" v-if="!recentRows.length">暂无练习统计</view>
+			</view>
 		</view>
 
 		<view class="panel" v-if="offlineRows.length">
@@ -165,6 +173,7 @@ export default {
 			showPractice: false,
 			showLearningRecords: false,
 			showCourseRecords: false,
+			showPracticeStats: false,
 			recordDateFilter: '',
 			selectedPractice: null,
 			offlineReviews: []
@@ -607,7 +616,13 @@ page { background:#f5f7fa; }
 .detail-panel.collapsed {
 	padding-bottom:22rpx;
 }
+.practice-stats-panel.collapsed {
+	padding-bottom:22rpx;
+}
 .detail-body {
+	margin-top:18rpx;
+}
+.practice-stats-body {
 	margin-top:18rpx;
 }
 .detail-sub { color:#8a94a3; font-size:24rpx; line-height:1.45; margin-top:-8rpx; margin-bottom:20rpx; }
