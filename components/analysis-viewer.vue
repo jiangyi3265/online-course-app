@@ -5,7 +5,7 @@
 			<view class="analysis-tab" :class="{active: mode === 'video'}" @click="openVideo">视频讲解</view>
 		</view>
 		<view class="analysis-body" v-if="mode === 'content'">
-			<text v-if="text" class="analysis-text">{{text}}</text>
+			<math-rich-text v-if="text" class="analysis-text" :text="text" />
 			<view v-if="resolvedImageUrls.length" class="analysis-image-list">
 				<image
 					v-for="(url, index) in resolvedImageUrls"
@@ -33,9 +33,11 @@
 
 <script>
 import { resolveMediaUrl } from '@/common/api.js'
+import MathRichText from '@/components/math-rich-text.vue'
 
 export default {
 	name: 'AnalysisViewer',
+	components: { MathRichText },
 	props: {
 		item: {
 			type: Object,

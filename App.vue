@@ -13,6 +13,8 @@
 </script>
 
 <style>
+	@import 'katex/dist/katex.min.css';
+
 	html,
 	body {
 		background: #eef2f6;

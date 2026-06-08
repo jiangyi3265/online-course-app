@@ -78,16 +78,17 @@
 					<view class="tag" v-for="tag in item.sourceTags" :key="tag">{{tag}}</view>
 					<view class="tag latest-tag">最新收录时间：{{formatFullTime(item.updatedAt)}}</view>
 				</view>
-				<view class="stem">{{item.stem}}</view>
+				<math-rich-text class="stem" :text="item.stem" />
+				<question-audio-player :src="stemAudio(item)" />
 				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
-						<view>{{optionLetter(optionIndex)}}. {{option || '图片选项'}}</view>
+						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
 						<image v-if="optionImage(item, optionIndex)" class="option-image" :src="optionImage(item, optionIndex)" mode="aspectFit" @click="previewMedia(optionImage(item, optionIndex))" />
 					</view>
 				</view>
-				<view class="answer ok">正确答案：{{item.answerText || optionText(item, item.answer)}}</view>
-				<view class="answer bad">我的答案：{{item.selectedText || optionText(item, item.selected)}}</view>
+				<math-rich-text class="answer ok" :text="'正确答案：' + (item.answerText || optionText(item, item.answer))" />
+				<math-rich-text class="answer bad" :text="'我的答案：' + (item.selectedText || optionText(item, item.selected))" />
 				<analysis-viewer :item="item" :text="item.analysis" />
 				<view class="row-actions">
 					<view class="state" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
@@ -115,9 +116,10 @@
 				<view class="detail-list" v-if="activeRecordId === record.id">
 					<view class="detail-row" v-for="detail in record.details" :key="detail.questionNo">
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
-						<view class="detail-stem">{{detail.stem || (detail.stemImageUrl ? '图片题干' : '题目内容暂未返回')}}</view>
+						<math-rich-text class="detail-stem" :text="detail.stem || (detail.stemImageUrl ? '图片题干' : '题目内容暂未返回')" />
+						<question-audio-player :src="stemAudio(detail)" />
 						<image v-if="detail.stemImageUrl" class="question-image compact" :src="detail.stemImageUrl" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" />
-						<view class="detail-answer bad">我的答案：{{detailMyAnswer(detail)}}</view>
+						<math-rich-text class="detail-answer bad" :text="'我的答案：' + detailMyAnswer(detail)" />
 						<view class="test-record-strip" v-if="showTestRecordDetail(detail)">
 							<view class="test-record-title">查看测试记录</view>
 							<view class="test-record-actions">
@@ -126,7 +128,7 @@
 								<view class="record-pill" v-if="detail.reviewResult" :class="reviewResultClass(detail)">自评{{reviewResultText(detail)}}</view>
 							</view>
 						</view>
-						<view class="detail-answer ok">正确答案：{{detail.correctAnswerText || detail.correctAnswer || '--'}}</view>
+						<math-rich-text class="detail-answer ok" :text="'正确答案：' + (detail.correctAnswerText || detail.correctAnswer || '--')" />
 						<analysis-viewer :item="detail" :text="detail.analysis" />
 					</view>
 				</view>
@@ -149,7 +151,8 @@
 			<view class="question-card" v-for="item in retryPreview" :key="item.id">
 				<view class="source-title">温习错题来源：</view>
 				<view class="tag-row"><view class="tag">{{source}}</view></view>
-				<view class="stem">{{item.stem}}</view>
+				<math-rich-text class="stem" :text="item.stem" />
+				<question-audio-player :src="stemAudio(item)" />
 				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 			</view>
 		</view>
@@ -176,11 +179,12 @@
 				<view class="tag-row">
 					<view class="tag" v-for="tag in item.sourceTags" :key="tag">{{tag}}</view>
 				</view>
-				<view class="stem">{{item.stem}}</view>
+				<math-rich-text class="stem" :text="item.stem" />
+				<question-audio-player :src="stemAudio(item)" />
 				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
-						<view>{{optionLetter(optionIndex)}}. {{option || '图片选项'}}</view>
+						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
 						<image v-if="optionImage(item, optionIndex)" class="option-image" :src="optionImage(item, optionIndex)" mode="aspectFit" @click="previewMedia(optionImage(item, optionIndex))" />
 					</view>
 				</view>
@@ -205,9 +209,11 @@ import {
 	toggleFavorite
 } from '@/common/api.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
+import MathRichText from '@/components/math-rich-text.vue'
+import QuestionAudioPlayer from '@/components/question-audio-player.vue'
 
 export default {
-	components: { AnalysisViewer },
+	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {
 			mode: 'review',
@@ -426,6 +432,9 @@ export default {
 		optionImage(item = {}, index) {
 			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl)
 			return urls[index] || ''
+		},
+		stemAudio(item = {}) {
+			return item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || ''
 		},
 		previewMedia(url) {
 			if (!url) return

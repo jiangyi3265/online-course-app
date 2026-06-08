@@ -110,7 +110,8 @@
 			<view class="practice-detail" v-if="selectedPractice">
 				<view class="detail-title">{{selectedPractice.title || '练习详情'}}｜评分 {{selectedPractice.score || selectedPractice.averageScore || 0}} 分</view>
 				<view class="question" v-for="detail in selectedPractice.details || []" :key="detail.id || detail.stem">
-					<view class="question-stem">{{detail.stem}}</view>
+					<math-rich-text class="question-stem" :text="detail.stem" />
+					<question-audio-player :src="stemAudio(detail)" />
 					<view class="question-result" :class="{wrong: !detail.correct && !detail.manualReview, review: detail.manualReview}">{{detail.manualReview ? '已提交' : (detail.correct ? '正确' : '错误')}}</view>
 					<analysis-viewer :item="detail" :text="detail.analysis" />
 				</view>
@@ -159,11 +160,13 @@
 import { getStudyReport } from '@/common/api.js'
 import { stripCourseYear } from '@/common/course-data.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
+import MathRichText from '@/components/math-rich-text.vue'
+import QuestionAudioPlayer from '@/components/question-audio-player.vue'
 
 const REVIEW_KEY = 'offlineExamReviews';
 
 export default {
-	components: { AnalysisViewer },
+	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {
 			report: { overview:[], attempts:[], recentPractice:[], suggestions:[] },
@@ -294,6 +297,9 @@ export default {
 		},
 		onRecordDateChange(e) {
 			this.recordDateFilter = e.detail.value || '';
+		},
+		stemAudio(item = {}) {
+			return item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '';
 		},
 		normalizeLearningRecord(item = {}, index = 0) {
 			const rawTime = item.recordTime || item.learnTime || item.watchTime || item.updatedAt || item.createdAt || item.time || item.date || '';

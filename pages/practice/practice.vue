@@ -17,10 +17,11 @@
 						<text class="difficulty-stars">{{difficultyStars(q)}}</text>
 						<text class="q-index">第 {{i + 1}} 题</text>
 					</view>
-					<text class="q-stem">{{q.stem}}</text>
+					<math-rich-text class="q-stem" :text="q.stem" />
 				</view>
 				<view class="collect-btn" :class="{active: q.favorited}" @click="collectQuestion(q)">{{q.favorited ? '已收藏' : '收藏'}}</view>
 			</view>
+			<question-audio-player :src="stemAudio(q)" />
 			<view v-if="imageList(q.stemImageUrl).length" class="image-stack">
 				<image
 					v-for="(url, imageIndex) in imageList(q.stemImageUrl)"
@@ -41,7 +42,7 @@
 				<view class="option" v-for="(opt, idx) in q.options" :key="idx" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
 					<text class="radio">{{answers[q.id] === idx ? '●' : '○'}}</text>
 					<view class="option-body">
-						<text v-if="opt">{{opt}}</text>
+						<math-rich-text v-if="opt" :text="opt" />
 						<text v-else class="image-option-label">图片选项</text>
 						<image v-if="optionImage(q, idx)" class="option-image" :src="optionImage(q, idx)" mode="widthFix" @click.stop="previewMedia(optionImage(q, idx), imageList(q.optionImageUrls || q.optionImages || q.optionImageUrl))" />
 					</view>
@@ -91,7 +92,7 @@
 						<text>{{expandedAnalysis[q.id] ? '收起' : '展开'}} ›</text>
 					</view>
 					<view class="feedback-body" v-if="expandedAnalysis[q.id]">
-						<view class="answer-line">参考答案：{{displayQuestionAnswer(q)}}</view>
+						<math-rich-text class="answer-line" :text="'参考答案：' + displayQuestionAnswer(q)" />
 						<view v-if="imageList(q.answerImageUrl).length" class="image-stack answer-stack">
 							<image v-for="(url, imageIndex) in imageList(q.answerImageUrl)" :key="`${q.id}-answer-${imageIndex}`" class="answer-photo" :src="url" mode="widthFix" @click="previewMedia(url, imageList(q.answerImageUrl))" />
 						</view>
@@ -125,9 +126,9 @@
 						<text>{{expandedAnalysis[q.id] ? '收起' : '展开'}} ›</text>
 					</view>
 					<view class="feedback-body" v-if="expandedAnalysis[q.id]">
-						<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
+						<math-rich-text class="answer-line" :text="'我的答案：' + displayAnswer(resultMap[q.id], 'selected')" />
 						<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="mediaUrl(resultMap[q.id].studentAnswerImageUrl)" mode="widthFix" @click="previewMedia(resultMap[q.id].studentAnswerImageUrl)" />
-						<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
+						<math-rich-text class="answer-line" :text="'参考答案：' + displayAnswer(resultMap[q.id], 'answer')" />
 						<view v-if="resultMap[q.id] && imageList(resultMap[q.id].answerImageUrl).length" class="image-stack answer-stack">
 							<image v-for="(url, imageIndex) in imageList(resultMap[q.id].answerImageUrl)" :key="`${q.id}-result-answer-${imageIndex}`" class="answer-photo" :src="url" mode="widthFix" @click="previewMedia(url, imageList(resultMap[q.id].answerImageUrl))" />
 						</view>
@@ -144,9 +145,9 @@
 					<view :class="resultStatusClass(resultMap[q.id])">
 						{{resultStatusText(resultMap[q.id])}}
 					</view>
-					<view class="answer-line">我的答案：{{displayAnswer(resultMap[q.id], 'selected')}}</view>
+					<math-rich-text class="answer-line" :text="'我的答案：' + displayAnswer(resultMap[q.id], 'selected')" />
 					<image v-if="resultMap[q.id] && resultMap[q.id].studentAnswerImageUrl" class="answer-photo" :src="mediaUrl(resultMap[q.id].studentAnswerImageUrl)" mode="widthFix" @click="previewMedia(resultMap[q.id].studentAnswerImageUrl)" />
-					<view class="answer-line">参考答案：{{displayAnswer(resultMap[q.id], 'answer')}}</view>
+					<math-rich-text class="answer-line" :text="'参考答案：' + displayAnswer(resultMap[q.id], 'answer')" />
 					<view v-if="resultMap[q.id] && imageList(resultMap[q.id].answerImageUrl).length" class="image-stack answer-stack">
 						<image v-for="(url, imageIndex) in imageList(resultMap[q.id].answerImageUrl)" :key="`${q.id}-plain-answer-${imageIndex}`" class="answer-photo" :src="url" mode="widthFix" @click="previewMedia(url, imageList(resultMap[q.id].answerImageUrl))" />
 					</view>
@@ -176,8 +177,9 @@
 			<view class="overview-row" v-for="(item, index) in resultDetails" :key="item.id">
 				<view class="overview-count">题目数：{{index + 1}}/{{resultDetails.length}}</view>
 				<image v-if="imageList(item.stemImageUrl).length" class="question-image compact" :src="imageList(item.stemImageUrl)[0]" mode="widthFix" @click="previewMedia(imageList(item.stemImageUrl)[0], imageList(item.stemImageUrl))" />
-				<view>我的答案：{{displayAnswer(item, 'selected')}}</view>
-				<view>参考答案：{{displayAnswer(item, 'answer')}}</view>
+				<question-audio-player :src="stemAudio(item)" />
+				<math-rich-text :text="'我的答案：' + displayAnswer(item, 'selected')" />
+				<math-rich-text :text="'参考答案：' + displayAnswer(item, 'answer')" />
 				<analysis-viewer :item="item" :text="item.analysis" />
 			</view>
 		</view>
@@ -192,9 +194,11 @@
 <script>
 import { getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
+import MathRichText from '@/components/math-rich-text.vue'
+import QuestionAudioPlayer from '@/components/question-audio-player.vue'
 
 export default {
-	components: { AnalysisViewer },
+	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {
 			type: 'practice',
@@ -422,6 +426,9 @@ export default {
 		mediaUrl(url) {
 			return resolveMediaUrl(url);
 		},
+		stemAudio(item = {}) {
+			return this.mediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio);
+		},
 		imageList(value) {
 			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(Boolean);
 		},
@@ -432,6 +439,7 @@ export default {
 			return {
 				...item,
 				stemImageUrl: this.imageList(item.stemImageUrl || item.questionImageUrl || item.stemImage).join(','),
+				stemAudioUrl: this.stemAudio(item),
 				stemFileUrl: this.fileList(item.stemFileUrl || item.questionFileUrl || item.stemFile).join(','),
 				optionImageUrls: this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl),
 				answerImageUrl: this.imageList(item.answerImageUrl).join(','),

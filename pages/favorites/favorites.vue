@@ -24,13 +24,14 @@
 			<view class="empty" v-if="!questions.length">暂无收藏题目</view>
 			<view class="question-card" v-for="item in questions" :key="item.id">
 				<view class="tag">{{item.knowledge || '题目'}}</view>
-				<view class="stem">{{item.stem}}</view>
+				<math-rich-text class="stem" :text="item.stem" />
+				<question-audio-player :src="stemAudio(item)" />
 				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<block v-if="questionType(item) === 'choice'">
 					<view class="option" v-for="(opt, idx) in item.options" :key="idx" :class="{active: answers[item.id] === idx}" @click="answers[item.id] = idx">
 						<text class="radio">{{answers[item.id] === idx ? '●' : '○'}}</text>
 						<view class="option-body">
-							<text v-if="opt">{{opt}}</text>
+							<math-rich-text v-if="opt" :text="opt" />
 							<text v-else class="image-option-label">图片选项</text>
 							<image v-if="optionImage(item, idx)" class="option-image" :src="optionImage(item, idx)" mode="aspectFit" @click.stop="previewMedia(optionImage(item, idx))" />
 						</view>
@@ -41,7 +42,7 @@
 				</view>
 				<view class="analysis" v-if="results[item.id]">
 					<view :class="results[item.id].manualReview ? 'review' : (results[item.id].correct ? 'ok' : 'bad')">{{results[item.id].manualReview ? '已提交，查看参考答案自评' : (results[item.id].correct ? '回答正确' : '回答错误')}}</view>
-					<view class="ana-text">参考答案：{{answerText(item, results[item.id])}}</view>
+					<math-rich-text class="ana-text" :text="'参考答案：' + answerText(item, results[item.id])" />
 					<analysis-viewer :item="results[item.id]" :text="results[item.id].analysis" />
 				</view>
 				<view class="answer-btn" @click="submitQuestion(item)">提交作答</view>
@@ -53,9 +54,11 @@
 <script>
 import { answerFavoriteQuestion, getFavorites } from '@/common/api.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
+import MathRichText from '@/components/math-rich-text.vue'
+import QuestionAudioPlayer from '@/components/question-audio-player.vue'
 
 export default {
-	components: { AnalysisViewer },
+	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {
 			tab: 'course',
@@ -107,6 +110,9 @@ export default {
 		optionImage(item = {}, index) {
 			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
 			return urls[index] || '';
+		},
+		stemAudio(item = {}) {
+			return item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '';
 		},
 		previewMedia(url) {
 			if (!url) return;
