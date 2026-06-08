@@ -119,16 +119,24 @@
 
 		<view class="panel">
 			<view class="panel-title">练习统计</view>
-			<view class="row" v-for="item in recentRows" :key="item.id || item.createdAt || item.title">
-				<text>{{item.title}}</text><text>平均{{item.averageScore || item.score || 0}}分，错题{{item.wrongCount || 0}}道</text>
+			<view class="row practice-stat-row" v-for="item in recentRows" :key="item._key">
+				<view class="practice-stat-main">
+					<view class="practice-stat-title">{{item.title}}</view>
+					<view class="practice-stat-time">练习时间：{{item.practiceTimeText}}</view>
+				</view>
+				<view class="practice-stat-score">平均{{item.averageScore || item.score || 0}}分，错题{{item.wrongCount || 0}}道</view>
 			</view>
 			<view class="empty" v-if="!recentRows.length">暂无练习统计</view>
 		</view>
 
 		<view class="panel" v-if="offlineRows.length">
 			<view class="panel-title">线下试卷自评</view>
-			<view class="row" v-for="item in offlineRows" :key="item.id">
-				<text>{{item.title}}</text><text>{{item.score}}/{{item.totalScore}}分，错题{{item.wrongCount}}道</text>
+			<view class="row practice-stat-row" v-for="item in offlineRows" :key="item.id">
+				<view class="practice-stat-main">
+					<view class="practice-stat-title">{{item.title}}</view>
+					<view class="practice-stat-time">练习时间：{{formatPracticeTime(item)}}</view>
+				</view>
+				<view class="practice-stat-score">{{item.score}}/{{item.totalScore}}分，错题{{item.wrongCount}}道</view>
 			</view>
 		</view>
 
@@ -168,7 +176,10 @@ export default {
 		},
 		recentRows() {
 			const rows = this.report.recentPractice && this.report.recentPractice.length ? this.report.recentPractice : (this.report.attempts || []);
-			return rows.concat(this.offlineRows);
+			return rows
+				.concat(this.offlineRows)
+				.map((item, index) => this.normalizePracticeRecord(item, index))
+				.sort((a, b) => b.practiceTimeValue - a.practiceTimeValue);
 		},
 		offlineRows() {
 			return this.offlineReviews
@@ -302,6 +313,30 @@ export default {
 			if (!date) return fallback || '--';
 			const pad = value => String(value).padStart(2, '0');
 			return `${this.formatDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+		},
+		normalizePracticeRecord(item = {}, index = 0) {
+			const rawTime = this.practiceTimeValue(item);
+			const date = this.toValidDate(rawTime);
+			const title = item.title || item.name || '练习记录';
+			return {
+				...item,
+				_key: item.id || item.recordId || `${title}-${rawTime || index}`,
+				practiceTimeValue: date ? date.getTime() : 0,
+				practiceTimeText: this.formatPracticeTime(item)
+			};
+		},
+		practiceTimeValue(item = {}) {
+			return item.practiceTime || item.completedAt || item.recordTime || item.updatedAt || item.createdAt || item.time || '';
+		},
+		formatPracticeTime(item = {}) {
+			const rawTime = this.practiceTimeValue(item);
+			const date = this.toValidDate(rawTime);
+			if (!date) return rawTime || '--';
+			return this.formatChineseDateTime(date);
+		},
+		formatChineseDateTime(date) {
+			const pad = value => String(value).padStart(2, '0');
+			return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${pad(date.getHours())}点${pad(date.getMinutes())}分`;
 		},
 		formatDuration(value) {
 			if (value === undefined || value === null || value === '') return '--';
@@ -439,7 +474,7 @@ export default {
 						{ id:'q1', stem:'函数 f(x)=x^2 在 x=2 处的导数为', correct:true, analysis:'f′(x)=2x，代入 x=2 得 4。' }
 					] }
 				],
-				recentPractice: [{ id:'local-practice-1', title:'高考数学 真题讲练', averageScore:100, wrongCount:0 }]
+				recentPractice: [{ id:'local-practice-1', title:'高考数学 真题讲练', averageScore:100, wrongCount:0, createdAt:'2026-06-08 11:30:00' }]
 			};
 		},
 		goWrongBook() {
@@ -600,6 +635,31 @@ page { background:#f5f7fa; }
 .metric-warning-success .summary-value, .metric-warning-success .metric-value { color:#16a36b; }
 .practice-row, .row, .record { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-bottom:1rpx solid #eef0f3; font-size:27rpx; color:#333; }
 .practice-row:last-child, .row:last-child, .record:last-child { border-bottom:0; }
+.practice-stat-row { align-items:flex-start; }
+.practice-stat-main { flex:1; min-width:0; }
+.practice-stat-title {
+	color:#1f2933;
+	font-size:27rpx;
+	font-weight:800;
+	line-height:1.45;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+.practice-stat-time {
+	margin-top:8rpx;
+	color:#8a5360;
+	font-size:23rpx;
+	line-height:1.35;
+}
+.practice-stat-score {
+	flex-shrink:0;
+	color:#1f2933;
+	font-size:25rpx;
+	font-weight:800;
+	line-height:1.45;
+	text-align:right;
+}
 .practice-detail { margin-top:18rpx; padding:20rpx; border-radius:14rpx; background:#f8fafc; }
 .detail-title { color:#222; font-size:27rpx; font-weight:800; margin-bottom:14rpx; }
 .question { padding:16rpx 0; border-top:1rpx dashed #dfe5ec; }
