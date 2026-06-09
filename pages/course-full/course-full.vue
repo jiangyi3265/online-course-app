@@ -325,7 +325,6 @@ export default {
 			this.showFooter = !unlocked;
 		},
 		hasCourseAccess(course = {}) {
-			if (course.subject === 'gaokao-math') return true;
 			if (course.kind && course.kind !== 'full') return true;
 			return ['available', 'activated', 'authorized', 'enrolled', 'hasAccess'].some(key => {
 				const value = course[key];
@@ -375,8 +374,8 @@ export default {
 			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
 			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = course.quizzes;
-			this.locked = false;
-			this.showFooter = false;
+			this.locked = true;
+			this.showFooter = true;
 			this.setVersion(0);
 		},
 		setVersion(i) {
@@ -464,6 +463,12 @@ export default {
 		versionLabel(version, index) {
 			return (version && version.name) || (index === 0 ? '复习加强课' : '技巧绝招课');
 		},
+		ensureUnlocked() {
+			if (!this.locked) return true;
+			this.showFooter = true;
+			uni.showToast({ title:'课程权限未开通或已关闭', icon:'none' });
+			return false;
+		},
 		childName(child, chapter, lesson, lessonIndex) {
 			if (this.versionIndex === 0) {
 				return child.type === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex) : this.reinforceLessonName(chapter, child.name);
@@ -491,39 +496,48 @@ export default {
 		},
 		goDocs() {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` });
 		},
 		goPlan() {
+			if (!this.ensureUnlocked()) return;
 			this.showCheckinPanel = !this.showCheckinPanel;
 			if (this.showCheckinPanel) this.tab = 0;
 		},
 		goReport() {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` });
 		},
 		goAi(context) {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` });
 		},
 		goQuiz(q) {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			const ids = Array.isArray(q.questionIds) ? q.questionIds.join(',') : '';
 			uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(ids)}` });
 		},
 		goWrongBook() {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}&title=${encodeURIComponent(this.displayCourseName)}` });
 		},
 		goReinforce() {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` });
 		},
 		startReinforce(item) {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}` });
 		},
 		goKnowledgeChild(chapter, lesson, child, lessonIndex) {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			if (child.type === 2) {
 				const title = child.name || child.questionBankName || `知识巩固${this.lessonNo(lesson, lessonIndex)}`;
 				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
@@ -550,6 +564,7 @@ export default {
 		},
 		goLesson(chapter, lesson, child, lessonIndex) {
 			this.collapseCheckinPanel();
+			if (!this.ensureUnlocked()) return;
 			if (child.type === 2) {
 				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex) : (lesson.title || lesson);
 				const type = this.versionIndex === 0 ? 'reinforce' : 'practice';
