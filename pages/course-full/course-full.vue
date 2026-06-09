@@ -466,9 +466,12 @@ export default {
 		},
 		childName(child, chapter, lesson, lessonIndex) {
 			if (this.versionIndex === 0) {
-				return child.type === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex) : '知识点巩固';
+				return child.type === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex) : this.reinforceLessonName(chapter, child.name);
 			}
 			return child.type === 2 ? '真题讲练' : '技巧绝招课';
+		},
+		reinforceLessonName(chapter, fallback = '') {
+			return `复习加强【${(chapter && chapter.title) || fallback || '章节'}】`;
 		},
 		knowledgeChildName(child) {
 			if (child.type === 2) return child.name || child.questionBankName || '巩固练习';
@@ -557,7 +560,9 @@ export default {
 				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
+			const lessonTitle = lesson.title || lesson;
+			const title = this.versionIndex === 0 ? this.reinforceLessonName(chapter, child.name || lessonTitle) : lessonTitle;
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(title)}&lessonId=${encodeURIComponent(lessonTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '2026-05-26';

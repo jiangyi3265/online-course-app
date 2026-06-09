@@ -103,6 +103,7 @@ export default {
 	data() {
 		return {
 			title: '选材与加工高分技巧',
+			lessonId: '',
 			courseId: '',
 			courseTitle: '',
 			chapterTitle: '',
@@ -142,6 +143,7 @@ export default {
 	},
 	async onLoad(opts) {
 		if (opts && opts.title) this.title = decodeURIComponent(opts.title);
+		this.lessonId = opts && opts.lessonId ? decodeURIComponent(opts.lessonId) : this.title;
 		if (opts && opts.courseId) this.courseId = decodeURIComponent(opts.courseId);
 		if (opts && opts.courseTitle) this.courseTitle = decodeURIComponent(opts.courseTitle);
 		if (opts && opts.chapterTitle) this.chapterTitle = decodeURIComponent(opts.chapterTitle);
@@ -187,7 +189,7 @@ export default {
 	methods: {
 		async loadLesson() {
 			try {
-				const data = await getLessonVideo(this.title, this.courseId);
+				const data = await getLessonVideo(this.lessonId || this.title, this.courseId);
 				this.videoUrl = data.videoUrl || '';
 				this.poster = data.poster || '';
 				this.pageTotal = data.pageTotal || 1;
@@ -209,7 +211,7 @@ export default {
 		},
 		async loadRatingState() {
 			try {
-				const data = await getLessonRatingApi(this.title);
+				const data = await getLessonRatingApi(this.lessonId || this.title);
 				this.myRating = Number(data.rating && data.rating.rating) || 0;
 			} catch (err) {
 				console.warn('评分接口不可用', err);
@@ -424,8 +426,9 @@ export default {
 			if (!isLoggedIn() || !this.videoUrl) return;
 			this.lastSavedAt = Date.now();
 			try {
-				await saveLessonProgress(this.title, {
+				await saveLessonProgress(this.lessonId || this.title, {
 					lessonTitle: this.title,
+					sourceLessonTitle: this.lessonId || this.title,
 					courseId: this.courseId,
 					courseTitle: this.courseTitle,
 					currentTime: this.currentSeconds,
@@ -487,7 +490,7 @@ export default {
 			if (this.ratingLoading) return;
 			this.ratingLoading = true;
 			try {
-				await saveLessonRatingApi(this.title, star, this.title, {
+				await saveLessonRatingApi(this.lessonId || this.title, star, this.title, {
 					courseId: this.courseId,
 					courseTitle: this.courseTitle,
 					chapterTitle: this.chapterTitle
