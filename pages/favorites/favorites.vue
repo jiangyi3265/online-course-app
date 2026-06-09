@@ -27,7 +27,21 @@
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
 				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
-				<block v-if="questionType(item) === 'choice'">
+				<block v-if="questionType(item) === 'reading'">
+					<view class="reading-sub-card" v-for="(sub, subIndex) in subQuestions(item)" :key="sub.id || subIndex">
+						<view class="reading-sub-head">小题 {{subIndex + 1}}</view>
+						<math-rich-text class="reading-sub-stem" :text="sub.stem" />
+						<view class="option" v-for="(opt, idx) in sub.options || []" :key="idx">
+							<text class="radio">{{optionLetter(idx)}}.</text>
+							<view class="option-body">
+								<math-rich-text v-if="opt" :text="opt" />
+								<text v-else class="image-option-label">图片选项</text>
+							</view>
+						</view>
+					</view>
+					<view class="reading-tip">阅读理解包含多个小题，请从课程练习或章节扫雷进入作答。</view>
+				</block>
+				<block v-else-if="questionType(item) === 'choice'">
 					<view class="option" v-for="(opt, idx) in item.options" :key="idx" :class="{active: answers[item.id] === idx}" @click="answers[item.id] = idx">
 						<text class="radio">{{answers[item.id] === idx ? '●' : '○'}}</text>
 						<view class="option-body">
@@ -45,7 +59,7 @@
 					<math-rich-text class="ana-text" :text="'参考答案：' + answerText(item, results[item.id])" />
 					<analysis-viewer :item="results[item.id]" :text="results[item.id].analysis" />
 				</view>
-				<view class="answer-btn" @click="submitQuestion(item)">提交作答</view>
+				<view v-if="questionType(item) !== 'reading'" class="answer-btn" @click="submitQuestion(item)">提交作答</view>
 			</view>
 		</block>
 	</view>
@@ -103,6 +117,9 @@ export default {
 		optionText(item, index) {
 			return item.options && item.options[index] !== undefined ? item.options[index] : '--';
 		},
+		optionLetter(index) {
+			return String.fromCharCode(65 + Number(index));
+		},
 		mediaList(value) {
 			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
 			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
@@ -122,7 +139,11 @@ export default {
 			const value = item.questionType || item.type || 'choice';
 			if (value === 'fill' || value === '填空' || value === '填空题') return 'fill';
 			if (value === 'subjective' || value === '主观' || value === '主观题') return 'subjective';
+			if (value === 'reading' || value === '阅读理解' || value === '阅读理解题') return 'reading';
 			return 'choice';
+		},
+		subQuestions(item = {}) {
+			return Array.isArray(item.subQuestions) ? item.subQuestions : [];
 		},
 		isAnswerMissing(item) {
 			const value = this.answers[item.id];
@@ -166,6 +187,10 @@ page { background:#f5f7fa; }
 .option-body { flex:1; min-width:0; display:grid; gap:12rpx; line-height:1.5; }
 .option-image { width:100%; max-height:300rpx; border-radius:10rpx; background:#eef2f7; }
 .image-option-label { color:#64748b; font-size:25rpx; }
+.reading-sub-card { margin-top:14rpx; padding:16rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; }
+.reading-sub-head { color:#1677ff; font-size:24rpx; font-weight:900; margin-bottom:8rpx; }
+.reading-sub-stem { color:#172033; font-size:27rpx; font-weight:800; line-height:1.55; }
+.reading-tip { margin-top:14rpx; color:#64748b; font-size:24rpx; line-height:1.5; }
 .text-answer { margin-top:12rpx; }
 .answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }
 .analysis { margin-top:18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; font-size:26rpx; line-height:1.5; }

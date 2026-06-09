@@ -116,7 +116,7 @@
 				<view class="detail-list" v-if="activeRecordId === record.id">
 					<view class="detail-row" v-for="detail in record.details" :key="detail.questionNo">
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
-						<math-rich-text class="detail-stem" :text="detail.stem || (detail.stemImageUrl ? '图片题干' : '题目内容暂未返回')" />
+						<math-rich-text class="detail-stem" :text="detailStem(detail)" />
 						<question-audio-player :src="stemAudio(detail)" />
 						<image v-if="detail.stemImageUrl" class="question-image compact" :src="detail.stemImageUrl" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" />
 						<math-rich-text class="detail-answer bad" :text="'我的答案：' + detailMyAnswer(detail)" />
@@ -390,6 +390,12 @@ export default {
 			const answer = detail.myAnswerText || detail.myAnswer || detail.selectedText || ''
 			if (answer && answer !== '--') return answer
 			return detail.noUpload ? '暂不上传' : '--'
+		},
+		detailStem(detail = {}) {
+			const parentStem = String(detail.parentStem || '').trim()
+			const stem = String(detail.stem || '').trim()
+			if (parentStem && stem) return `${parentStem}\n小题：${stem}`
+			return stem || (detail.stemImageUrl ? '图片题干' : '题目内容暂未返回')
 		},
 		showTestRecordDetail(detail = {}) {
 			return detail.questionType !== 'choice' && (

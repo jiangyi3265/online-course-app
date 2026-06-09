@@ -11,8 +11,14 @@ function escapeHtml(value = '') {
 		.replace(/'/g, '&#39;')
 }
 
+function inlineMarkupHtml(value = '') {
+	return escapeHtml(value)
+		.replace(/\[u\]([\s\S]+?)\[\/u\]/g, '<u>$1</u>')
+		.replace(/__([^_\n][\s\S]*?[^_\n]?)__/g, '<u>$1</u>')
+}
+
 function textHtml(value = '') {
-	return escapeHtml(value).replace(/\r?\n/g, '<br>')
+	return inlineMarkupHtml(value).replace(/\r?\n/g, '<br>')
 }
 
 function parseToken(token = '') {

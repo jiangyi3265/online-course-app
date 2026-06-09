@@ -3,8 +3,14 @@
 		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">课程开通</view></view>
 		<view class="panel">
 			<view class="title">激活课程</view>
-			<view class="hint">请填写激活码和学生信息，全部为必填。验证成功后课程会加入“我的课程”。</view>
+			<view class="hint">请选择要开通的课程，并填写激活码和学生信息。验证成功后课程会加入“我的课程”。</view>
 			<input class="input" v-model="code" placeholder="输入激活码，例如 a1b2c3d4e" confirm-type="next" />
+			<picker mode="selector" :range="coursePickerLabels" :value="coursePickerIndex" @change="onCourseChange">
+				<view class="course-picker" :class="{empty: !courseId}">
+					<text>{{selectedCourseLabel}}</text>
+					<text class="picker-arrow">›</text>
+				</view>
+			</picker>
 			<input class="input" v-model="studentName" placeholder="输入学生名字" confirm-type="next" />
 			<view class="gender-field">
 				<view class="gender-label">学生性别</view>
@@ -31,7 +37,7 @@
 		</view>
 		<view class="panel">
 			<view class="title small">申请授权</view>
-			<view class="course">{{courseId}}</view>
+			<view class="course">{{selectedCourseLabel}}</view>
 			<view class="ghost" @click="showAuth=true">没有激活码，申请人工授权</view>
 		</view>
 		<view class="auth-mask" v-if="showAuth">
@@ -46,11 +52,13 @@
 </template>
 
 <script>
-import { activateCourse, getMyCourses, getProfile } from '@/common/api.js'
+import { activateCourse, getCourses, getMyCourses, getProfile } from '@/common/api.js'
 export default {
 	data() {
 		return {
-			courseId:'gk-math-full',
+			courseId:'',
+			courseOptions:[],
+			coursePickerIndex:0,
 			code:'',
 			studentName:'',
 			gender:'',
@@ -66,10 +74,48 @@ export default {
 		}
 	},
 	onLoad(opts = {}) {
-		this.courseId = opts.courseId || 'gk-math-full';
+		this.courseId = opts.courseId || '';
+		this.loadCourseOptions();
 		this.prefillStudentInfo();
 	},
+	computed: {
+		coursePickerLabels() {
+			const labels = this.courseOptions.map(item => this.courseLabel(item));
+			return labels.length ? labels : ['暂无可选正式课程'];
+		},
+		selectedCourseLabel() {
+			const course = this.courseOptions.find(item => (item.id || item.courseId) === this.courseId);
+			if (course) return this.courseLabel(course);
+			return this.courseId || '请选择要开通的正式课程';
+		}
+	},
 	methods: {
+		async loadCourseOptions() {
+			try {
+				const courses = await getCourses({ kind:'full' });
+				this.courseOptions = (Array.isArray(courses) ? courses : [])
+					.filter(item => item && (item.kind === 'full' || !item.isTry));
+				if (this.courseId) {
+					const index = this.courseOptions.findIndex(item => (item.id || item.courseId) === this.courseId);
+					if (index >= 0) this.coursePickerIndex = index;
+				}
+				else if (this.courseOptions.length === 1) {
+					this.coursePickerIndex = 0;
+					this.courseId = this.courseOptions[0].id || this.courseOptions[0].courseId || '';
+				}
+			} catch (err) {}
+		},
+		courseLabel(course = {}) {
+			const title = course.courseName || course.title || course.full || course.subject || course.id || '未命名课程';
+			return String(title).replace(/[《》]/g, '');
+		},
+		onCourseChange(event) {
+			const index = Number(event.detail.value || 0);
+			const course = this.courseOptions[index];
+			if (!course) return;
+			this.coursePickerIndex = index;
+			this.courseId = course.id || course.courseId || '';
+		},
 		async prefillStudentInfo() {
 			const cached = uni.getStorageSync('userInfo') || {};
 			this.applyStudentInfo(cached);
@@ -117,6 +163,11 @@ export default {
 			const grade = this.grade.trim();
 			const schoolName = this.schoolName.trim();
 			const region = this.region.trim();
+			const courseId = String(this.courseId || '').trim();
+			if (!courseId) {
+				uni.showToast({ title:'请选择要开通的课程', icon:'none' });
+				return;
+			}
 			if (!code || !studentName || !gender || !recentExamScore || !grade || !schoolName || !region) {
 				uni.showToast({ title:'请填写全部必填信息', icon:'none' });
 				return;
@@ -124,7 +175,7 @@ export default {
 			if (this.loading) return;
 			this.loading = true;
 			try {
-				const result = await activateCourse({ code, studentName, gender, recentExamScore, grade, schoolName, region, courseId: this.courseId });
+				const result = await activateCourse({ code, studentName, gender, recentExamScore, grade, schoolName, region, courseId });
 				this.code = code;
 				this.cacheStudentInfo({ studentName, gender, recentExamScore, grade, schoolName, region });
 				this.activatedCourse = result.courseTitle || result.courseId || '课程';
@@ -160,6 +211,9 @@ page { background:#f5f7fa; }
 .title.small { font-size:30rpx; }
 .hint { color:#697386; font-size:26rpx; line-height:1.5; margin-bottom:20rpx; }
 .input { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 20rpx; font-size:28rpx; margin-top:16rpx; }
+.course-picker { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 20rpx; font-size:28rpx; margin-top:16rpx; display:flex; align-items:center; justify-content:space-between; color:#222; box-sizing:border-box; }
+.course-picker.empty { color:#8a94a6; }
+.picker-arrow { color:#9aa3b2; font-size:34rpx; transform:rotate(90deg); }
 .gender-field { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 12rpx 0 20rpx; margin-top:16rpx; display:flex; align-items:center; justify-content:space-between; box-sizing:border-box; }
 .gender-label { color:#697386; font-size:28rpx; }
 .gender-options { display:flex; gap:12rpx; }

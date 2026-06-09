@@ -7,7 +7,7 @@
 
 		<view class="hero">
 			<view class="hero-title">{{modeText}}</view>
-			<view class="hero-sub">共 {{questions.length}} 题，提交后自动生成错题与解析</view>
+			<view class="hero-sub">共 {{totalQuestionCount}} 题，提交后自动生成错题与解析</view>
 		</view>
 
 		<view class="question" v-for="(q, i) in questions" :key="q.id">
@@ -38,7 +38,96 @@
 					<text class="doc-name">题干资料 {{fileIndex + 1}}</text>
 				</view>
 			</view>
-			<block v-if="questionType(q) === 'choice'">
+			<block v-if="questionType(q) === 'reading'">
+				<view class="reading-sub-list">
+					<view class="reading-sub-card" v-for="(sub, subIndex) in subQuestions(q)" :key="sub.id">
+						<view class="reading-sub-head">小题 {{i + 1}}.{{subIndex + 1}}</view>
+						<math-rich-text class="reading-sub-stem" :text="sub.stem" />
+						<block v-if="questionType(sub) === 'choice'">
+							<view class="option" v-for="(opt, idx) in sub.options" :key="idx" :class="{active: answers[sub.id] === idx}" @click="answers[sub.id] = idx">
+								<text class="radio">{{answers[sub.id] === idx ? '●' : '○'}}</text>
+								<view class="option-body">
+									<math-rich-text v-if="opt" :text="opt" />
+									<text v-else class="image-option-label">图片选项</text>
+									<image v-if="optionImage(sub, idx)" class="option-image" :src="optionImage(sub, idx)" mode="widthFix" @click.stop="previewMedia(optionImage(sub, idx), imageList(sub.optionImageUrls || sub.optionImages || sub.optionImageUrl))" />
+								</view>
+							</view>
+						</block>
+						<view class="text-answer" v-else>
+							<view class="manual-answer-row" v-if="!result">
+								<textarea
+									class="answer-textarea"
+									v-model="answers[sub.id]"
+									:auto-height="true"
+									:disabled="false"
+									:placeholder="questionType(sub) === 'fill' ? '请输入填空答案' : '手动输入解题过程或答案'"
+								/>
+								<view class="photo-btn" :class="{disabled: uploadingImages[sub.id]}" @click="chooseAnswerImage(sub)">
+									{{uploadingImages[sub.id] ? '上传中' : '拍照自评'}}
+								</view>
+								<view class="skip-btn" :class="{active: noUploads[sub.id]}" @click="toggleNoUpload(sub)">
+									暂不上传
+								</view>
+							</view>
+							<textarea
+								v-else
+								class="answer-textarea"
+								v-model="answers[sub.id]"
+								:auto-height="true"
+								:disabled="true"
+								:placeholder="questionType(sub) === 'fill' ? '请输入填空答案' : '手动输入解题过程或答案'"
+							/>
+							<image v-if="answerImages[sub.id]" class="answer-photo" :src="mediaUrl(answerImages[sub.id])" mode="widthFix" @click="previewMedia(answerImages[sub.id])" />
+							<view class="skip-note" v-if="noUploads[sub.id] && !result">已选择暂不上传，请对照参考答案完成自评。</view>
+							<view class="inline-review" v-if="showInlineReview(sub)">
+								<view class="feedback-title">答案自评</view>
+								<view class="feedback-options">
+									<view class="feedback-option" :class="{active: preReviewResult(sub.id) === 'correct'}" @click="setSelfReview(sub, 'correct')">
+										<text>正确</text><text class="feedback-dot"></text>
+									</view>
+									<view class="feedback-option" :class="{active: preReviewResult(sub.id) === 'wrong'}" @click="setSelfReview(sub, 'wrong')">
+										<text>错误</text><text class="feedback-dot"></text>
+									</view>
+									<view class="feedback-option" :class="{active: preReviewResult(sub.id) === 'partial'}" @click="setSelfReview(sub, 'partial')">
+										<text>半对</text><text class="feedback-dot"></text>
+									</view>
+								</view>
+								<view class="feedback-toggle" @click="toggleAnalysis(sub.id)">
+									<text>查看答案/解析</text>
+									<text>{{expandedAnalysis[sub.id] ? '收起' : '展开'}} ›</text>
+								</view>
+								<view class="feedback-body" v-if="expandedAnalysis[sub.id]">
+									<math-rich-text class="answer-line" :text="'参考答案：' + displayQuestionAnswer(sub)" />
+									<analysis-viewer :item="sub" :text="sub.analysis" />
+								</view>
+							</view>
+						</view>
+						<view class="analysis" v-if="result && resultMap[sub.id]">
+							<view v-if="isFeedbackResult(resultMap[sub.id])" class="feedback-panel">
+								<view class="feedback-title">答案反馈</view>
+								<view class="feedback-options" v-if="needsSelfReview(resultMap[sub.id])">
+									<view class="feedback-option" :class="{active: reviewResult(resultMap[sub.id]) === 'correct'}" @click="submitSelfReview(resultMap[sub.id], 'correct')">
+										<text>正确</text><text class="feedback-dot"></text>
+									</view>
+									<view class="feedback-option" :class="{active: reviewResult(resultMap[sub.id]) === 'wrong'}" @click="submitSelfReview(resultMap[sub.id], 'wrong')">
+										<text>错误</text><text class="feedback-dot"></text>
+									</view>
+									<view class="feedback-option" :class="{active: reviewResult(resultMap[sub.id]) === 'partial'}" @click="submitSelfReview(resultMap[sub.id], 'partial')">
+										<text>半对</text><text class="feedback-dot"></text>
+									</view>
+								</view>
+								<view v-else :class="resultStatusClass(resultMap[sub.id])">{{resultStatusText(resultMap[sub.id])}}</view>
+							</view>
+							<view v-else :class="resultStatusClass(resultMap[sub.id])">{{resultStatusText(resultMap[sub.id])}}</view>
+							<math-rich-text class="answer-line" :text="'我的答案：' + displayAnswer(resultMap[sub.id], 'selected')" />
+							<image v-if="resultMap[sub.id] && resultMap[sub.id].studentAnswerImageUrl" class="answer-photo" :src="mediaUrl(resultMap[sub.id].studentAnswerImageUrl)" mode="widthFix" @click="previewMedia(resultMap[sub.id].studentAnswerImageUrl)" />
+							<math-rich-text class="answer-line" :text="'参考答案：' + displayAnswer(resultMap[sub.id], 'answer')" />
+							<analysis-viewer :item="resultMap[sub.id]" :text="resultMap[sub.id] && resultMap[sub.id].analysis" />
+						</view>
+					</view>
+				</view>
+			</block>
+			<block v-else-if="questionType(q) === 'choice'">
 				<view class="option" v-for="(opt, idx) in q.options" :key="idx" :class="{active: answers[q.id] === idx}" @click="answers[q.id] = idx">
 					<text class="radio">{{answers[q.id] === idx ? '●' : '○'}}</text>
 					<view class="option-body">
@@ -106,7 +195,7 @@
 					</view>
 				</view>
 			</view>
-			<view class="analysis" v-if="result">
+			<view class="analysis" v-if="result && questionType(q) !== 'reading'">
 				<view v-if="isFeedbackResult(resultMap[q.id])" class="feedback-panel">
 					<view class="feedback-title">答案反馈</view>
 					<view class="feedback-options" v-if="needsSelfReview(resultMap[q.id])">
@@ -233,6 +322,11 @@ export default {
 		},
 		resultDetails() {
 			return (this.result && this.result.details) || [];
+		},
+		totalQuestionCount() {
+			return this.questions.reduce((total, question) => {
+				return total + (this.questionType(question) === 'reading' ? Math.max(1, this.subQuestions(question).length) : 1);
+			}, 0);
 		}
 	},
 	onLoad(opts = {}) {
@@ -400,6 +494,9 @@ export default {
 			return !this.result && this.questionType(question) !== 'choice' && !!this.reviewVisible[question.id];
 		},
 		needsPreSubmitReview(question) {
+			if (this.questionType(question) === 'reading') {
+				return this.subQuestions(question).some(sub => this.needsPreSubmitReview(sub));
+			}
 			return this.questionType(question) !== 'choice' && !this.selfReviews[question.id];
 		},
 		async submitSelfReview(item, reviewResult) {
@@ -442,6 +539,7 @@ export default {
 				stemAudioUrl: this.stemAudio(item),
 				stemFileUrl: this.fileList(item.stemFileUrl || item.questionFileUrl || item.stemFile).join(','),
 				optionImageUrls: this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl),
+				subQuestions: this.normalizeSubQuestions(item),
 				answerImageUrl: this.imageList(item.answerImageUrl).join(','),
 				answerFileUrl: this.fileList(item.answerFileUrl).join(','),
 				analysisImageUrl: this.imageList(item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl).join(','),
@@ -449,12 +547,33 @@ export default {
 				videoAnalysisUrl: this.mediaUrl(item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl)
 			};
 		},
+		normalizeSubQuestions(item = {}) {
+			const parentId = item.id || 'reading';
+			return ((item && item.subQuestions) || []).map((sub, index) => {
+				const id = sub.id || `${parentId}::${sub.subQuestionId || index + 1}`;
+				return {
+					...sub,
+					id,
+					parentQuestionId: parentId,
+					questionType: this.questionType(sub),
+					optionImageUrls: this.imageList(sub.optionImageUrls || sub.optionImages || sub.optionImageUrl),
+					answerImageUrl: this.imageList(sub.answerImageUrl).join(','),
+					answerFileUrl: this.fileList(sub.answerFileUrl).join(','),
+					analysisImageUrl: this.imageList(sub.analysisImageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl).join(','),
+					analysisFileUrl: this.fileList(sub.analysisFileUrl || item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl).join(','),
+					videoAnalysisUrl: this.mediaUrl(sub.videoAnalysisUrl || item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl)
+				};
+			});
+		},
 		normalizeAttemptMedia(attempt = null) {
 			if (!attempt) return attempt;
 			return {
 				...attempt,
 				details: ((attempt && attempt.details) || []).map(item => this.normalizeQuestionMedia(item))
 			};
+		},
+		subQuestions(question = {}) {
+			return Array.isArray(question.subQuestions) ? question.subQuestions : [];
 		},
 		optionImage(item = {}, index) {
 			const urls = this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
@@ -488,9 +607,14 @@ export default {
 			const value = question.questionType || question.type || 'choice';
 			if (value === 'fill' || value === '填空' || value === '填空题') return 'fill';
 			if (value === 'subjective' || value === '主观' || value === '主观题') return 'subjective';
+			if (value === 'reading' || value === '阅读理解' || value === '阅读理解题') return 'reading';
 			return 'choice';
 		},
 		isAnswerMissing(question) {
+			if (this.questionType(question) === 'reading') {
+				const subs = this.subQuestions(question);
+				return !subs.length || subs.some(sub => this.isAnswerMissing(sub));
+			}
 			if (this.noUploads[question.id]) return false;
 			const value = this.answers[question.id];
 			return this.questionType(question) === 'choice'
@@ -594,6 +718,10 @@ page { background:#f5f7fa; }
 .option-body { flex:1; min-width:0; display:grid; gap:12rpx; line-height:1.5; }
 .option-image { width:100%; max-height:300rpx; border-radius:10rpx; background:#eef2f7; }
 .image-option-label { color:#64748b; font-size:25rpx; }
+.reading-sub-list { display:grid; gap:18rpx; margin-top:18rpx; }
+.reading-sub-card { padding:18rpx; border:1rpx solid #e5e9ef; border-radius:14rpx; background:#fbfcfe; }
+.reading-sub-head { margin-bottom:10rpx; color:#1677ff; font-size:24rpx; font-weight:900; }
+.reading-sub-stem { color:#172033; font-size:28rpx; line-height:1.55; font-weight:800; }
 .text-answer { margin-top:12rpx; }
 .manual-answer-row { display:grid; grid-template-columns:minmax(0, 1fr) 148rpx 130rpx; gap:10rpx; align-items:stretch; }
 .answer-textarea { width:100%; min-height:118rpx; box-sizing:border-box; padding:18rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; background:#fbfcfe; color:#222; font-size:28rpx; line-height:1.5; }

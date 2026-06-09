@@ -43,4 +43,9 @@ export default {
 	overflow-x: auto;
 	overflow-y: hidden;
 }
+
+.math-rich-text u {
+	text-underline-offset: 5rpx;
+	text-decoration-thickness: 2rpx;
+}
 </style>
