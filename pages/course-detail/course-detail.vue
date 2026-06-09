@@ -88,7 +88,7 @@
 							<view class="ch-left">
 								<view class="ch-mark" :class="{practice:s.type===2}">{{s.type===2 ? '练' : '学'}}</view>
 								<view>
-									<view class="ch-name">{{childName(s)}}</view>
+									<view class="ch-name">{{childName(s, c)}}</view>
 									<view class="ch-progress">已学习：{{progressText(s)}}</view>
 								</view>
 							</view>
@@ -395,7 +395,10 @@ export default {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
-		childName(item) {
+		childName(item, chapter = {}) {
+			if (this.versionIndex === 0) {
+				return `复习加强【${chapter.title || item.name || '章节'}】`;
+			}
 			if (this.versionIndex === 1) return item.type === 2 ? '真题讲练' : '技巧绝招课';
 			return item.name;
 		},
