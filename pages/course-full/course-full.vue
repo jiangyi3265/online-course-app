@@ -94,7 +94,7 @@
 			<!-- 章节扫雷 -->
 			<block v-if="tab===1">
 				<view class="quiz-list">
-					<view class="quiz" v-for="(q,i) in quizzes" :key="i">
+					<view class="quiz" v-for="(q,i) in visibleQuizzes" :key="i">
 						<view class="quiz-left">
 							<view class="q-mark">测</view>
 							<view>
@@ -141,7 +141,7 @@
 										<view class="child-left">
 											<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
 											<view>
-												<view class="child-name">{{knowledgeChildName(child)}}</view>
+												<view class="child-name">{{knowledgeChildName(child, s)}}</view>
 												<view class="child-progress">已学习：{{progressText(child)}}</view>
 											</view>
 										</view>
@@ -269,6 +269,9 @@ export default {
 		},
 		visibleVersions() {
 			return this.versions.slice(0, 2);
+		},
+		visibleQuizzes() {
+			return (this.quizzes || []).filter(item => this.hasPracticeQuestions(item));
 		}
 	},
 	async onLoad(opts) {
@@ -307,8 +310,8 @@ export default {
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover || this.cover);
 			const stats = this.resolveCourseStats(course);
-			this.total = stats.totalLessons || this.total;
-			this.duration = stats.totalDuration || this.duration;
+			this.total = stats.totalLessons;
+			this.duration = stats.totalDuration || '00小时00分';
 			this.realDuration = course.practiceDuration || this.realDuration;
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
@@ -365,8 +368,8 @@ export default {
 			this.updatedAt = course.updatedAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover);
 			const stats = this.resolveCourseStats(course);
-			this.total = stats.totalLessons || course.totalLessons;
-			this.duration = stats.totalDuration || course.totalDuration;
+			this.total = stats.totalLessons;
+			this.duration = stats.totalDuration || course.totalDuration || '00小时00分';
 			this.realDuration = course.practiceDuration;
 			this.progress = course.progress;
 			this.learntCount = course.readStudyCount;
@@ -400,7 +403,10 @@ export default {
 			normalized[0].name = '复习加强课';
 			normalized[1].name = '技巧绝招课';
 			normalized[2].name = '知识巩固';
-			return normalized.slice(0, 3);
+			return normalized.slice(0, 3).map((version, index) => ({
+				...version,
+				chapters: this.visibleCourseChapters(version.chapters || [], index)
+			}));
 		},
 		resolveCourseId(title = '', kind = 'full') {
 			const level = /中考/.test(title) ? 'zk' : 'gk';
@@ -434,7 +440,7 @@ export default {
 			}
 		},
 		resolveCourseStats(course = {}) {
-			const totalLessons = this.countCourseLessons(course) || course.totalLessons || 0;
+			const totalLessons = this.countCourseLessons(course);
 			return {
 				totalLessons,
 				totalDuration: course.totalDuration || ''
@@ -450,9 +456,9 @@ export default {
 				const items = chapter.items || chapter.children || [];
 				return total + items.reduce((sum, item) => {
 					if (item.children && item.children.length) {
-						return sum + item.children.filter(child => child.type !== 2).length;
+						return sum + item.children.filter(child => Number(child.type) !== 2 && this.hasVideoContent(child, item)).length;
 					}
-					return sum + (item.type === 2 ? 0 : 1);
+					return sum + (Number(item.type) === 2 || !this.hasVideoContent(item, item) ? 0 : 1);
 				}, 0);
 			}, 0);
 		},
@@ -471,19 +477,19 @@ export default {
 		},
 		childName(child, chapter, lesson, lessonIndex) {
 			if (this.versionIndex === 0) {
-				return child.type === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex) : this.reinforceLessonName(chapter, child.name);
+				return Number(child.type) === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex, child) : this.reinforceLessonName(chapter, lesson, child, lessonIndex);
 			}
-			return child.type === 2 ? '真题讲练' : '技巧绝招课';
+			return Number(child.type) === 2 ? (this.practiceBankName(child, lesson) || child.name || '真题讲练') : (child.name || lesson.title || '技巧绝招课');
 		},
-		reinforceLessonName(chapter, fallback = '') {
-			return `复习加强【${(chapter && chapter.title) || fallback || '章节'}】`;
+		reinforceLessonName(chapter, lesson, child = {}, lessonIndex = 0) {
+			return `复习加强【${this.lessonDisplayName(lesson, child, chapter, lessonIndex)}】`;
 		},
-		knowledgeChildName(child) {
-			if (child.type === 2) return child.name || child.questionBankName || '巩固练习';
-			return child.name || '视频课程';
+		knowledgeChildName(child, lesson = {}) {
+			if (Number(child.type) === 2) return this.practiceBankName(child, lesson) || '巩固练习';
+			return child.name || lesson.title || '视频课程';
 		},
-		reinforceTestName(chapter, lesson, lessonIndex) {
-			return `复习测试【${this.chapterShortName(chapter)}】${this.lessonNo(lesson, lessonIndex)}`;
+		reinforceTestName(chapter, lesson, lessonIndex, child = {}) {
+			return `复习测试【${this.practiceBankName(child, lesson) || this.lessonDisplayName(lesson, child, chapter, lessonIndex)}】`;
 		},
 		chapterShortName(chapter) {
 			const raw = String((chapter && chapter.title) || '');
@@ -493,6 +499,62 @@ export default {
 			const raw = String((lesson && lesson.title) || lesson || '');
 			const match = raw.match(/^\s*(\d+)[.．、]/);
 			return match ? match[1] : String((lessonIndex || 0) + 1);
+		},
+		visibleCourseChapters(chapters = [], versionIndex = 0) {
+			return (chapters || [])
+				.map((chapter, chapterIndex) => {
+					const items = (chapter.items || chapter.children || [])
+						.map((lesson, lessonIndex) => this.visibleLesson(lesson, versionIndex, lessonIndex))
+						.filter(Boolean);
+					const title = String(chapter.title || '').trim();
+					if (!items.length) return null;
+					if (!title && !items.some(item => this.hasVisibleChildren(item))) return null;
+					return { ...chapter, title: title || `章节${chapterIndex + 1}`, items };
+				})
+				.filter(Boolean);
+		},
+		visibleLesson(lesson = {}, versionIndex = 0, lessonIndex = 0) {
+			const source = typeof lesson === 'object' ? lesson : { title: lesson };
+			const children = Array.isArray(source.children) ? source.children : [];
+			const visibleChildren = children.filter(child => this.isVisibleChild(child, source, versionIndex));
+			const hasDirectVideo = this.hasVideoContent(source, source) && Number(source.type || 1) !== 2;
+			const hasDirectPractice = Number(source.type) === 2 && this.hasPracticeQuestions(source);
+			if (!visibleChildren.length && !hasDirectVideo && !hasDirectPractice) return null;
+			return {
+				...source,
+				title: this.meaningfulLessonTitle(source.title) || (visibleChildren.length ? `章节内容${lessonIndex + 1}` : source.title),
+				children: visibleChildren
+			};
+		},
+		hasVisibleChildren(lesson = {}) {
+			return Array.isArray(lesson.children) && lesson.children.length > 0;
+		},
+		isVisibleChild(child = {}, lesson = {}, versionIndex = 0) {
+			if (Number(child.type) === 2) {
+				return !!this.practiceBankName(child, lesson) && this.hasPracticeQuestions(child, lesson);
+			}
+			return this.hasVideoContent(child, lesson) && (!!this.meaningfulLessonTitle(lesson.title) || !!this.meaningfulLessonTitle(child.name) || versionIndex !== 2);
+		},
+		hasVideoContent(child = {}, lesson = {}) {
+			return !!String(child.videoUrl || lesson.videoUrl || child.fileUrl || child.url || '').trim();
+		},
+		hasPracticeQuestions(child = {}, lesson = {}) {
+			const ids = Array.isArray(child.questionIds) && child.questionIds.length ? child.questionIds : (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
+			return ids.length > 0 || Number(child.total || lesson.total || 0) > 0;
+		},
+		practiceBankName(child = {}, lesson = {}) {
+			return String(child.questionBankName || lesson.questionBankName || '').trim();
+		},
+		meaningfulLessonTitle(value = '') {
+			const text = String(value || '').trim();
+			if (!text || /^章节内容\d+$/.test(text)) return '';
+			return text;
+		},
+		lessonDisplayName(lesson = {}, child = {}, chapter = {}, lessonIndex = 0) {
+			return this.meaningfulLessonTitle(lesson.title)
+				|| this.meaningfulLessonTitle(child.name)
+				|| this.chapterShortName(chapter)
+				|| `章节${lessonIndex + 1}`;
 		},
 		goDocs() {
 			this.collapseCheckinPanel();
@@ -539,7 +601,7 @@ export default {
 			this.collapseCheckinPanel();
 			if (!this.ensureUnlocked()) return;
 			if (child.type === 2) {
-				const title = child.name || child.questionBankName || `知识巩固${this.lessonNo(lesson, lessonIndex)}`;
+				const title = this.practiceBankName(child, lesson) || child.name || `知识巩固${this.lessonNo(lesson, lessonIndex)}`;
 				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
 					? child.questionIds
 					: (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
@@ -566,7 +628,7 @@ export default {
 			this.collapseCheckinPanel();
 			if (!this.ensureUnlocked()) return;
 			if (child.type === 2) {
-				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex) : (lesson.title || lesson);
+				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex, child) : (this.practiceBankName(child, lesson) || lesson.title || lesson);
 				const type = this.versionIndex === 0 ? 'reinforce' : 'practice';
 				const practiceTitle = lesson.title || lesson;
 				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
@@ -576,7 +638,7 @@ export default {
 				return;
 			}
 			const lessonTitle = lesson.title || lesson;
-			const title = this.versionIndex === 0 ? this.reinforceLessonName(chapter, child.name || lessonTitle) : lessonTitle;
+			const title = this.versionIndex === 0 ? this.reinforceLessonName(chapter, lesson, child, lessonIndex) : lessonTitle;
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(title)}&lessonId=${encodeURIComponent(lessonTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
 		},
 		formatCourseDate(value) {

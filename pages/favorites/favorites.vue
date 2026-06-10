@@ -3,19 +3,26 @@
 		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">我的收藏</view></view>
 
 		<view class="tabs">
-			<view class="tab" :class="{active: tab === 'course'}" @click="tab='course'">收藏课程</view>
+			<view class="tab" :class="{active: tab === 'doc'}" @click="tab='doc'">收藏文档</view>
 			<view class="tab" :class="{active: tab === 'question'}" @click="tab='question'">收藏题目</view>
 		</view>
 
-		<block v-if="tab === 'course'">
-			<view class="empty" v-if="!courses.length">暂无收藏课程</view>
-			<view class="course-card" v-for="item in courses" :key="item.id">
-				<image class="cover" :src="item.cover" mode="aspectFill" />
-				<view class="course-info">
-					<view class="course-title">{{item.title}}</view>
-					<view class="course-expiry">有效期至：{{item.expiry || '未开通'}}</view>
-					<view class="course-state" :class="{off: !item.available}">{{item.available ? '权限有效' : '权限已过期/未开通'}}</view>
-					<view class="course-btn" :class="{disabled: !item.available}" @click="openCourse(item)">去学习</view>
+		<block v-if="tab === 'doc'">
+			<view class="doc-tabs">
+				<view class="doc-tab" :class="{active: docTab === 'lecture'}" @click="docTab='lecture'">收藏资料</view>
+				<view class="doc-tab" :class="{active: docTab === 'paper'}" @click="docTab='paper'">收藏试卷</view>
+			</view>
+			<view class="empty" v-if="!activeDocs.length">{{docTab === 'paper' ? '暂无收藏试卷' : '暂无收藏资料'}}</view>
+			<view class="doc-card" v-for="item in activeDocs" :key="item.favoriteId || item.id">
+				<view class="doc-icon">{{item.fileType || (docTab === 'paper' ? '卷' : '资')}}</view>
+				<view class="doc-info">
+					<view class="doc-title">{{item.title}}</view>
+					<view class="doc-meta">{{item.courseTitle || item.courseId || '课程文档'}} · {{item.size || '未知大小'}}</view>
+					<view class="doc-time">收藏时间：{{formatDate(item.createdAt)}}</view>
+				</view>
+				<view class="doc-actions">
+					<view class="doc-action download" @click="downloadDoc(item)">下载</view>
+					<view class="doc-action open" @click="openDoc(item)">打开</view>
 				</view>
 			</view>
 		</block>
@@ -75,11 +82,19 @@ export default {
 	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {
-			tab: 'course',
+			tab: 'doc',
+			docTab: 'lecture',
 			courses: [],
+			docs: [],
+			papers: [],
 			questions: [],
 			answers: {},
 			results: {}
+		}
+	},
+	computed: {
+		activeDocs() {
+			return this.docTab === 'paper' ? this.papers : this.docs;
 		}
 	},
 	onShow() {
@@ -90,6 +105,8 @@ export default {
 			try {
 				const data = await getFavorites();
 				this.courses = data.courses || [];
+				this.docs = data.docs || [];
+				this.papers = data.papers || [];
 				this.questions = data.questions || [];
 			} catch (err) {
 				uni.showToast({ title: err.message || '加载失败', icon:'none' });
@@ -101,6 +118,20 @@ export default {
 				return;
 			}
 			uni.navigateTo({ url:`/pages/course-full/course-full?id=${encodeURIComponent(item.targetId)}&subject=${encodeURIComponent(item.subject || '')}&kind=${encodeURIComponent(item.kind || 'full')}` });
+		},
+		openDoc(item) {
+			if (item.fileUrl && item.fileUrl !== '#' && typeof window !== 'undefined') {
+				window.open(item.fileUrl, '_blank');
+				return;
+			}
+			uni.showToast({ title:item.title || '文档', icon:'none' });
+		},
+		downloadDoc(item) {
+			this.openDoc(item);
+		},
+		formatDate(value = '') {
+			const text = String(value || '').replace('T', ' ');
+			return text ? text.slice(0, 16) : '--';
 		},
 		async submitQuestion(item) {
 			if (this.isAnswerMissing(item)) {
@@ -167,9 +198,21 @@ page { background:#f5f7fa; }
 .tabs { display:flex; margin:24rpx; background:#fff; border-radius:14rpx; padding:8rpx; border:1rpx solid #e8edf3; }
 .tab { flex:1; height:68rpx; line-height:68rpx; text-align:center; border-radius:10rpx; color:#64748b; font-size:26rpx; font-weight:700; }
 .tab.active { background:#1677ff; color:#fff; }
+.doc-tabs { display:flex; gap:16rpx; margin:0 24rpx 20rpx; }
+.doc-tab { flex:1; height:64rpx; line-height:64rpx; text-align:center; border-radius:12rpx; background:#fff; border:1rpx solid #e5e9ef; color:#64748b; font-size:25rpx; font-weight:800; }
+.doc-tab.active { background:#eaf4ff; border-color:#9ac9ff; color:#1677ff; }
 .empty { padding:180rpx 0; text-align:center; color:#8a94a3; font-size:28rpx; }
-.course-card, .question-card { margin:24rpx; padding:22rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
+.course-card, .question-card, .doc-card { margin:24rpx; padding:22rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
 .course-card { display:flex; }
+.doc-card { display:flex; align-items:center; gap:18rpx; }
+.doc-icon { width:84rpx; height:84rpx; border-radius:10rpx; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#eef6ff; color:#1677ff; font-size:22rpx; font-weight:900; }
+.doc-info { flex:1; min-width:0; }
+.doc-title { color:#222; font-size:28rpx; font-weight:900; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.doc-meta, .doc-time { margin-top:8rpx; color:#697386; font-size:23rpx; }
+.doc-actions { display:flex; flex-direction:column; gap:10rpx; flex-shrink:0; }
+.doc-action { min-width:86rpx; height:50rpx; line-height:50rpx; text-align:center; border-radius:999rpx; font-size:23rpx; font-weight:800; }
+.doc-action.download { background:#eef6ff; color:#2563eb; }
+.doc-action.open { background:#ecfdf5; color:#0f766e; }
 .cover { width:210rpx; height:146rpx; border-radius:12rpx; flex-shrink:0; background:#e8eef5; }
 .course-info { flex:1; min-width:0; margin-left:20rpx; }
 .course-title { color:#222; font-size:28rpx; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

@@ -41,6 +41,7 @@
 							<view class="doc-time">上传时间：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
 						</view>
 						<view class="doc-actions">
+							<view class="favorite" :class="{active:isFavorite(doc)}" @click="toggleDocFavorite(doc)">{{isFavorite(doc) ? '已收藏' : '收藏'}}</view>
 							<view class="download" @click="downloadDoc(doc)">文件下载</view>
 							<view class="doc-open" @click="openDoc(doc)">打开</view>
 						</view>
@@ -71,6 +72,7 @@
 							<view class="doc-time">更新日期：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
 						</view>
 						<view class="doc-actions">
+							<view class="favorite" :class="{active:isFavorite(doc)}" @click="toggleDocFavorite(doc)">{{isFavorite(doc) ? '已收藏' : '收藏'}}</view>
 							<view class="download" @click="downloadDoc(doc)">文件下载</view>
 							<view class="doc-open" @click="openDoc(doc)">打开</view>
 						</view>
@@ -101,7 +103,7 @@
 								</view>
 							</view>
 						</view>
-						<view class="save-review" @click="savePaperReview(doc)">保存细节</view>
+						<view class="save-review" @click="savePaperReview(doc)">保存记录</view>
 					</view>
 					<view class="paper-note">线下试卷在学生自评后记录，记录可在【学习报告】的练习统计中同步统计。</view>
 				</view>
@@ -125,7 +127,7 @@
 </template>
 
 <script>
-import { getMyDocs, isLoggedIn } from '@/common/api.js'
+import { getFavorites, getMyDocs, isLoggedIn, toggleFavorite } from '@/common/api.js'
 
 const REVIEW_KEY = 'offlineExamReviews';
 const LOCAL_DOCS = [
@@ -144,6 +146,7 @@ export default {
 			courseTitle:'',
 			courseId:'',
 			list:[],
+			favoriteMap: {},
 			showLogin:false,
 			expandedSections: { lecture:true, paper:true }
 		}
@@ -177,9 +180,11 @@ export default {
 				const docs = await getMyDocs(this.activeKeyword(), this.courseId);
 				const withFallbackDocs = this.ensureCategoryDocs(docs || []);
 				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => ({ ...doc }));
+				await this.syncDocFavorites();
 			} catch (err) {
 				console.warn('文档接口不可用，使用本地文档', err);
 				this.list = this.filterLocalDocs();
+				await this.syncDocFavorites();
 			}
 		},
 		filterLocalDocs() {
@@ -243,6 +248,60 @@ export default {
 		toggleSection(type) {
 			this.expandedSections[type] = !this.expandedSections[type];
 		},
+		async syncDocFavorites() {
+			if (!isLoggedIn()) return;
+			try {
+				const data = await getFavorites();
+				const favorites = []
+					.concat(data.docs || [])
+					.concat(data.papers || [])
+					.concat(data.documents || []);
+				const map = {};
+				favorites.forEach(item => {
+					const id = this.favoriteKey(item);
+					if (id) map[id] = true;
+				});
+				this.favoriteMap = map;
+			} catch (err) {
+				console.warn('收藏状态加载失败', err);
+			}
+		},
+		favoriteKey(doc = {}) {
+			return String(doc.targetId || doc.id || '').trim();
+		},
+		isFavorite(doc = {}) {
+			return !!this.favoriteMap[this.favoriteKey(doc)];
+		},
+		async toggleDocFavorite(doc = {}) {
+			if (!isLoggedIn()) {
+				this.showLogin = true;
+				return;
+			}
+			const targetId = this.favoriteKey(doc);
+			if (!targetId) return;
+			try {
+				const result = await toggleFavorite({
+					type: 'doc',
+					targetId,
+					action: this.isFavorite(doc) ? 'remove' : 'add',
+					title: doc.title,
+					courseId: doc.courseId || this.courseId,
+					category: this.isPaper(doc) ? 'paper' : 'lecture',
+					fileUrl: doc.fileUrl || '',
+					fileType: doc.fileType || '',
+					size: doc.size || ''
+				});
+				this.favoriteMap = { ...this.favoriteMap, [targetId]: !!result.favorited };
+				if (!result.favorited) {
+					const next = { ...this.favoriteMap };
+					delete next[targetId];
+					this.favoriteMap = next;
+				}
+				uni.showToast({ title: result.favorited ? '已收藏' : '已取消收藏', icon:'success' });
+			} catch (err) {
+				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
+			}
+		},
 		goBack() { uni.navigateBack({ fail:()=>{} }); },
 		search() { this.loadDocs(); },
 		openDoc(doc) {
@@ -269,11 +328,18 @@ export default {
 			});
 		},
 		savePaperReview(doc) {
-			const score = Number(doc.score);
-			const totalScore = Number(doc.totalScore);
-			const wrongCount = Number(doc.wrongCount);
-			if (!totalScore || Number.isNaN(score) || Number.isNaN(wrongCount)) {
+			const totalText = String(doc.totalScore === undefined || doc.totalScore === null ? '' : doc.totalScore).trim();
+			const scoreText = String(doc.score === undefined || doc.score === null ? '' : doc.score).trim();
+			const wrongText = String(doc.wrongCount === undefined || doc.wrongCount === null ? '' : doc.wrongCount).trim();
+			if (!totalText || !scoreText || !wrongText) {
 				uni.showToast({ title:'请填写总分、得分和错题数', icon:'none' });
+				return;
+			}
+			const score = Number(scoreText);
+			const totalScore = Number(totalText);
+			const wrongCount = Number(wrongText);
+			if (!totalScore || Number.isNaN(score) || Number.isNaN(wrongCount)) {
+				uni.showToast({ title:'请填写有效的分数和错题数', icon:'none' });
 				return;
 			}
 			const record = {
@@ -382,7 +448,9 @@ page { background:#f5f7fa; }
 .doc-meta, .doc-time { margin-top:8rpx; color:#697386; font-size:24rpx; }
 .doc-time { color:#6a5aa8; }
 .doc-actions { display:flex; align-items:center; gap:18rpx; margin-left:18rpx; flex-shrink:0; }
-.download, .doc-open { min-height:52rpx; padding:0 14rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#eef6ff; color:#2563eb; font-size:24rpx; white-space:nowrap; cursor:pointer; }
+.favorite, .download, .doc-open { min-height:52rpx; padding:0 14rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#eef6ff; color:#2563eb; font-size:24rpx; white-space:nowrap; cursor:pointer; }
+.favorite { background:#fff7ed; color:#ea580c; }
+.favorite.active { background:#fde7d6; color:#c2410c; font-weight:900; }
 .doc-open { color:#0f766e; background:#ecfdf5; }
 .paper-review { margin:0 22rpx 18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #e9eef5; }
 .review-top { display:flex; align-items:center; justify-content:space-between; gap:16rpx; margin-bottom:16rpx; }
