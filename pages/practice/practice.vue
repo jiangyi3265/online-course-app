@@ -292,6 +292,7 @@ export default {
 		return {
 			type: 'practice',
 			title: '真题讲练',
+			modeTitle: '',
 			practiceTitle: '',
 			pointId: '',
 			count: 5,
@@ -312,7 +313,8 @@ export default {
 	},
 	computed: {
 		modeText() {
-			const map = { practice: '真题讲练', quiz: '章节扫雷', reinforce: '复习测试', wrongRetry: '错题重练' };
+			if (this.modeTitle) return this.modeTitle;
+			const map = { practice: '真题讲练', quiz: '章节扫雷', reinforce: '知识点巩固', wrongRetry: '错题重练' };
 			return map[this.type] || '练习测评';
 		},
 		resultMap() {
@@ -332,6 +334,7 @@ export default {
 	onLoad(opts = {}) {
 		this.type = opts.type || 'practice';
 		this.title = decodeURIComponent(opts.title || opts.quizId || '真题讲练');
+		this.modeTitle = decodeURIComponent(opts.modeTitle || '');
 		this.practiceTitle = decodeURIComponent(opts.practiceTitle || '');
 		this.pointId = opts.pointId || '';
 		this.count = Number(opts.count || 5);

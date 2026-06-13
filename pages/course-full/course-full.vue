@@ -271,7 +271,7 @@ export default {
 			return this.versions.slice(0, 2);
 		},
 		visibleQuizzes() {
-			return (this.quizzes || []).filter(item => this.hasPracticeQuestions(item));
+			return (this.quizzes || []).filter(item => this.isVisible(item) && this.hasPracticeQuestions(item));
 		}
 	},
 	async onLoad(opts) {
@@ -453,10 +453,12 @@ export default {
 		},
 		countChapters(chapters = []) {
 			return chapters.reduce((total, chapter) => {
+				if (!this.isVisible(chapter)) return total;
 				const items = chapter.items || chapter.children || [];
 				return total + items.reduce((sum, item) => {
+					if (!this.isVisible(item)) return sum;
 					if (item.children && item.children.length) {
-						return sum + item.children.filter(child => Number(child.type) !== 2 && this.hasVideoContent(child, item)).length;
+						return sum + item.children.filter(child => this.isVisible(child) && Number(child.type) !== 2 && this.hasVideoContent(child, item)).length;
 					}
 					return sum + (Number(item.type) === 2 || !this.hasVideoContent(item, item) ? 0 : 1);
 				}, 0);
@@ -503,6 +505,7 @@ export default {
 		visibleCourseChapters(chapters = [], versionIndex = 0) {
 			return (chapters || [])
 				.map((chapter, chapterIndex) => {
+					if (!this.isVisible(chapter)) return null;
 					const items = (chapter.items || chapter.children || [])
 						.map((lesson, lessonIndex) => this.visibleLesson(lesson, versionIndex, lessonIndex))
 						.filter(Boolean);
@@ -515,6 +518,7 @@ export default {
 		},
 		visibleLesson(lesson = {}, versionIndex = 0, lessonIndex = 0) {
 			const source = typeof lesson === 'object' ? lesson : { title: lesson };
+			if (!this.isVisible(source)) return null;
 			const children = Array.isArray(source.children) ? source.children : [];
 			const visibleChildren = children.filter(child => this.isVisibleChild(child, source, versionIndex));
 			const hasDirectVideo = this.hasVideoContent(source, source) && Number(source.type || 1) !== 2;
@@ -530,10 +534,14 @@ export default {
 			return Array.isArray(lesson.children) && lesson.children.length > 0;
 		},
 		isVisibleChild(child = {}, lesson = {}, versionIndex = 0) {
+			if (!this.isVisible(child) || !this.isVisible(lesson)) return false;
 			if (Number(child.type) === 2) {
 				return !!this.practiceBankName(child, lesson) && this.hasPracticeQuestions(child, lesson);
 			}
 			return this.hasVideoContent(child, lesson) && (!!this.meaningfulLessonTitle(lesson.title) || !!this.meaningfulLessonTitle(child.name) || versionIndex !== 2);
+		},
+		isVisible(item = {}) {
+			return item && item.visible !== false;
 		},
 		hasVideoContent(child = {}, lesson = {}) {
 			return !!String(child.videoUrl || lesson.videoUrl || child.fileUrl || child.url || '').trim();
@@ -605,7 +613,7 @@ export default {
 				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
 					? child.questionIds
 					: (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
-				uni.navigateTo({ url:`/pages/practice/practice?type=reinforce&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(lesson.title || title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
+				uni.navigateTo({ url:`/pages/practice/practice?type=reinforce&modeTitle=${encodeURIComponent('知识点巩固')}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(lesson.title || title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}` });
@@ -634,7 +642,8 @@ export default {
 				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
 					? child.questionIds
 					: (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
-				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
+				const modeTitle = this.versionIndex === 0 ? '知识点巩固' : '';
+				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&modeTitle=${encodeURIComponent(modeTitle)}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
 			const lessonTitle = lesson.title || lesson;
