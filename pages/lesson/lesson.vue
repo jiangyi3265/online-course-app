@@ -14,7 +14,7 @@
 				:src="videoUrl"
 				:poster="poster"
 				:initial-time="initialTime"
-				controls
+				:controls="!isDesktopH5"
 				:muted="muted"
 				:show-fullscreen-btn="!isDesktopH5"
 				:show-play-btn="true"
@@ -28,17 +28,12 @@
 				@fullscreenchange="onNativeFullscreenChange"
 				@error="onVideoError"
 			></video>
-			<view class="desktop-video-tools" v-if="isDesktopH5">
-				<view class="fullscreen-toggle" :class="{active:isWebFullscreen}" @click.stop="toggleWebFullscreen">
-					{{isWebFullscreen ? '退出全屏' : '网页全屏'}}
-				</view>
-			</view>
 			<view class="video-error" v-if="videoError">
 				<view class="video-error-title">视频暂时无法加载</view>
 				<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
 			</view>
 			<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
-			<view class="video-quick-tools">
+			<view class="video-quick-tools" v-if="!isDesktopH5 && !videoError">
 				<view class="speed-menu" v-if="showSpeedMenu">
 					<view
 						class="speed-menu-item"
@@ -55,12 +50,32 @@
 					</view>
 				</view>
 			</view>
-			<view class="video-info">
-				<view>
-					<view class="video-title">{{title}}</view>
-					<view class="video-sub">已学 {{percent}}% · {{curTime}} / {{totalTime}}</view>
+			<view class="video-control-layer" v-if="isDesktopH5 && !videoError">
+				<view class="video-progress-track" @click.stop="seekByClick">
+					<view class="video-progress-fill" :style="{width: percent + '%'}"></view>
 				</view>
-				<view class="save-state">{{progressSaved ? '进度已同步' : '学习中'}}</view>
+				<view class="video-control-row">
+					<view class="control-button play-button" @click.stop="toggleVideoPlayback">{{videoPlaying ? 'Ⅱ' : '▶'}}</view>
+					<text class="control-time">{{curTime}} / {{totalTime}}</text>
+					<view class="control-spacer"></view>
+					<view class="desktop-speed-wrap">
+						<view class="desktop-speed-menu" v-if="showSpeedMenu">
+							<view
+								class="desktop-speed-item"
+								v-for="rate in playbackRates"
+								:key="rate"
+								:class="{active: playbackRate === rate}"
+								@click.stop="setPlaybackRate(rate)"
+							>{{rateLabel(rate)}}</view>
+						</view>
+						<view class="control-button rate-button" :class="{active: showSpeedMenu}" @click.stop="toggleSpeedMenu">{{rateLabel(playbackRate)}}</view>
+					</view>
+					<view class="control-button volume-button" :class="{muted: muted || volume === 0}" @click.stop="toggleMute">{{volumeIcon}}</view>
+					<view class="control-button fullscreen-button" :class="{active:isWebFullscreen}" @click.stop="toggleWebFullscreen">⛶</view>
+				</view>
+			</view>
+			<view class="video-info" v-if="!videoError">
+				<view class="video-sub">已学 {{percent}}% · {{curTime}} / {{totalTime}}</view>
 			</view>
 		</view>
 
@@ -342,6 +357,37 @@ export default {
 				this.videoPlaying = true;
 			}
 		},
+		seekByClick(e) {
+			if (!this.durationSeconds) return;
+			let clientX;
+			const nativeEvent = e && e.detail && e.detail.originalEvent ? e.detail.originalEvent : e;
+			if (nativeEvent && typeof nativeEvent.clientX === 'number') clientX = nativeEvent.clientX;
+			if (typeof clientX !== 'number' && nativeEvent && nativeEvent.changedTouches && nativeEvent.changedTouches.length) {
+				clientX = nativeEvent.changedTouches[0].clientX;
+			}
+			if (typeof clientX !== 'number' && nativeEvent && nativeEvent.touches && nativeEvent.touches.length) {
+				clientX = nativeEvent.touches[0].clientX;
+			}
+			if (typeof clientX !== 'number' && e && e.detail && typeof e.detail.x === 'number') {
+				clientX = e.detail.x;
+			}
+			if (typeof document === 'undefined' || typeof clientX !== 'number') return;
+			const track = document.querySelector('.video-progress-track');
+			if (!track) return;
+			const rect = track.getBoundingClientRect();
+			if (!rect.width) return;
+			const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			const seconds = ratio * this.durationSeconds;
+			const ctx = this.videoContext || uni.createVideoContext('lessonVideo', this);
+			this.videoContext = ctx;
+			if (ctx && typeof ctx.seek === 'function') ctx.seek(seconds);
+			const video = this.nativeVideoElement();
+			if (video) video.currentTime = seconds;
+			this.currentSeconds = seconds;
+			this.curTime = this.formatTime(seconds);
+			this.percent = Math.min(100, Math.round(ratio * 100));
+			this.progressSaved = false;
+		},
 		onTimeUpdate(e) {
 			const detail = e.detail || {};
 			this.currentSeconds = Number(detail.currentTime) || 0;
@@ -518,44 +564,29 @@ page { background:#fff; }
 	border-bottom:1rpx solid #eef0f3;
 }
 .back { position:absolute; left:24rpx; font-size:46rpx; font-weight:300; color:#222; cursor:pointer; }
-.nav-title { font-size:30rpx; color:#222; font-weight:600; }
+.nav-title {
+	max-width:560rpx;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+	font-size:28rpx;
+	color:#1f2937;
+	font-weight:700;
+	letter-spacing:0;
+}
 
 /* 视频 */
 .video-wrap {
 	position:relative;
-	background:#111827;
+	background:#0f172a;
 	overflow:hidden;
 }
 .video-player {
 	width:100%;
 	height:420rpx;
-	background:#000;
+	background:#0f172a;
 	display:block;
 	cursor:pointer;
-}
-.desktop-video-tools {
-	position:absolute;
-	right:22rpx;
-	top:22rpx;
-	z-index:8;
-	display:none;
-}
-.fullscreen-toggle {
-	height:54rpx;
-	line-height:54rpx;
-	padding:0 22rpx;
-	border-radius:30rpx;
-	background:rgba(17,24,39,.72);
-	color:#f8fafc;
-	font-size:22rpx;
-	font-weight:800;
-	border:1rpx solid rgba(255,255,255,.28);
-	box-shadow:0 8rpx 20rpx rgba(15,23,42,.22);
-	cursor:pointer;
-}
-.fullscreen-toggle.active {
-	background:#2563eb;
-	border-color:#2563eb;
 }
 .moving-watermark {
 	position:absolute;
@@ -594,47 +625,57 @@ page { background:#fff; }
 	font-size:24rpx;
 }
 .video-info {
-	display:flex;
+	position:absolute;
+	left:22rpx;
+	bottom:86rpx;
+	z-index:7;
+	display:inline-flex;
 	align-items:center;
-	justify-content:space-between;
-	padding:22rpx 28rpx 24rpx;
-	color:#fff;
+	max-width:calc(100% - 44rpx);
+	padding:8rpx 14rpx;
+	border-radius:999rpx;
+	background:rgba(15,23,42,.48);
+	border:1rpx solid rgba(255,255,255,.18);
+	backdrop-filter:blur(8px);
+	color:#f8fafc;
+	pointer-events:none;
 }
 .video-title {
-	font-size:30rpx;
-	font-weight:800;
+	display:none;
 }
 .video-sub {
-	margin-top:8rpx;
-	color:#cbd5e1;
-	font-size:24rpx;
+	margin-top:0;
+	color:rgba(248,250,252,.9);
+	font-size:22rpx;
+	font-weight:650;
+	letter-spacing:0;
+	text-shadow:0 1rpx 4rpx rgba(15,23,42,.45);
 }
 .save-state {
-	flex-shrink:0;
-	margin-left:18rpx;
-	padding:8rpx 16rpx;
-	border-radius:26rpx;
-	background:rgba(255,255,255,.12);
-	color:#dbeafe;
-	font-size:22rpx;
+	display:none;
 }
 .video-quick-tools {
 	position:absolute;
-	right:24rpx;
-	top:auto;
-	bottom:104rpx;
+	right:18rpx;
+	top:18rpx;
 	z-index:10;
 	display:flex;
 	flex-direction:column;
 	align-items:flex-end;
 	gap:8rpx;
+	opacity:.45;
+	transition:opacity .18s ease;
 	pointer-events:none;
 }
+.video-wrap:active .video-quick-tools,
+.video-quick-tools:focus-within {
+	opacity:1;
+}
 .speed-menu {
-	width:126rpx;
+	width:116rpx;
 	padding:8rpx 0;
 	border-radius:10rpx;
-	background:rgba(15,23,42,.68);
+	background:rgba(15,23,42,.76);
 	backdrop-filter:blur(8px);
 	border:1rpx solid rgba(255,255,255,.18);
 	box-shadow:0 12rpx 28rpx rgba(0,0,0,.22);
@@ -660,17 +701,18 @@ page { background:#fff; }
 	pointer-events:auto;
 }
 .quick-tool {
-	min-width:62rpx;
-	height:58rpx;
-	line-height:58rpx;
+	min-width:54rpx;
+	height:50rpx;
+	line-height:50rpx;
 	text-align:center;
-	border-radius:12rpx;
-	background:rgba(15,23,42,.72);
+	border-radius:999rpx;
+	background:rgba(15,23,42,.58);
+	backdrop-filter:blur(8px);
 	color:#f8fafc;
-	font-size:24rpx;
+	font-size:22rpx;
 	font-weight:800;
-	border:1rpx solid rgba(255,255,255,.2);
-	box-shadow:0 8rpx 20rpx rgba(0,0,0,.2);
+	border:1rpx solid rgba(255,255,255,.18);
+	box-shadow:0 8rpx 20rpx rgba(0,0,0,.16);
 	cursor:pointer;
 }
 .quick-tool.active,
@@ -680,6 +722,106 @@ page { background:#fff; }
 }
 .volume-control {
 	position:relative;
+}
+.video-control-layer {
+	position:absolute;
+	left:0;
+	right:0;
+	bottom:0;
+	z-index:12;
+	padding:0 20rpx 16rpx;
+	background:linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.24) 32%, rgba(15,23,42,.78) 100%);
+	opacity:.18;
+	transition:opacity .18s ease;
+}
+.video-wrap:hover .video-control-layer,
+.video-control-layer:hover,
+.video-control-layer:focus-within {
+	opacity:1;
+}
+.video-progress-track {
+	position:relative;
+	height:6rpx;
+	margin-bottom:12rpx;
+	border-radius:999rpx;
+	background:rgba(226,232,240,.34);
+	overflow:hidden;
+	cursor:pointer;
+}
+.video-progress-fill {
+	height:100%;
+	border-radius:999rpx;
+	background:#38bdf8;
+	box-shadow:0 0 12rpx rgba(56,189,248,.45);
+}
+.video-control-row {
+	display:flex;
+	align-items:center;
+	gap:12rpx;
+	min-height:52rpx;
+}
+.control-button {
+	min-width:52rpx;
+	height:48rpx;
+	line-height:48rpx;
+	text-align:center;
+	border-radius:999rpx;
+	background:rgba(15,23,42,.46);
+	color:#f8fafc;
+	border:1rpx solid rgba(255,255,255,.2);
+	font-size:22rpx;
+	font-weight:800;
+	backdrop-filter:blur(8px);
+	box-shadow:0 6rpx 16rpx rgba(15,23,42,.22);
+	cursor:pointer;
+}
+.play-button {
+	font-size:24rpx;
+}
+.rate-button {
+	min-width:66rpx;
+}
+.control-button.active,
+.control-button.muted {
+	background:rgba(37,99,235,.82);
+	border-color:rgba(147,197,253,.9);
+}
+.control-time {
+	color:rgba(248,250,252,.92);
+	font-size:23rpx;
+	font-weight:700;
+	text-shadow:0 1rpx 4rpx rgba(15,23,42,.5);
+}
+.control-spacer {
+	flex:1;
+}
+.desktop-speed-wrap {
+	position:relative;
+}
+.desktop-speed-menu {
+	position:absolute;
+	right:0;
+	bottom:60rpx;
+	width:118rpx;
+	padding:8rpx 0;
+	border-radius:14rpx;
+	background:rgba(15,23,42,.86);
+	backdrop-filter:blur(10px);
+	border:1rpx solid rgba(255,255,255,.18);
+	box-shadow:0 16rpx 36rpx rgba(15,23,42,.28);
+}
+.desktop-speed-item {
+	height:46rpx;
+	line-height:46rpx;
+	text-align:center;
+	color:#e5edf7;
+	font-size:23rpx;
+	font-weight:750;
+	cursor:pointer;
+}
+.desktop-speed-item.active {
+	color:#38bdf8;
+	background:rgba(255,255,255,.1);
 }
 
 /* 本节内容 */
@@ -903,34 +1045,21 @@ page { background:#fff; }
 		margin:0 auto;
 		box-shadow:0 0 0 1px #e5e7eb;
 	}
-	.desktop-video-tools {
-		display:block;
-	}
 	.video-wrap:fullscreen {
 		width:100vw;
 		height:100vh;
 		background:#0f172a;
-		display:flex;
-		flex-direction:column;
 	}
 	.video-wrap:fullscreen .video-player {
-		flex:1;
 		width:100vw;
-		height:auto;
+		height:100vh;
 		min-height:0;
 	}
-	.video-wrap:fullscreen .video-info,
-	.video-wrap:fullscreen .video-quick-tools {
-		flex-shrink:0;
+	.video-wrap:fullscreen .video-info {
+		bottom:104rpx;
 	}
-	.video-wrap:fullscreen .video-quick-tools {
-		top:auto;
-		right:34rpx;
-		bottom:146rpx;
-	}
-	.video-wrap:fullscreen .fullscreen-toggle {
-		background:#2563eb;
-		border-color:#2563eb;
+	.video-wrap:fullscreen .video-control-layer {
+		padding:0 34rpx 28rpx;
 	}
 	.footer {
 		left:50%;
