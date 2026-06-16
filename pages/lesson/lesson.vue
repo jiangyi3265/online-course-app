@@ -7,56 +7,56 @@
 		</view>
 
 		<!-- 视频区 -->
-		<view class="video-wrap">
-			<video
-				id="lessonVideo"
-				class="video-player"
-				:src="videoUrl"
-				:poster="poster"
-				:initial-time="initialTime"
-				:controls="!isDesktopH5"
-				:muted="muted"
-				:show-fullscreen-btn="!isDesktopH5"
-				:show-play-btn="true"
-				:enable-progress-gesture="true"
-				@loadedmetadata="onLoadedMeta"
-				@play="onPlay"
-				@pause="onPause"
-				@click="toggleVideoPlayback"
-				@timeupdate="onTimeUpdate"
-				@ended="onEnded"
-				@fullscreenchange="onNativeFullscreenChange"
-				@error="onVideoError"
-			></video>
-			<view class="video-error" v-if="videoError">
-				<view class="video-error-title">视频暂时无法加载</view>
-				<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
-			</view>
-			<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
-			<view class="video-quick-tools" v-if="!isDesktopH5 && !videoError">
-				<view class="speed-menu" v-if="showSpeedMenu">
-					<view
-						class="speed-menu-item"
-						v-for="rate in playbackRates"
-						:key="rate"
-						:class="{active: playbackRate === rate}"
-						@click.stop="setPlaybackRate(rate)"
-					>{{rateLabel(rate)}}</view>
+		<view class="lesson-player">
+			<view class="video-wrap">
+				<video
+					id="lessonVideo"
+					class="video-player"
+					:src="videoUrl"
+					:poster="poster"
+					:initial-time="initialTime"
+					:controls="false"
+					:muted="muted"
+					:show-fullscreen-btn="false"
+					:show-play-btn="false"
+					:enable-progress-gesture="false"
+					@loadedmetadata="onLoadedMeta"
+					@play="onPlay"
+					@pause="onPause"
+					@click="toggleVideoPlayback"
+					@timeupdate="onTimeUpdate"
+					@ended="onEnded"
+					@fullscreenchange="onNativeFullscreenChange"
+					@error="onVideoError"
+				></video>
+				<view class="video-error" v-if="videoError">
+					<view class="video-error-title">视频暂时无法加载</view>
+					<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
 				</view>
-				<view class="quick-tools-row">
-					<view class="quick-tool speed-trigger" :class="{active: showSpeedMenu}" @click.stop="toggleSpeedMenu">{{rateLabel(playbackRate)}}</view>
-					<view class="volume-control">
-						<view class="quick-tool volume-trigger" :class="{muted: muted || volume === 0}" @click.stop="toggleMute">{{volumeIcon}}</view>
+				<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
+			</view>
+
+			<view class="player-controls" v-if="!videoError">
+				<view
+					class="player-progress-track"
+					@click.stop="seekByClick"
+					@mousedown.stop.prevent="startSeekDrag"
+					@touchstart.stop.prevent="startSeekDrag"
+					@touchmove.stop.prevent="onSeekDrag"
+					@touchend.stop.prevent="endSeekDrag"
+					@touchcancel.stop.prevent="endSeekDrag"
+				>
+					<view class="player-progress-fill" :style="{width: percent + '%'}">
+						<view class="player-progress-thumb"></view>
 					</view>
 				</view>
-			</view>
-			<view class="video-control-layer" v-if="isDesktopH5 && !videoError">
-				<view class="video-progress-track" @click.stop="seekByClick">
-					<view class="video-progress-fill" :style="{width: percent + '%'}"></view>
-				</view>
-				<view class="video-control-row">
+				<view class="player-control-row">
 					<view class="control-button play-button" @click.stop="toggleVideoPlayback">{{videoPlaying ? 'Ⅱ' : '▶'}}</view>
-					<text class="control-time">{{curTime}} / {{totalTime}}</text>
+					<view class="control-time">
+						<text>{{curTime}}</text>
+						<text class="time-sep">/</text>
+						<text>{{totalTime}}</text>
+					</view>
 					<view class="control-spacer"></view>
 					<view class="desktop-speed-wrap">
 						<view class="desktop-speed-menu" v-if="showSpeedMenu">
@@ -74,14 +74,14 @@
 					<view class="control-button fullscreen-button" :class="{active:isWebFullscreen}" @click.stop="toggleWebFullscreen">⛶</view>
 				</view>
 			</view>
-			<view class="video-info" v-if="!videoError">
-				<view class="video-sub">已学 {{percent}}% · {{curTime}} / {{totalTime}}</view>
-			</view>
 		</view>
 
 		<!-- 本节内容 -->
 		<view class="section">
-			<text class="s-title">本节内容</text>
+			<view class="section-left">
+				<text class="s-title">本节内容</text>
+				<text class="watch-progress">已学 {{percent}}% · {{curTime}} / {{totalTime}}</text>
+			</view>
 			<text class="s-page">{{page}}/{{pageTotal}}</text>
 		</view>
 
@@ -140,6 +140,7 @@ export default {
 			playbackRates: [2, 1.5, 1, 0.75, 0.5],
 			showSpeedMenu: false,
 			speedMenuTimer: null,
+			seekDragging: false,
 			volume: 80,
 			lastVolume: 80,
 			muted: false,
@@ -178,12 +179,14 @@ export default {
 	},
 	onUnload() {
 		this.clearSpeedMenuTimer();
+		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
 		this.exitWebFullscreen(false);
 		this.persistProgress(false);
 	},
 	onHide() {
 		this.closeSpeedMenu();
+		this.unbindSeekDragListeners();
 		this.exitWebFullscreen(false);
 	},
 	computed: {
@@ -317,7 +320,7 @@ export default {
 		},
 		videoShell() {
 			if (typeof document === 'undefined') return null;
-			return document.querySelector('.video-wrap');
+			return document.querySelector('.lesson-player') || document.querySelector('.video-wrap');
 		},
 		nativeVideoElement() {
 			if (typeof document === 'undefined') return null;
@@ -384,6 +387,47 @@ export default {
 		},
 		seekByClick(e) {
 			if (!this.durationSeconds) return;
+			this.applySeekFromEvent(e);
+		},
+		startSeekDrag(e) {
+			if (!this.durationSeconds) return;
+			this.seekDragging = true;
+			this.closeSpeedMenu();
+			this.applySeekFromEvent(e);
+			if (typeof document !== 'undefined' && e && e.type === 'mousedown') {
+				document.addEventListener('mousemove', this.onSeekDrag);
+				document.addEventListener('mouseup', this.endSeekDrag);
+			}
+		},
+		onSeekDrag(e) {
+			if (!this.seekDragging) return;
+			this.applySeekFromEvent(e);
+		},
+		endSeekDrag(e) {
+			if (!this.seekDragging) return;
+			this.applySeekFromEvent(e);
+			this.seekDragging = false;
+			this.unbindSeekDragListeners();
+			this.persistProgress(false);
+		},
+		unbindSeekDragListeners() {
+			if (typeof document === 'undefined') return;
+			document.removeEventListener('mousemove', this.onSeekDrag);
+			document.removeEventListener('mouseup', this.endSeekDrag);
+		},
+		applySeekFromEvent(e) {
+			const clientX = this.getEventClientX(e);
+			if (typeof document === 'undefined' || typeof clientX !== 'number') return;
+			const track = document.querySelector('.player-progress-track');
+			if (!track || !this.durationSeconds) return;
+			const rect = track.getBoundingClientRect();
+			if (!rect.width) return;
+			const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			const seconds = ratio * this.durationSeconds;
+			this.seekToSeconds(seconds, ratio);
+		},
+		getEventClientX(e) {
+			if (!e) return undefined;
 			let clientX;
 			const nativeEvent = e && e.detail && e.detail.originalEvent ? e.detail.originalEvent : e;
 			if (nativeEvent && typeof nativeEvent.clientX === 'number') clientX = nativeEvent.clientX;
@@ -396,21 +440,21 @@ export default {
 			if (typeof clientX !== 'number' && e && e.detail && typeof e.detail.x === 'number') {
 				clientX = e.detail.x;
 			}
-			if (typeof document === 'undefined' || typeof clientX !== 'number') return;
-			const track = document.querySelector('.video-progress-track');
-			if (!track) return;
-			const rect = track.getBoundingClientRect();
-			if (!rect.width) return;
-			const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-			const seconds = ratio * this.durationSeconds;
+			return clientX;
+		},
+		seekToSeconds(seconds, ratio = null) {
+			const safeSeconds = Math.max(0, Math.min(Number(seconds) || 0, this.durationSeconds || 0));
+			const safeRatio = ratio === null
+				? (this.durationSeconds ? safeSeconds / this.durationSeconds : 0)
+				: Math.max(0, Math.min(1, Number(ratio) || 0));
 			const ctx = this.videoContext || uni.createVideoContext('lessonVideo', this);
 			this.videoContext = ctx;
-			if (ctx && typeof ctx.seek === 'function') ctx.seek(seconds);
+			if (ctx && typeof ctx.seek === 'function') ctx.seek(safeSeconds);
 			const video = this.nativeVideoElement();
-			if (video) video.currentTime = seconds;
-			this.currentSeconds = seconds;
-			this.curTime = this.formatTime(seconds);
-			this.percent = Math.min(100, Math.round(ratio * 100));
+			if (video) video.currentTime = safeSeconds;
+			this.currentSeconds = safeSeconds;
+			this.curTime = this.formatTime(safeSeconds);
+			this.percent = Math.min(100, Math.round(safeRatio * 100));
 			this.progressSaved = false;
 		},
 		onTimeUpdate(e) {
@@ -601,6 +645,9 @@ page { background:#fff; }
 }
 
 /* 视频 */
+.lesson-player {
+	background:#0f172a;
+}
 .video-wrap {
 	position:relative;
 	background:#0f172a;
@@ -649,137 +696,53 @@ page { background:#fff; }
 	margin-top:8rpx;
 	font-size:24rpx;
 }
-.video-info {
-	position:absolute;
-	left:22rpx;
-	bottom:86rpx;
-	z-index:7;
-	display:inline-flex;
-	align-items:center;
-	max-width:calc(100% - 44rpx);
-	padding:8rpx 14rpx;
-	border-radius:999rpx;
-	background:rgba(15,23,42,.48);
-	border:1rpx solid rgba(255,255,255,.18);
-	backdrop-filter:blur(8px);
-	color:#f8fafc;
-	pointer-events:none;
+.player-controls {
+	background:#111827;
+	padding:8rpx 24rpx 16rpx;
+	border-bottom:1rpx solid #e8edf3;
+	box-shadow:0 10rpx 22rpx rgba(15,23,42,.08);
 }
-.video-title {
-	display:none;
-}
-.video-sub {
-	margin-top:0;
-	color:rgba(248,250,252,.9);
-	font-size:22rpx;
-	font-weight:650;
-	letter-spacing:0;
-	text-shadow:0 1rpx 4rpx rgba(15,23,42,.45);
-}
-.save-state {
-	display:none;
-}
-.video-quick-tools {
-	position:absolute;
-	right:18rpx;
-	top:18rpx;
-	z-index:10;
-	display:flex;
-	flex-direction:column;
-	align-items:flex-end;
-	gap:8rpx;
-	opacity:.45;
-	transition:opacity .18s ease;
-	pointer-events:none;
-}
-.video-wrap:active .video-quick-tools,
-.video-quick-tools:focus-within {
-	opacity:1;
-}
-.speed-menu {
-	width:116rpx;
-	padding:8rpx 0;
-	border-radius:10rpx;
-	background:rgba(15,23,42,.76);
-	backdrop-filter:blur(8px);
-	border:1rpx solid rgba(255,255,255,.18);
-	box-shadow:0 12rpx 28rpx rgba(0,0,0,.22);
-	pointer-events:auto;
-}
-.speed-menu-item {
-	height:48rpx;
-	line-height:48rpx;
-	text-align:center;
-	color:#e5edf7;
-	font-size:25rpx;
-	font-weight:700;
-	cursor:pointer;
-}
-.speed-menu-item.active {
-	color:#ff595f;
-	background:rgba(255,255,255,.12);
-}
-.quick-tools-row {
-	display:flex;
-	align-items:flex-end;
-	gap:12rpx;
-	pointer-events:auto;
-}
-.quick-tool {
-	min-width:54rpx;
-	height:50rpx;
-	line-height:50rpx;
-	text-align:center;
-	border-radius:999rpx;
-	background:rgba(15,23,42,.58);
-	backdrop-filter:blur(8px);
-	color:#f8fafc;
-	font-size:22rpx;
-	font-weight:800;
-	border:1rpx solid rgba(255,255,255,.18);
-	box-shadow:0 8rpx 20rpx rgba(0,0,0,.16);
-	cursor:pointer;
-}
-.quick-tool.active,
-.quick-tool.muted {
-	background:#2563eb;
-	border-color:#2563eb;
-}
-.volume-control {
+.player-progress-track {
 	position:relative;
+	height:34rpx;
+	display:flex;
+	align-items:center;
+	cursor:pointer;
+	touch-action:none;
 }
-.video-control-layer {
+.player-progress-track::before {
+	content:'';
 	position:absolute;
 	left:0;
 	right:0;
-	bottom:0;
-	z-index:12;
-	padding:0 20rpx 16rpx;
-	background:linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.24) 32%, rgba(15,23,42,.78) 100%);
-	opacity:.18;
-	transition:opacity .18s ease;
-}
-.video-wrap:hover .video-control-layer,
-.video-control-layer:hover,
-.video-control-layer:focus-within {
-	opacity:1;
-}
-.video-progress-track {
-	position:relative;
-	height:6rpx;
-	margin-bottom:12rpx;
+	top:50%;
+	height:8rpx;
+	transform:translateY(-50%);
 	border-radius:999rpx;
-	background:rgba(226,232,240,.34);
-	overflow:hidden;
-	cursor:pointer;
+	background:rgba(226,232,240,.35);
 }
-.video-progress-fill {
-	height:100%;
+.player-progress-fill {
+	position:relative;
+	z-index:1;
+	height:8rpx;
+	min-width:0;
 	border-radius:999rpx;
 	background:#ff4f55;
-	box-shadow:0 0 12rpx rgba(255,79,85,.45);
+	box-shadow:0 0 12rpx rgba(255,79,85,.35);
 }
-.video-control-row {
+.player-progress-thumb {
+	position:absolute;
+	right:-13rpx;
+	top:50%;
+	width:26rpx;
+	height:26rpx;
+	transform:translateY(-50%);
+	border-radius:50%;
+	background:#fff;
+	border:5rpx solid #ff4f55;
+	box-shadow:0 4rpx 12rpx rgba(0,0,0,.22);
+}
+.player-control-row {
 	display:flex;
 	align-items:center;
 	gap:12rpx;
@@ -816,6 +779,11 @@ page { background:#fff; }
 	font-size:23rpx;
 	font-weight:700;
 	text-shadow:0 1rpx 4rpx rgba(15,23,42,.5);
+	white-space:nowrap;
+}
+.time-sep {
+	margin:0 6rpx;
+	color:rgba(248,250,252,.56);
 }
 .control-spacer {
 	flex:1;
@@ -851,11 +819,32 @@ page { background:#fff; }
 
 /* 本节内容 */
 .section {
-	display:flex; justify-content:space-between; align-items:center;
-	padding: 28rpx 30rpx 10rpx;
+	display:flex; justify-content:space-between; align-items:flex-start;
+	padding: 26rpx 30rpx 10rpx;
+}
+.section-left {
+	display:flex;
+	flex-direction:column;
+	min-width:0;
 }
 .s-title { font-size:30rpx; color:#222; font-weight:800; }
-.s-page { font-size:28rpx; color:#999; }
+.watch-progress {
+	margin-top:10rpx;
+	display:inline-flex;
+	align-items:center;
+	width:max-content;
+	max-width:520rpx;
+	padding:6rpx 14rpx;
+	border-radius:999rpx;
+	background:#fff1f2;
+	color:#ff4f55;
+	border:1rpx solid #ffd6d9;
+	font-size:23rpx;
+	font-weight:800;
+	line-height:1.25;
+	letter-spacing:0;
+}
+.s-page { font-size:28rpx; color:#999; padding-top:2rpx; }
 
 /* 讲点卡 */
 .content {
@@ -1070,21 +1059,29 @@ page { background:#fff; }
 		margin:0 auto;
 		box-shadow:0 0 0 1px #e5e7eb;
 	}
-	.video-wrap:fullscreen {
+	.lesson-player:fullscreen {
 		width:100vw;
 		height:100vh;
 		background:#0f172a;
+		display:flex;
+		flex-direction:column;
 	}
-	.video-wrap:fullscreen .video-player {
+	.lesson-player:fullscreen .video-wrap {
+		flex:1;
+		min-height:0;
+		display:flex;
+		align-items:center;
+		justify-content:center;
+	}
+	.lesson-player:fullscreen .video-player {
 		width:100vw;
-		height:100vh;
+		height:100%;
 		min-height:0;
 	}
-	.video-wrap:fullscreen .video-info {
-		bottom:104rpx;
-	}
-	.video-wrap:fullscreen .video-control-layer {
-		padding:0 34rpx 28rpx;
+	.lesson-player:fullscreen .player-controls {
+		flex-shrink:0;
+		padding:10rpx 34rpx 26rpx;
+		border-bottom:0;
 	}
 	.footer {
 		left:50%;
