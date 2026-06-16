@@ -26,7 +26,7 @@ export default {
 			try { this.list = await getReinforce(this.courseId); }
 			catch (err) { uni.showToast({ title: err.message || '加载失败', icon:'none' }); }
 		},
-		start(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&chapterTitle=${encodeURIComponent('复习加强')}` }); },
+		start(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&chapterTitle=${encodeURIComponent('复习加强')}&categoryTitle=${encodeURIComponent('复习加强课')}` }); },
 		formatDateTime(value) { return value ? String(value).replace('T', ' ').slice(0, 19) : '2026-01-25 19:57:51'; },
 		goBack() { uni.navigateBack({ fail:()=>{} }); }
 	}

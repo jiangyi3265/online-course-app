@@ -383,7 +383,7 @@ export default {
 				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(chapter.title)}` });
 				return;
 			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(chapter.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title)}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(chapter.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title)}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}` });
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '2026-05-26';
@@ -394,6 +394,9 @@ export default {
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
+		},
+		lessonCategoryTitle(index = this.versionIndex) {
+			return this.versionChips[index] || (index === 0 ? '复习加强课' : '技巧绝招课');
 		},
 		childName(item, chapter = {}) {
 			if (this.versionIndex === 0) {

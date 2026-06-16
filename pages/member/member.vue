@@ -456,14 +456,15 @@ page { background:#eef3f7; }
 	display:none;
 }
 .func {
-	background:linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+	background:#f3f8ff;
+	border-color:#cfe0ff;
 }
 .f-ico {
 	width:68rpx;
 	height:68rpx;
 	border-radius:20rpx;
-	background:#f7fbff;
-	border:1rpx solid #d9e6f5;
+	background:linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
+	border:1rpx solid #d8e7fb;
 	box-shadow:inset 0 1rpx 0 rgba(255,255,255,.9), 0 10rpx 22rpx rgba(15,45,82,.08);
 }
 .f-ico::before,

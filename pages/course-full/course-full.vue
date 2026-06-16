@@ -471,6 +471,10 @@ export default {
 		versionLabel(version, index) {
 			return (version && version.name) || (index === 0 ? '复习加强课' : '技巧绝招课');
 		},
+		lessonCategoryTitle(index = this.versionIndex) {
+			if (index === 2) return '知识巩固';
+			return this.versionLabel(this.versions[index], index);
+		},
 		ensureUnlocked() {
 			if (!this.locked) return true;
 			this.showFooter = true;
@@ -603,7 +607,7 @@ export default {
 		startReinforce(item) {
 			this.collapseCheckinPanel();
 			if (!this.ensureUnlocked()) return;
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}&categoryTitle=${encodeURIComponent('复习加强课')}` });
 		},
 		goKnowledgeChild(chapter, lesson, child, lessonIndex) {
 			this.collapseCheckinPanel();
@@ -616,7 +620,7 @@ export default {
 				uni.navigateTo({ url:`/pages/practice/practice?type=reinforce&modeTitle=${encodeURIComponent('知识点巩固')}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(lesson.title || title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}&categoryTitle=${encodeURIComponent('知识巩固')}` });
 		},
 		goActivate() {
 			this.collapseCheckinPanel();
@@ -648,7 +652,7 @@ export default {
 			}
 			const lessonTitle = lesson.title || lesson;
 			const title = this.versionIndex === 0 ? this.reinforceLessonName(chapter, lesson, child, lessonIndex) : lessonTitle;
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(title)}&lessonId=${encodeURIComponent(lessonTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(title)}&lessonId=${encodeURIComponent(lessonTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}` });
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '2026-05-26';

@@ -122,6 +122,7 @@ export default {
 			courseId: '',
 			courseTitle: '',
 			chapterTitle: '',
+			categoryTitle: '',
 			videoUrl: '',
 			poster: '',
 			initialTime: 0,
@@ -162,6 +163,8 @@ export default {
 		if (opts && opts.courseId) this.courseId = decodeURIComponent(opts.courseId);
 		if (opts && opts.courseTitle) this.courseTitle = decodeURIComponent(opts.courseTitle);
 		if (opts && opts.chapterTitle) this.chapterTitle = decodeURIComponent(opts.chapterTitle);
+		this.categoryTitle = this.resolveCategoryTitle(opts);
+		this.syncPageTitle();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		await this.loadLesson();
 		if (isLoggedIn()) await this.loadRatingState();
@@ -199,9 +202,31 @@ export default {
 			if (this.myRating) return '已记录本节课程评分，不可更改。';
 			if (this.percent < 90) return '学习进度达到90%后即可提交评分。';
 			return '看完课程后点击星级，每节课只能评价一次。';
+		},
+		lessonCategoryTitle() {
+			return this.categoryTitle || this.inferCategoryTitle(this.title, this.chapterTitle) || '讲点';
 		}
 	},
 	methods: {
+		resolveCategoryTitle(opts = {}) {
+			if (opts && opts.categoryTitle) return decodeURIComponent(opts.categoryTitle);
+			return this.inferCategoryTitle(this.title, this.chapterTitle);
+		},
+		inferCategoryTitle(...values) {
+			const text = values.filter(Boolean).join(' ');
+			if (/复习加强课|复习加强|复习测试/.test(text)) return '复习加强课';
+			if (/技巧绝招课|绝招课/.test(text)) return '技巧绝招课';
+			if (/知识巩固|知识点巩固/.test(text)) return '知识巩固';
+			return '讲点';
+		},
+		syncPageTitle() {
+			const title = this.lessonCategoryTitle;
+			if (typeof uni !== 'undefined' && uni.setNavigationBarTitle) {
+				uni.setNavigationBarTitle({ title });
+			}
+			// H5/微信浏览器读取 document.title，uni 的自定义导航不会自动同步这里。
+			if (typeof document !== 'undefined') document.title = title;
+		},
 		async loadLesson() {
 			try {
 				const data = await getLessonVideo(this.lessonId || this.title, this.courseId);
@@ -498,14 +523,14 @@ export default {
 				uni.showToast({ title:'已到当前示例下一讲', icon:'none' });
 				return;
 			}
-			uni.redirectTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(this.nextTitle)}` });
+			uni.redirectTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(this.nextTitle)}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle)}` });
 		},
 		goPrev() {
 			if (!this.prevTitle) {
 				uni.showToast({ title:'已经是第一讲', icon:'none' });
 				return;
 			}
-			uni.redirectTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(this.prevTitle)}` });
+			uni.redirectTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(this.prevTitle)}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle)}` });
 		},
 		returnToCatalog(fromBackFail = false) {
 			if (this.isWebFullscreen) {
@@ -751,8 +776,8 @@ page { background:#fff; }
 .video-progress-fill {
 	height:100%;
 	border-radius:999rpx;
-	background:#38bdf8;
-	box-shadow:0 0 12rpx rgba(56,189,248,.45);
+	background:#ff4f55;
+	box-shadow:0 0 12rpx rgba(255,79,85,.45);
 }
 .video-control-row {
 	display:flex;
