@@ -86,26 +86,27 @@
 						<!-- 试卷自评默认折叠，点击「上传试卷照片」后展开 -->
 						<view class="review-collapse" v-if="doc.reviewExpanded">
 							<view class="review-box">
-								<view class="review-title">试卷自评：</view>
+								<view class="review-title">试卷自评：<text class="review-locked-tag" v-if="doc.reviewSubmitted">已记录 · 不可更改</text></view>
 								<view class="score-line">
-									<view class="score-field">
+									<view class="score-field" :class="{locked: doc.reviewSubmitted}">
 										<text>总分</text>
-										<input class="score-input" type="number" v-model="doc.totalScore" />
+										<input class="score-input" type="number" v-model="doc.totalScore" :disabled="doc.reviewSubmitted" />
 										<text class="score-unit">分</text>
 									</view>
-									<view class="score-field">
+									<view class="score-field" :class="{locked: doc.reviewSubmitted}">
 										<text>得分</text>
-										<input class="score-input" type="number" v-model="doc.score" />
+										<input class="score-input" type="number" v-model="doc.score" :disabled="doc.reviewSubmitted" />
 										<text class="score-unit">分</text>
 									</view>
-									<view class="score-field">
+									<view class="score-field" :class="{locked: doc.reviewSubmitted}">
 										<text>错题</text>
-										<input class="score-input small" type="number" v-model="doc.wrongCount" />
+										<input class="score-input small" type="number" v-model="doc.wrongCount" :disabled="doc.reviewSubmitted" />
 										<text class="score-unit">道</text>
 									</view>
 								</view>
 							</view>
-							<view class="save-review" @click="savePaperReview(doc)">保存记录</view>
+							<view class="save-review" v-if="!doc.reviewSubmitted" @click="savePaperReview(doc)">保存记录</view>
+							<view class="save-review locked" v-else>已提交，分数不可更改</view>
 						</view>
 					</view>
 					<view class="paper-note">线下试卷在学生自评后记录，记录可在【学习报告】的练习统计中同步统计。</view>
@@ -182,7 +183,7 @@ export default {
 			try {
 				const docs = await getMyDocs(this.activeKeyword(), this.courseId);
 				const withFallbackDocs = this.ensureCategoryDocs(docs || []);
-				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => ({ ...doc, reviewExpanded:false }));
+				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => this.decorateDoc(doc));
 				await this.syncDocFavorites();
 			} catch (err) {
 				console.warn('文档接口不可用，使用本地文档', err);
@@ -194,7 +195,7 @@ export default {
 			const key = this.activeKeyword().toLowerCase();
 			const matched = this.filterDocs(LOCAL_DOCS, key);
 			const list = matched.length ? matched : this.filterDocs(this.createCourseFallbackDocs(), key);
-			return list.map(doc => ({ ...doc, reviewExpanded:false }));
+			return list.map(doc => this.decorateDoc(doc));
 		},
 		activeKeyword() {
 			const keyword = this.kw.trim();
@@ -321,7 +322,35 @@ export default {
 			}
 			uni.showToast({ title:'文件下载已准备', icon:'none' });
 		},
+		decorateDoc(doc = {}) {
+			const decorated = { ...doc, reviewExpanded:false };
+			if (this.isPaper(doc)) {
+				const review = this.findPaperReview(doc);
+				if (review) {
+					// 已提交过自评：回显已记录的分数，且不可更改
+					decorated.totalScore = review.totalScore;
+					decorated.score = review.score;
+					decorated.wrongCount = review.wrongCount;
+					decorated.images = review.images || [];
+					decorated.reviewSubmitted = true;
+				} else {
+					decorated.reviewSubmitted = false;
+				}
+			}
+			return decorated;
+		},
+		findPaperReview(doc = {}) {
+			if (!doc.id) return null;
+			const records = uni.getStorageSync(REVIEW_KEY) || [];
+			// 记录按时间倒序 unshift，find 命中的是最新一条
+			return records.find(item => item.docId !== undefined && String(item.docId) === String(doc.id)) || null;
+		},
 		choosePaperImages(doc) {
+			// 已提交的试卷只展开查看（只读），不再上传/修改
+			if (doc.reviewSubmitted) {
+				doc.reviewExpanded = !doc.reviewExpanded;
+				return;
+			}
 			// 点击「上传试卷照片」展开试卷自评区域
 			doc.reviewExpanded = true;
 			uni.chooseImage({
@@ -333,6 +362,10 @@ export default {
 			});
 		},
 		savePaperReview(doc) {
+			if (doc.reviewSubmitted) {
+				uni.showToast({ title:'已提交，分数不可更改', icon:'none' });
+				return;
+			}
 			const totalText = String(doc.totalScore === undefined || doc.totalScore === null ? '' : doc.totalScore).trim();
 			const scoreText = String(doc.score === undefined || doc.score === null ? '' : doc.score).trim();
 			const wrongText = String(doc.wrongCount === undefined || doc.wrongCount === null ? '' : doc.wrongCount).trim();
@@ -363,6 +396,9 @@ export default {
 			const records = uni.getStorageSync(REVIEW_KEY) || [];
 			records.unshift(record);
 			uni.setStorageSync(REVIEW_KEY, records);
+			// 提交后锁定为只读，保持展开以显示已记录的分数
+			doc.reviewSubmitted = true;
+			doc.reviewExpanded = true;
 			uni.showToast({ title:'试卷自评已保存', icon:'success' });
 		},
 		formatDateTime(value) {
@@ -464,6 +500,7 @@ page { background:#f5f7fa; }
 .image-count { color:#94a3b8; font-size:23rpx; }
 .review-box { color:#334155; }
 .review-title { font-size:24rpx; font-weight:900; margin-bottom:12rpx; }
+.review-locked-tag { margin-left:12rpx; padding:2rpx 12rpx; border-radius:999rpx; background:#eef2f7; color:#64748b; font-size:20rpx; font-weight:800; }
 .score-line { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
 .score-field {
 	min-width:0;
@@ -478,10 +515,13 @@ page { background:#f5f7fa; }
 	font-size:23rpx;
 }
 .score-field text { flex-shrink:0; }
+.score-field.locked { background:#f1f5f9; border-color:#e2e8f0; }
 .score-unit { color:#94a3b8; }
 .score-input { flex:1; min-width:0; height:58rpx; margin:0 8rpx; text-align:center; font-size:25rpx; color:#1f2933; font-weight:800; }
 .score-input.small { width:auto; }
+.score-input:disabled { color:#475569; }
 .save-review { margin-top:16rpx; height:62rpx; line-height:62rpx; text-align:center; border-radius:10rpx; background:#3aa3f5; color:#fff; font-size:25rpx; font-weight:900; }
+.save-review.locked { background:#eef2f7; color:#64748b; font-weight:800; }
 .paper-note { padding:0 22rpx 22rpx; color:#667085; font-size:23rpx; line-height:1.6; }
 @media screen and (max-width: 420px) {
 	.doc-card, .paper-main { align-items:flex-start; }
