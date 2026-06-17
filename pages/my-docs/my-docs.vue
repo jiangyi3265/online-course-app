@@ -80,30 +80,33 @@
 
 					<view class="paper-review">
 						<view class="review-top">
-							<view class="upload-btn" @click="choosePaperImages(doc)">上传试卷照片</view>
+							<view class="upload-btn" :class="{active: doc.reviewExpanded}" @click="choosePaperImages(doc)">上传试卷照片</view>
 							<view class="image-count">{{(doc.images || []).length}}/3 张</view>
 						</view>
-						<view class="review-box">
-							<view class="review-title">试卷自评：</view>
-							<view class="score-line">
-								<view class="score-field">
-									<text>总分</text>
-									<input class="score-input" type="number" v-model="doc.totalScore" />
-									<text class="score-unit">分</text>
-								</view>
-								<view class="score-field">
-									<text>得分</text>
-									<input class="score-input" type="number" v-model="doc.score" />
-									<text class="score-unit">分</text>
-								</view>
-								<view class="score-field">
-									<text>错题</text>
-									<input class="score-input small" type="number" v-model="doc.wrongCount" />
-									<text class="score-unit">道</text>
+						<!-- 试卷自评默认折叠，点击「上传试卷照片」后展开 -->
+						<view class="review-collapse" v-if="doc.reviewExpanded">
+							<view class="review-box">
+								<view class="review-title">试卷自评：</view>
+								<view class="score-line">
+									<view class="score-field">
+										<text>总分</text>
+										<input class="score-input" type="number" v-model="doc.totalScore" />
+										<text class="score-unit">分</text>
+									</view>
+									<view class="score-field">
+										<text>得分</text>
+										<input class="score-input" type="number" v-model="doc.score" />
+										<text class="score-unit">分</text>
+									</view>
+									<view class="score-field">
+										<text>错题</text>
+										<input class="score-input small" type="number" v-model="doc.wrongCount" />
+										<text class="score-unit">道</text>
+									</view>
 								</view>
 							</view>
+							<view class="save-review" @click="savePaperReview(doc)">保存记录</view>
 						</view>
-						<view class="save-review" @click="savePaperReview(doc)">保存记录</view>
 					</view>
 					<view class="paper-note">线下试卷在学生自评后记录，记录可在【学习报告】的练习统计中同步统计。</view>
 				</view>
@@ -179,7 +182,7 @@ export default {
 			try {
 				const docs = await getMyDocs(this.activeKeyword(), this.courseId);
 				const withFallbackDocs = this.ensureCategoryDocs(docs || []);
-				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => ({ ...doc }));
+				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => ({ ...doc, reviewExpanded:false }));
 				await this.syncDocFavorites();
 			} catch (err) {
 				console.warn('文档接口不可用，使用本地文档', err);
@@ -191,7 +194,7 @@ export default {
 			const key = this.activeKeyword().toLowerCase();
 			const matched = this.filterDocs(LOCAL_DOCS, key);
 			const list = matched.length ? matched : this.filterDocs(this.createCourseFallbackDocs(), key);
-			return list.map(doc => ({ ...doc }));
+			return list.map(doc => ({ ...doc, reviewExpanded:false }));
 		},
 		activeKeyword() {
 			const keyword = this.kw.trim();
@@ -319,6 +322,8 @@ export default {
 			uni.showToast({ title:'文件下载已准备', icon:'none' });
 		},
 		choosePaperImages(doc) {
+			// 点击「上传试卷照片」展开试卷自评区域
+			doc.reviewExpanded = true;
 			uni.chooseImage({
 				count: 3,
 				success: res => {
@@ -454,7 +459,8 @@ page { background:#f5f7fa; }
 .doc-open { color:#0f766e; background:#ecfdf5; }
 .paper-review { margin:0 22rpx 18rpx; padding:18rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #e9eef5; }
 .review-top { display:flex; align-items:center; justify-content:space-between; gap:16rpx; margin-bottom:16rpx; }
-.upload-btn { min-width:180rpx; height:58rpx; line-height:58rpx; text-align:center; border-radius:10rpx; color:#1d4ed8; font-size:24rpx; font-weight:800; background:#eef6ff; border:1rpx solid #cfe1ff; }
+.upload-btn { min-width:180rpx; height:58rpx; line-height:58rpx; text-align:center; border-radius:10rpx; color:#1d4ed8; font-size:24rpx; font-weight:800; background:#eef6ff; border:1rpx solid #cfe1ff; cursor:pointer; }
+.upload-btn.active { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
 .image-count { color:#94a3b8; font-size:23rpx; }
 .review-box { color:#334155; }
 .review-title { font-size:24rpx; font-weight:900; margin-bottom:12rpx; }

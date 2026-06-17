@@ -34,6 +34,45 @@
 					<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
 				</view>
 				<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
+				<!-- 控件与视频融合：覆盖在视频底部；全屏时改用原生控件 -->
+				<view class="player-controls" v-if="!videoError && !isWebFullscreen">
+					<view
+						class="player-progress-track"
+						@click.stop="seekByClick"
+						@mousedown.stop.prevent="startSeekDrag"
+						@touchstart.stop.prevent="startSeekDrag"
+						@touchmove.stop.prevent="onSeekDrag"
+						@touchend.stop.prevent="endSeekDrag"
+						@touchcancel.stop.prevent="endSeekDrag"
+					>
+						<view class="player-progress-fill" :style="{width: percent + '%'}">
+							<view class="player-progress-thumb"></view>
+						</view>
+					</view>
+					<view class="player-control-row">
+						<view class="control-button play-button" @click.stop="toggleVideoPlayback">{{videoPlaying ? 'Ⅱ' : '▶'}}</view>
+						<view class="control-time">
+							<text>{{curTime}}</text>
+							<text class="time-sep">/</text>
+							<text>{{totalTime}}</text>
+						</view>
+						<view class="control-spacer"></view>
+						<view class="desktop-speed-wrap">
+							<view class="desktop-speed-menu" v-if="showSpeedMenu">
+								<view
+									class="desktop-speed-item"
+									v-for="rate in playbackRates"
+									:key="rate"
+									:class="{active: playbackRate === rate}"
+									@click.stop="setPlaybackRate(rate)"
+								>{{rateLabel(rate)}}</view>
+							</view>
+							<view class="control-button rate-button" :class="{active: showSpeedMenu}" @click.stop="toggleSpeedMenu">{{rateLabel(playbackRate)}}</view>
+						</view>
+						<view class="control-button volume-button" :class="{muted: muted || volume === 0}" @click.stop="toggleMute">{{volumeIcon}}</view>
+						<view class="control-button fullscreen-button" :class="{active:isWebFullscreen}" @click.stop="toggleWebFullscreen">⛶</view>
+					</view>
+				</view>
 			</view>
 		</view>
 
@@ -41,48 +80,9 @@
 		<view class="section">
 			<view class="section-left">
 				<text class="s-title">本节内容</text>
-				<text class="watch-progress">已学 {{percent}}% · {{curTime}} / {{totalTime}}</text>
+				<!-- 已学进度仅后台记录，不在页面展示 -->
 			</view>
 			<text class="s-page">{{page}}/{{pageTotal}}</text>
-		</view>
-
-		<view class="player-controls" v-if="!videoError">
-			<view
-				class="player-progress-track"
-				@click.stop="seekByClick"
-				@mousedown.stop.prevent="startSeekDrag"
-				@touchstart.stop.prevent="startSeekDrag"
-				@touchmove.stop.prevent="onSeekDrag"
-				@touchend.stop.prevent="endSeekDrag"
-				@touchcancel.stop.prevent="endSeekDrag"
-			>
-				<view class="player-progress-fill" :style="{width: percent + '%'}">
-					<view class="player-progress-thumb"></view>
-				</view>
-			</view>
-			<view class="player-control-row">
-				<view class="control-button play-button" @click.stop="toggleVideoPlayback">{{videoPlaying ? 'Ⅱ' : '▶'}}</view>
-				<view class="control-time">
-					<text>{{curTime}}</text>
-					<text class="time-sep">/</text>
-					<text>{{totalTime}}</text>
-				</view>
-				<view class="control-spacer"></view>
-				<view class="desktop-speed-wrap">
-					<view class="desktop-speed-menu" v-if="showSpeedMenu">
-						<view
-							class="desktop-speed-item"
-							v-for="rate in playbackRates"
-							:key="rate"
-							:class="{active: playbackRate === rate}"
-							@click.stop="setPlaybackRate(rate)"
-						>{{rateLabel(rate)}}</view>
-					</view>
-					<view class="control-button rate-button" :class="{active: showSpeedMenu}" @click.stop="toggleSpeedMenu">{{rateLabel(playbackRate)}}</view>
-				</view>
-				<view class="control-button volume-button" :class="{muted: muted || volume === 0}" @click.stop="toggleMute">{{volumeIcon}}</view>
-				<view class="control-button fullscreen-button" :class="{active:isWebFullscreen}" @click.stop="toggleWebFullscreen">⛶</view>
-			</view>
 		</view>
 
 		<view class="rating-panel">
@@ -728,13 +728,15 @@ page { background:#fff; }
 	margin-top:8rpx;
 	font-size:24rpx;
 }
+/* 控件与视频融合：覆盖在视频底部的半透明控制条 */
 .player-controls {
-	margin:0 24rpx 18rpx;
-	padding:16rpx 18rpx;
-	border-radius:14rpx;
-	background:#f8fbff;
-	border:1rpx solid #e1ecf7;
-	box-shadow:0 4rpx 12rpx rgba(15,23,42,.04);
+	position:absolute;
+	left:0;
+	right:0;
+	bottom:0;
+	z-index:6;
+	padding:18rpx 20rpx;
+	background:linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.5) 42%, rgba(15,23,42,.82) 100%);
 }
 .player-progress-track {
 	position:relative;
@@ -753,7 +755,7 @@ page { background:#fff; }
 	height:8rpx;
 	transform:translateY(-50%);
 	border-radius:999rpx;
-	background:#e1e9f3;
+	background:rgba(255,255,255,.32);
 }
 .player-progress-fill {
 	position:relative;
@@ -788,12 +790,11 @@ page { background:#fff; }
 	line-height:48rpx;
 	text-align:center;
 	border-radius:999rpx;
-	background:#fff;
-	color:#1f2937;
-	border:1rpx solid #d5e2ef;
+	background:rgba(255,255,255,.16);
+	color:#fff;
+	border:1rpx solid rgba(255,255,255,.3);
 	font-size:22rpx;
 	font-weight:800;
-	box-shadow:0 3rpx 8rpx rgba(15,23,42,.05);
 	cursor:pointer;
 }
 .play-button {
@@ -804,19 +805,20 @@ page { background:#fff; }
 }
 .control-button.active,
 .control-button.muted {
-	background:#e8f3ff;
-	color:#1677d2;
-	border-color:#a8d3ff;
+	background:rgba(22,119,210,.92);
+	color:#fff;
+	border-color:rgba(255,255,255,.55);
 }
 .control-time {
-	color:#334155;
+	color:#fff;
 	font-size:23rpx;
 	font-weight:700;
 	white-space:nowrap;
+	text-shadow:0 1rpx 4rpx rgba(0,0,0,.35);
 }
 .time-sep {
 	margin:0 6rpx;
-	color:#94a3b8;
+	color:rgba(255,255,255,.6);
 }
 .control-spacer {
 	flex:1;
@@ -860,22 +862,6 @@ page { background:#fff; }
 	min-width:0;
 }
 .s-title { font-size:30rpx; color:#222; font-weight:800; }
-.watch-progress {
-	margin-top:10rpx;
-	display:inline-flex;
-	align-items:center;
-	width:max-content;
-	max-width:520rpx;
-	padding:6rpx 14rpx;
-	border-radius:999rpx;
-	background:#fff1f2;
-	color:#ff4f55;
-	border:1rpx solid #ffd6d9;
-	font-size:23rpx;
-	font-weight:800;
-	line-height:1.25;
-	letter-spacing:0;
-}
 .s-page { font-size:28rpx; color:#999; padding-top:2rpx; }
 
 /* 讲点卡 */

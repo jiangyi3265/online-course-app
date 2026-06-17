@@ -316,8 +316,17 @@ export default {
 		},
 		toValidDate(value) {
 			if (!value) return null;
-			const date = value instanceof Date ? value : new Date(String(value).replace(/-/g, '/'));
-			return Number.isNaN(date.getTime()) ? null : date;
+			if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+			const str = String(value).trim();
+			// 后端返回形如 2026-06-17T20:55:56.214090116（带 T 分隔符与纳秒），
+			// 用正则提取年月日时分秒，避免 new Date 在不同平台上解析失败。
+			const match = str.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+			if (match) {
+				const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4] || 0), Number(match[5] || 0), Number(match[6] || 0));
+				return Number.isNaN(date.getTime()) ? null : date;
+			}
+			const fallback = new Date(str.replace(/-/g, '/'));
+			return Number.isNaN(fallback.getTime()) ? null : fallback;
 		},
 		formatDate(date, fallback = '') {
 			if (!date) return String(fallback).slice(0, 10) || '--';
@@ -327,7 +336,8 @@ export default {
 		formatDateTime(date, fallback = '') {
 			if (!date) return fallback || '--';
 			const pad = value => String(value).padStart(2, '0');
-			return `${this.formatDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+			// 统一展示为【年月日时分秒】：2026-06-17 20:55:56
+			return `${this.formatDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 		},
 		normalizePracticeRecord(item = {}, index = 0) {
 			const rawTime = this.practiceTimeValue(item);
@@ -346,12 +356,8 @@ export default {
 		formatPracticeTime(item = {}) {
 			const rawTime = this.practiceTimeValue(item);
 			const date = this.toValidDate(rawTime);
-			if (!date) return rawTime || '--';
-			return this.formatChineseDateTime(date);
-		},
-		formatChineseDateTime(date) {
-			const pad = value => String(value).padStart(2, '0');
-			return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${pad(date.getHours())}点${pad(date.getMinutes())}分`;
+			// 统一展示为【年月日时分秒】，与学习记录保持一致
+			return this.formatDateTime(date, rawTime);
 		},
 		formatDuration(value) {
 			if (value === undefined || value === null || value === '') return '--';
