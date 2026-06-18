@@ -65,7 +65,7 @@
 						</view>
 						<view class="chap-sub" v-if="c.open">
 							<view class="sub-row" v-for="(s,j) in c.items" :key="j">
-								<text class="sub-title">{{s.title || s}}</text>
+								<text class="sub-title">{{ lessonHeader(i, j, s) }}</text>
 								<view class="sub-right">
 									<text class="lock" v-if="locked">🔒</text>
 									<text class="caret">›</text>
@@ -80,7 +80,7 @@
 											</view>
 										</view>
 										<view class="child-actions">
-											<view class="child-btn go" :class="{locked: childLessonLocked(child, s)}" @click.stop="goLesson(c, s, child, j)">{{ childLessonLocked(child, s) ? '🔒未解锁' : (child.type===2 ? '去练习' : '去学习') }}</view>
+											<view class="child-btn go" :class="{locked: childLessonLocked(child, s)}" @click.stop="goLesson(c, s, child, j, i)">{{ childLessonLocked(child, s) ? '🔒未解锁' : (child.type===2 ? '去练习' : '去学习') }}</view>
 											<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 										</view>
 									</view>
@@ -508,11 +508,34 @@ export default {
 			uni.showToast({ title:'课程权限未开通或已关闭', icon:'none' });
 			return false;
 		},
-		childName(child, chapter, lesson, lessonIndex) {
-			if (this.versionIndex === 0) {
-				return Number(child.type) === 2 ? this.reinforceTestName(chapter, lesson, lessonIndex, child) : this.reinforceLessonName(chapter, lesson, child, lessonIndex);
+		cleanLessonName(value) {
+			// 去掉后台名字开头的连续编号（如「12.」），避免和自动编号重复；占位名视为空
+			const raw = String((value && value.title) || value || '').trim();
+			const stripped = raw.replace(/^\s*\d+\s*[.．、]\s*/, '').trim();
+			if (!stripped || /^章节内容\d+$/.test(stripped)) return '';
+			return stripped;
+		},
+		lessonSeq(chapterIndex, lessonIndex) {
+			// 小节序号跨章节连续累加（按当前版本的章节顺序）
+			const chapters = this.chapters || [];
+			let count = 0;
+			for (let k = 0; k < chapterIndex && k < chapters.length; k++) {
+				const items = (chapters[k] && (chapters[k].items || chapters[k].children)) || [];
+				count += items.length;
 			}
-			return Number(child.type) === 2 ? (this.practiceBankName(child, lesson) || child.name || '真题讲练') : (child.name || lesson.title || '技巧绝招课');
+			return count + (Number(lessonIndex) || 0) + 1;
+		},
+		lessonHeader(chapterIndex, lessonIndex, lesson) {
+			return `${this.lessonSeq(chapterIndex, lessonIndex)}.${this.cleanLessonName(lesson)}`;
+		},
+		childName(child, chapter, lesson, lessonIndex) {
+			const name = this.cleanLessonName(lesson);
+			if (this.versionIndex === 0) {
+				// 复习加强课：视频统一「复习加强【小节名】」，练习统一「复习测试【小节名】」
+				return Number(child.type) === 2 ? `复习测试【${name}】` : `复习加强【${name}】`;
+			}
+			// 技巧绝招课：练习库统一「真题讲练」，视频保持「技巧干货」
+			return Number(child.type) === 2 ? '真题讲练' : (child.name || '技巧干货');
 		},
 		reinforceLessonName(chapter, lesson, child = {}, lessonIndex = 0) {
 			return `复习加强【${this.lessonDisplayName(lesson, child, chapter, lessonIndex)}】`;
@@ -663,27 +686,31 @@ export default {
 				success: () => uni.showToast({ title:'微信号已复制', icon:'success' })
 			});
 		},
-		goLesson(chapter, lesson, child, lessonIndex) {
+		goLesson(chapter, lesson, child, lessonIndex, chapterIndex) {
 			this.collapseCheckinPanel();
 			if (!this.ensureUnlocked()) return;
 			if (this.childLessonLocked(child, lesson)) {
 				this.toast(Number(child.type) === 2 ? '请先将本节课视频观看至95%，再做配套练习' : '请按课程顺序学习：完成上一节视频（达95%）及其配套练习后解锁本节');
 				return;
 			}
+			const rawTitle = lesson.title || lesson;              // 进度/解锁/完成 的稳定 key（不可变）
+			const seq = this.lessonSeq(chapterIndex, lessonIndex);
+			const name = this.cleanLessonName(lesson);
+			const recordLabel = suffix => `【${seq}.${name}】${suffix}`;
 			if (child.type === 2) {
-				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex, child) : (this.practiceBankName(child, lesson) || lesson.title || lesson);
-				const type = this.versionIndex === 0 ? 'reinforce' : 'practice';
-				const practiceTitle = lesson.title || lesson;
+				const isReinforce = this.versionIndex === 0;
+				const type = isReinforce ? 'reinforce' : 'practice';
+				// 复习加强课记录定位为「【序号.小节名】复习测试」；技巧绝招课保留题库标题以便正确取题
+				const title = isReinforce ? recordLabel('复习测试') : (this.practiceBankName(child, lesson) || rawTitle);
 				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
 					? child.questionIds
 					: (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
-				const modeTitle = this.versionIndex === 0 ? '知识点巩固' : '';
-				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&modeTitle=${encodeURIComponent(modeTitle)}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(practiceTitle)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
+				const modeTitle = isReinforce ? '知识点巩固' : '';
+				uni.navigateTo({ url:`/pages/practice/practice?type=${type}&modeTitle=${encodeURIComponent(modeTitle)}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(rawTitle)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
-			const lessonTitle = lesson.title || lesson;
-			const title = this.versionIndex === 0 ? this.reinforceLessonName(chapter, lesson, child, lessonIndex) : lessonTitle;
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(title)}&lessonId=${encodeURIComponent(lessonTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}` });
+			const videoLabel = this.versionIndex === 0 ? '复习加强' : '技巧绝招';
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(recordLabel(videoLabel))}&lessonId=${encodeURIComponent(rawTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}` });
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '2026-05-26';
