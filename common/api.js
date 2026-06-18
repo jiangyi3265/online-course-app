@@ -256,8 +256,13 @@ export function getAdminDashboard() {
 	return request('/dashboard', { admin: true })
 }
 
-export function getPractice(title, questionIds = [], type = 'practice', courseId = '') {
-	return request('/practice', { params: { title, questionIds: questionIds.join(','), type, courseId } })
+export function getPractice(title, questionIds = [], type = 'practice', courseId = '', practiceTitle = '') {
+	return request('/practice', { params: { title, questionIds: questionIds.join(','), type, courseId, practiceTitle } })
+}
+
+// 月卡顺序解锁：获取本课程被锁定的课时视频/配套练习标题
+export function getLessonLocks(courseId = '') {
+	return request('/course/lesson-locks', { params: { courseId } })
 }
 
 export function submitPractice(payload) {

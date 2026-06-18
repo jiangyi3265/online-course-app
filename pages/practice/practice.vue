@@ -354,7 +354,7 @@ export default {
 						? await getReinforcePractice(this.pointId)
 						: this.type === 'wrongRetry'
 							? await getWrongRetry(this.count, this.source, this.courseId)
-							: await getPractice(practiceLookupTitle, this.questionIds, this.type, this.courseId);
+							: await getPractice(practiceLookupTitle, this.questionIds, this.type, this.courseId, this.practiceTitle);
 				if (!usePracticeLookup) this.title = data.title || this.title;
 				this.questions = (data.questions || []).map(item => this.normalizeQuestionMedia(item));
 				this.sourceWrongIds = data.sourceWrongIds || [];
@@ -371,7 +371,9 @@ export default {
 					uni.showToast({ title: '当前没有可重练的错题', icon: 'none' });
 				}
 			} catch (err) {
-				uni.showToast({ title: err.message || '加载失败', icon: 'none' });
+				const msg = (err && err.message) || '加载失败';
+				uni.showToast({ title: msg, icon: 'none' });
+				if (/95%|解锁|顺序/.test(msg)) setTimeout(() => uni.navigateBack({ fail: () => {} }), 1200);
 			}
 		},
 		async submit() {
@@ -399,6 +401,7 @@ export default {
 					questionIds: this.questions.map(item => item.id),
 					sourceWrongIds: this.sourceWrongIds,
 					courseId: this.courseId,
+					practiceTitle: this.practiceTitle,
 					quizId: this.title
 				};
 				const result = this.type === 'quiz' ? await submitQuiz(payload) : await submitPractice(payload);

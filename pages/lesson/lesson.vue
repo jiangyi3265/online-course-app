@@ -33,9 +33,14 @@
 					<view class="video-error-title">视频暂时无法加载</view>
 					<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
 				</view>
+				<view class="lesson-lock" v-if="lessonLocked">
+					<view class="lesson-lock-ico">🔒</view>
+					<view class="lesson-lock-title">本节暂未解锁</view>
+					<view class="lesson-lock-sub">{{lockReason}}</view>
+				</view>
 				<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
 				<!-- 控件与视频融合：覆盖在视频底部；全屏时改用原生控件 -->
-				<view class="player-controls" v-if="!videoError && !isWebFullscreen">
+				<view class="player-controls" v-if="!videoError && !lessonLocked && !isWebFullscreen">
 					<view
 						class="player-progress-track"
 						@click.stop="seekByClick"
@@ -132,6 +137,8 @@ export default {
 			durationSeconds: 0,
 			percent: 0,
 			videoError: false,
+			lessonLocked: false,
+			lockReason: '',
 			videoPlaying: false,
 			progressSaved: false,
 			lastSavedAt: 0,
@@ -235,6 +242,14 @@ export default {
 		async loadLesson() {
 			try {
 				const data = await getLessonVideo(this.lessonId || this.title, this.courseId);
+				if (data.locked) {
+					// 月卡顺序解锁：本节未解锁，仅展示提示，不加载视频
+					this.lessonLocked = true;
+					this.lockReason = data.lockReason || '请按课程顺序学习后再观看本节';
+					this.videoUrl = '';
+					return;
+				}
+				this.lessonLocked = false;
 				this.videoUrl = data.videoUrl || '';
 				this.poster = data.poster || '';
 				this.pageTotal = data.pageTotal || 1;
@@ -728,6 +743,21 @@ page { background:#fff; }
 	margin-top:8rpx;
 	font-size:24rpx;
 }
+.lesson-lock {
+	position:absolute;
+	inset:0;
+	z-index:7;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	padding:30rpx;
+	text-align:center;
+	background:rgba(15,23,42,.86);
+}
+.lesson-lock-ico { font-size:64rpx; }
+.lesson-lock-title { margin-top:16rpx; color:#fff; font-size:30rpx; font-weight:800; }
+.lesson-lock-sub { margin-top:12rpx; max-width:520rpx; color:rgba(255,255,255,.82); font-size:24rpx; line-height:1.5; }
 /* 控件与视频融合：覆盖在视频底部的半透明控制条 */
 .player-controls {
 	position:absolute;

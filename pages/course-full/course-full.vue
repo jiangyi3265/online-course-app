@@ -80,7 +80,7 @@
 											</view>
 										</view>
 										<view class="child-actions">
-											<view class="child-btn go" @click.stop="goLesson(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
+											<view class="child-btn go" :class="{locked: childLessonLocked(child, s)}" @click.stop="goLesson(c, s, child, j)">{{ childLessonLocked(child, s) ? '🔒未解锁' : (child.type===2 ? '去练习' : '去学习') }}</view>
 											<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 										</view>
 									</view>
@@ -193,7 +193,7 @@
 
 <script>
 import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
-import { getCourse, getReinforce, resolveMediaUrl } from '@/common/api.js'
+import { getCourse, getLessonLocks, getReinforce, resolveMediaUrl } from '@/common/api.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
 	components: { StudyCheckinCard },
@@ -222,6 +222,9 @@ export default {
 			locked: true,
 			showFooter: true,
 			showAuth: false,
+			lockEnabled: false,
+			lockVideos: [],
+			lockPractices: [],
 			wechatId: 'DYR7314',
 			courseId: 'gk-math-full',
 			reinforceList: [],
@@ -291,7 +294,29 @@ export default {
 			this.versions = this.normalizeVersions({}, this.chapters);
 		}
 	},
+	onShow() {
+		// 每次进入/返回都刷新解锁状态（看完上一节后下一节自动解锁）
+		this.loadLessonLocks();
+	},
 	methods: {
+		async loadLessonLocks() {
+			try {
+				const data = await getLessonLocks(this.courseId);
+				this.lockEnabled = !!(data && data.enabled);
+				this.lockVideos = (data && data.lockedVideos) || [];
+				this.lockPractices = (data && data.lockedPractices) || [];
+			} catch (e) {
+				this.lockEnabled = false;
+				this.lockVideos = [];
+				this.lockPractices = [];
+			}
+		},
+		childLessonLocked(child, lesson) {
+			if (!this.lockEnabled) return false;
+			const title = (lesson && lesson.title) || '';
+			if (!title) return false;
+			return Number(child.type) === 2 ? this.lockPractices.includes(title) : this.lockVideos.includes(title);
+		},
 		async loadCourse(id) {
 			try {
 				const course = await getCourse(id);
@@ -321,6 +346,7 @@ export default {
 			this.quizzes = course.quizzes || this.quizzes;
 			this.applyCourseAccess(course);
 			this.setVersion(0);
+			this.loadLessonLocks();
 		},
 		applyCourseAccess(course = {}) {
 			const unlocked = this.hasCourseAccess(course);
@@ -380,6 +406,7 @@ export default {
 			this.locked = true;
 			this.showFooter = true;
 			this.setVersion(0);
+			this.loadLessonLocks();
 		},
 		setVersion(i) {
 			this.collapseCheckinPanel();
@@ -639,6 +666,10 @@ export default {
 		goLesson(chapter, lesson, child, lessonIndex) {
 			this.collapseCheckinPanel();
 			if (!this.ensureUnlocked()) return;
+			if (this.childLessonLocked(child, lesson)) {
+				this.toast(Number(child.type) === 2 ? '请先将本节课视频观看至95%，再做配套练习' : '请按课程顺序学习：完成上一节视频（达95%）及其配套练习后解锁本节');
+				return;
+			}
 			if (child.type === 2) {
 				const title = this.versionIndex === 0 ? this.reinforceTestName(chapter, lesson, lessonIndex, child) : (this.practiceBankName(child, lesson) || lesson.title || lesson);
 				const type = this.versionIndex === 0 ? 'reinforce' : 'practice';
@@ -873,6 +904,7 @@ page { background:#f5f7fa; }
 	cursor:pointer;
 }
 .child-btn.go { background:#3aa3f5; }
+.child-btn.go.locked { background:#c2c8d0; }
 .child-btn.ai { background:#2bb673; }
 /* 章节扫雷 */
 .quiz-list { padding: 16rpx 24rpx; }
