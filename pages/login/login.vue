@@ -77,7 +77,6 @@
 </template>
 
 <script>
-	import { OFFICIAL_USER } from '@/common/course-data.js'
 	import { bindReferrer, login, resetPassword, saveSession, sendSmsCode } from '@/common/api.js'
 	export default {
 		data() {
@@ -196,7 +195,6 @@
 				}
 
 				const accounts = [
-					{ phone: OFFICIAL_USER.phone, password: OFFICIAL_USER.password, name: OFFICIAL_USER.name, id: OFFICIAL_USER.id, tenantId: OFFICIAL_USER.tenantId, role: 'admin' },
 					{ phone: '13800138000', password: '123456', name: '张同学', id: '56596' },
 					{ phone: '13900139000', password: '123456', name: '李同学', id: '56597' },
 					{ phone: '18888888888', password: '888888', name: '王老师', id: '10001' }

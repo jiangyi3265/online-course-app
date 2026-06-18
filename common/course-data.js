@@ -46,7 +46,6 @@ export function cleanCourseDisplayName(value = '', fallback = '') {
 
 export const OFFICIAL_USER = {
 	phone: '15585827319',
-	password: 'dyr594200',
 	name: '规划提升邓老师',
 	id: '33075',
 	tenantId: 52
