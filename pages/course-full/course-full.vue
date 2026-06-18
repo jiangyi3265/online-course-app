@@ -65,12 +65,14 @@
 						</view>
 						<view class="chap-sub" v-if="c.open">
 							<view class="sub-row" v-for="(s,j) in c.items" :key="j">
-								<text class="sub-title">{{ lessonHeader(i, j, s) }}</text>
-								<view class="sub-right">
-									<text class="lock" v-if="locked">🔒</text>
-									<text class="caret">›</text>
+								<view class="sub-head" @click.stop="toggleLesson(i, j)">
+									<text class="sub-title">{{ lessonHeader(i, j, s) }}</text>
+									<view class="sub-right">
+										<text class="lock" v-if="locked">🔒</text>
+										<text class="caret" :class="{open: s.open}">{{s.open ? '⌄' : '›'}}</text>
+									</view>
 								</view>
-								<view class="lesson-children" v-if="s.children && s.children.length">
+								<view class="lesson-children" v-if="s.open && s.children && s.children.length">
 									<view class="lesson-child" v-for="(child,k) in s.children" :key="k">
 										<view class="child-left">
 											<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
@@ -135,8 +137,14 @@
 						</view>
 						<view class="chap-sub" v-if="c.open">
 							<view class="sub-row" v-for="(s,j) in c.items" :key="j">
-								<text class="sub-title">{{s.title || s}}</text>
-								<view class="lesson-children" v-if="s.children && s.children.length">
+								<view class="sub-head" @click.stop="toggleKnowledgeLesson(i, j)">
+									<text class="sub-title">{{s.title || s}}</text>
+									<view class="sub-right">
+										<text class="lock" v-if="locked">🔒</text>
+										<text class="caret" :class="{open: s.open}">{{s.open ? '⌄' : '›'}}</text>
+									</view>
+								</view>
+								<view class="lesson-children" v-if="s.open && s.children && s.children.length">
 									<view class="lesson-child" v-for="(child,k) in s.children" :key="k">
 										<view class="child-left">
 											<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
@@ -230,26 +238,8 @@ export default {
 			reinforceList: [],
 			reinforceLoaded: false,
 			knowledgeChapters: [],
-			chapters: [
-				{ title:'一、基础运用提升系列', open:true, items:[
-					'巧辨字音字形','词语理解运用','病句辨析解题技巧','文学文化常识突破','句子的连贯得体',
-					'拟写、仿写解题技巧','图文转换技巧','标点符号辨析','书法类考点突破','修辞手法答题技巧','对联题解题技巧'
-				]},
-				{ title:'二、现代文阅读提升系列', open:false, items:[] },
-				{ title:'三、古诗文提升系列', open:false, items:[] },
-				{ title:'四、作文提升系列', open:false, items:[] }
-			],
-			quizzes: [
-				{ name:'入门测' },
-				{ name:'第一章 汉字' },
-				{ name:'第二章 词汇' },
-				{ name:'第三章 句子' },
-				{ name:'第四章 文学文化常识' },
-				{ name:'第五章 名篇名句默写' },
-				{ name:'第六章 语言表达的要求' },
-				{ name:'第七章 语言表达的应用' },
-				{ name:'第八章 文言文阅读' }
-			]
+			chapters: [],
+			quizzes: []
 		}
 	},
 	computed: {
@@ -341,9 +331,9 @@ export default {
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
-			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
+			this.versions = this.normalizeVersions(course, Array.isArray(course.chapters) ? course.chapters : []);
 			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
-			this.quizzes = course.quizzes || this.quizzes;
+			this.quizzes = Array.isArray(course.quizzes) ? course.quizzes : [];
 			this.applyCourseAccess(course);
 			this.setVersion(0);
 			this.loadLessonLocks();
@@ -380,9 +370,24 @@ export default {
 			this.collapseCheckinPanel();
 			this.chapters[i].open = !this.chapters[i].open;
 		},
+		toggleLesson(chapterIndex, lessonIndex) {
+			this.toggleLessonIn(this.chapters, chapterIndex, lessonIndex);
+		},
 		toggleKnowledge(i) {
 			this.collapseCheckinPanel();
 			this.knowledgeChapters[i].open = !this.knowledgeChapters[i].open;
+		},
+		toggleKnowledgeLesson(chapterIndex, lessonIndex) {
+			this.toggleLessonIn(this.knowledgeChapters, chapterIndex, lessonIndex);
+		},
+		toggleLessonIn(chapters, chapterIndex, lessonIndex) {
+			this.collapseCheckinPanel();
+			const chapter = chapters && chapters[chapterIndex];
+			const items = chapter && (chapter.items || chapter.children);
+			const lesson = items && items[lessonIndex];
+			if (!lesson) return;
+			if (this.$set) this.$set(lesson, 'open', !lesson.open);
+			else lesson.open = !lesson.open;
 		},
 		applyMathCourse() {
 			const course = getGaokaoMathCourse('full');
@@ -411,20 +416,23 @@ export default {
 		setVersion(i) {
 			this.collapseCheckinPanel();
 			this.versionIndex = i;
-			if (this.versions[i] && this.versions[i].chapters && this.versions[i].chapters.length) this.chapters = this.versions[i].chapters;
+			const version = this.versions[i];
+			this.chapters = version && Array.isArray(version.chapters) ? version.chapters : [];
 		},
 		normalizeVersions(course = {}, fallbackChapters = []) {
-			const baseChapters = course.chapters || fallbackChapters || [];
+			const baseChapters = Array.isArray(course.chapters) ? course.chapters : (Array.isArray(fallbackChapters) ? fallbackChapters : []);
 			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
-			const normalized = source.map((item, index) => ({
-				...(typeof item === 'object' ? item : { name: item }),
-				name: index === 0 ? '复习加强课' : '技巧绝招课',
-				chapters: (item && item.chapters) || (index === 2 ? [] : baseChapters)
-			}));
+			const normalized = source.length
+				? source.map((item, index) => ({
+					...(typeof item === 'object' ? item : { name: item }),
+					name: index === 0 ? '复习加强课' : (index === 1 ? '技巧绝招课' : '知识巩固'),
+					chapters: item && Array.isArray(item.chapters) ? item.chapters : []
+				}))
+				: [{ name: '复习加强课', chapters: baseChapters }];
 			while (normalized.length < 3) {
 				normalized.push({
 					name: normalized.length === 0 ? '复习加强课' : (normalized.length === 1 ? '技巧绝招课' : '知识巩固'),
-					chapters: normalized.length === 2 ? [] : baseChapters
+					chapters: []
 				});
 			}
 			normalized[0].name = '复习加强课';
@@ -887,11 +895,16 @@ page { background:#f5f7fa; }
 	background:#fff;
 	min-height:80rpx;
 	border-radius:10rpx;
-	display:flex; justify-content:space-between; align-items:center;
-	flex-wrap:wrap;
 	padding: 18rpx 30rpx;
 	margin-bottom: 12rpx;
 	box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.03);
+}
+.sub-head {
+	display:flex;
+	justify-content:space-between;
+	align-items:center;
+	width:100%;
+	cursor:pointer;
 }
 .sub-title { font-size:28rpx; color:#222; font-weight:600; max-width:560rpx; }
 .lesson-children { width:100%; padding-top:16rpx; }
