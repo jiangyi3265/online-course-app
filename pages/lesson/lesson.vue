@@ -8,7 +8,7 @@
 
 		<!-- 视频区 -->
 		<view class="lesson-player">
-			<view class="video-wrap">
+			<view class="video-wrap" @mousemove="markPlayerActivity" @touchstart="onPlayerTouchStart">
 				<video
 					id="lessonVideo"
 					class="video-player"
@@ -23,7 +23,7 @@
 					@loadedmetadata="onLoadedMeta"
 					@play="onPlay"
 					@pause="onPause"
-					@click="toggleVideoPlayback"
+					@click="onVideoTap"
 					@timeupdate="onTimeUpdate"
 					@ended="onEnded"
 					@fullscreenchange="onNativeFullscreenChange"
@@ -39,8 +39,8 @@
 					<view class="lesson-lock-sub">{{lockReason}}</view>
 				</view>
 				<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
-				<!-- 控件与视频融合：覆盖在视频底部；全屏时改用原生控件 -->
-				<view class="player-controls" v-if="!videoError && !lessonLocked && !isWebFullscreen">
+				<!-- 控件与视频融合：覆盖在视频底部；播放时 3 秒无操作自动隐藏，全屏时改用原生控件 -->
+				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked && !isWebFullscreen">
 					<view
 						class="player-progress-track"
 						@click.stop="seekByClick"
@@ -171,6 +171,9 @@ export default {
 			playbackRates: [2, 1.5, 1, 0.75, 0.5],
 			showSpeedMenu: false,
 			speedMenuTimer: null,
+			controlsVisible: true,
+			controlsHideTimer: null,
+			controlsWereHiddenOnTouch: false,
 			seekDragging: false,
 			volume: 80,
 			lastVolume: 80,
@@ -212,6 +215,7 @@ export default {
 	},
 	onUnload() {
 		this.clearSpeedMenuTimer();
+		this.clearControlsHideTimer();
 		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
 		this.setNativeVideoControls(false);
@@ -220,6 +224,7 @@ export default {
 	},
 	onHide() {
 		this.closeSpeedMenu();
+		this.clearControlsHideTimer();
 		this.unbindSeekDragListeners();
 		this.setNativeVideoControls(false);
 		this.exitWebFullscreen(false);
@@ -523,12 +528,25 @@ export default {
 		},
 		onPlay() {
 			this.videoPlaying = true;
+			this.scheduleControlsHide();
 		},
 		onPause() {
 			this.videoPlaying = false;
+			this.showControls();
+			this.clearControlsHideTimer();
+		},
+		onVideoTap() {
+			if (this.controlsWereHiddenOnTouch || !this.controlsVisible) {
+				this.controlsWereHiddenOnTouch = false;
+				this.markPlayerActivity();
+				return;
+			}
+			this.markPlayerActivity();
+			this.toggleVideoPlayback();
 		},
 		toggleVideoPlayback() {
 			if (this.videoError || !this.videoUrl) return;
+			this.markPlayerActivity();
 			const ctx = this.videoContext || uni.createVideoContext('lessonVideo', this);
 			this.videoContext = ctx;
 			if (this.videoPlaying) {
@@ -541,11 +559,14 @@ export default {
 		},
 		seekByClick(e) {
 			if (!this.durationSeconds) return;
+			this.markPlayerActivity();
 			this.applySeekFromEvent(e);
 		},
 		startSeekDrag(e) {
 			if (!this.durationSeconds) return;
 			this.seekDragging = true;
+			this.showControls();
+			this.clearControlsHideTimer();
 			this.closeSpeedMenu();
 			this.applySeekFromEvent(e);
 			if (typeof document !== 'undefined' && e && e.type === 'mousedown') {
@@ -563,6 +584,7 @@ export default {
 			this.seekDragging = false;
 			this.unbindSeekDragListeners();
 			this.persistProgress(false);
+			this.scheduleControlsHide();
 		},
 		unbindSeekDragListeners() {
 			if (typeof document === 'undefined') return;
@@ -624,23 +646,30 @@ export default {
 		onEnded() {
 			this.percent = 100;
 			this.videoPlaying = false;
+			this.showControls();
+			this.clearControlsHideTimer();
 			this.persistProgress(true);
 		},
 		onVideoError() {
 			this.videoError = true;
 			this.videoPlaying = false;
+			this.clearControlsHideTimer();
 		},
 		setPlaybackRate(rate) {
+			this.markPlayerActivity();
 			this.playbackRate = Number(rate) || 1;
 			this.applyPlaybackRate();
 			this.closeSpeedMenu();
 		},
 		toggleSpeedMenu() {
+			this.showControls();
+			this.clearControlsHideTimer();
 			this.showSpeedMenu = !this.showSpeedMenu;
 			if (this.showSpeedMenu) {
 				this.scheduleSpeedMenuClose();
 			} else {
 				this.clearSpeedMenuTimer();
+				this.scheduleControlsHide();
 			}
 		},
 		scheduleSpeedMenuClose() {
@@ -648,6 +677,7 @@ export default {
 			this.speedMenuTimer = setTimeout(() => {
 				this.showSpeedMenu = false;
 				this.speedMenuTimer = null;
+				this.scheduleControlsHide();
 			}, 3000);
 		},
 		clearSpeedMenuTimer() {
@@ -658,6 +688,31 @@ export default {
 		closeSpeedMenu() {
 			this.showSpeedMenu = false;
 			this.clearSpeedMenuTimer();
+			this.scheduleControlsHide();
+		},
+		markPlayerActivity() {
+			this.showControls();
+			this.scheduleControlsHide();
+		},
+		onPlayerTouchStart() {
+			this.controlsWereHiddenOnTouch = !this.controlsVisible;
+			this.markPlayerActivity();
+		},
+		showControls() {
+			this.controlsVisible = true;
+		},
+		scheduleControlsHide() {
+			this.clearControlsHideTimer();
+			if (!this.videoPlaying || this.seekDragging || this.showSpeedMenu || this.isWebFullscreen) return;
+			this.controlsHideTimer = setTimeout(() => {
+				this.controlsVisible = false;
+				this.controlsHideTimer = null;
+			}, 3000);
+		},
+		clearControlsHideTimer() {
+			if (!this.controlsHideTimer) return;
+			clearTimeout(this.controlsHideTimer);
+			this.controlsHideTimer = null;
 		},
 		applyPlaybackRate() {
 			this.$nextTick(() => {
@@ -674,6 +729,7 @@ export default {
 			return `${rate}x`;
 		},
 		toggleMute() {
+			this.markPlayerActivity();
 			if (this.muted || this.volume === 0) {
 				this.volume = this.lastVolume || 80;
 				this.muted = false;
@@ -875,13 +931,24 @@ page { background:#fff; }
 .lesson-lock-ico { font-size:64rpx; }
 .lesson-lock-title { margin-top:16rpx; color:#fff; font-size:30rpx; font-weight:800; }
 .lesson-lock-sub { margin-top:12rpx; max-width:520rpx; color:rgba(255,255,255,.82); font-size:24rpx; line-height:1.5; }
-/* 控件放在视频下方，避免遮挡授课画面 */
+/* 控件短暂覆盖底部，播放时 3 秒无操作自动隐藏，避免挡住授课画面 */
 .player-controls {
-	position:relative;
+	position:absolute;
+	left:0;
+	right:0;
+	bottom:0;
 	z-index:6;
-	padding:14rpx 20rpx 18rpx;
-	background:#0f172a;
-	border-top:1rpx solid rgba(255,255,255,.12);
+	padding:18rpx 20rpx;
+	background:linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.46) 42%, rgba(15,23,42,.82) 100%);
+	opacity:1;
+	transform:translateY(0);
+	pointer-events:auto;
+	transition:opacity .2s ease-out, transform .2s ease-out;
+}
+.player-controls.hidden {
+	opacity:0;
+	transform:translateY(18rpx);
+	pointer-events:none;
 }
 .player-progress-track {
 	position:relative;
