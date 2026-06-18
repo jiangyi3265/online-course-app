@@ -67,7 +67,10 @@
 					<view class="paper-main">
 						<view class="doc-icon">{{doc.fileType || 'PDF'}}</view>
 						<view class="doc-info">
-							<view class="doc-title">{{doc.title}}</view>
+							<view class="doc-title-line">
+								<view class="doc-title">{{doc.title}}</view>
+								<view class="paper-score-tag" v-if="doc.reviewSubmitted">已上传分数</view>
+							</view>
 							<view class="doc-meta">{{doc.size || '未知大小'}}</view>
 							<view class="doc-time">更新日期：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
 						</view>
@@ -80,8 +83,8 @@
 
 					<view class="paper-review">
 						<view class="review-top">
-							<view class="upload-btn" :class="{active: doc.reviewExpanded}" @click="choosePaperImages(doc)">上传试卷照片</view>
-							<view class="image-count">{{(doc.images || []).length}}/3 张</view>
+							<view class="upload-btn" :class="{active: doc.reviewExpanded}" @click="choosePaperImages(doc)">{{doc.reviewSubmitted ? '查看分数' : '上传试卷照片'}}</view>
+							<view class="image-count" :class="{submitted: doc.reviewSubmitted}">{{doc.reviewSubmitted ? '已上传分数' : `${paperImageCount(doc)}/3 张`}}</view>
 						</view>
 						<!-- 试卷自评默认折叠，点击「上传试卷照片」后展开 -->
 						<view class="review-collapse" v-if="doc.reviewExpanded">
@@ -332,6 +335,7 @@ export default {
 					decorated.score = review.score;
 					decorated.wrongCount = review.wrongCount;
 					decorated.images = review.images || [];
+					decorated.imageCount = Number(review.imageCount || (review.images || []).length || 0);
 					decorated.reviewSubmitted = true;
 				} else {
 					decorated.reviewSubmitted = false;
@@ -344,6 +348,9 @@ export default {
 			const records = uni.getStorageSync(REVIEW_KEY) || [];
 			// 记录按时间倒序 unshift，find 命中的是最新一条
 			return records.find(item => item.docId !== undefined && String(item.docId) === String(doc.id)) || null;
+		},
+		paperImageCount(doc = {}) {
+			return Number(doc.imageCount || ((doc.images || []).length) || 0);
 		},
 		choosePaperImages(doc) {
 			// 已提交的试卷只展开查看（只读），不再上传/修改
@@ -485,7 +492,9 @@ page { background:#f5f7fa; }
 .doc-card, .paper-main { display:flex; align-items:center; min-height:132rpx; padding:20rpx 22rpx; box-sizing:border-box; }
 .doc-icon { width:86rpx; height:86rpx; border-radius:8rpx; background:#edf7ff; color:#1684e8; display:flex; align-items:center; justify-content:center; font-size:22rpx; font-weight:900; flex-shrink:0; }
 .doc-info { flex:1; min-width:0; margin-left:20rpx; }
+.doc-title-line { display:flex; align-items:flex-start; gap:12rpx; min-width:0; }
 .doc-title { color:#1f2933; font-size:28rpx; font-weight:900; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.paper-score-tag { flex-shrink:0; margin-top:2rpx; padding:5rpx 12rpx; border-radius:999rpx; background:#eaf7ef; color:#16a05f; font-size:20rpx; font-weight:900; }
 .doc-meta, .doc-time { margin-top:8rpx; color:#697386; font-size:24rpx; }
 .doc-time { color:#6a5aa8; }
 .doc-actions { display:flex; align-items:center; gap:18rpx; margin-left:18rpx; flex-shrink:0; }
@@ -498,6 +507,7 @@ page { background:#f5f7fa; }
 .upload-btn { min-width:180rpx; height:58rpx; line-height:58rpx; text-align:center; border-radius:10rpx; color:#1d4ed8; font-size:24rpx; font-weight:800; background:#eef6ff; border:1rpx solid #cfe1ff; cursor:pointer; }
 .upload-btn.active { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
 .image-count { color:#94a3b8; font-size:23rpx; }
+.image-count.submitted { color:#16a05f; font-weight:900; }
 .review-box { color:#334155; }
 .review-title { font-size:24rpx; font-weight:900; margin-bottom:12rpx; }
 .review-locked-tag { margin-left:12rpx; padding:2rpx 12rpx; border-radius:999rpx; background:#eef2f7; color:#64748b; font-size:20rpx; font-weight:800; }
@@ -525,6 +535,7 @@ page { background:#f5f7fa; }
 .paper-note { padding:0 22rpx 22rpx; color:#667085; font-size:23rpx; line-height:1.6; }
 @media screen and (max-width: 420px) {
 	.doc-card, .paper-main { align-items:flex-start; }
+	.doc-title-line { flex-direction:column; gap:8rpx; }
 	.doc-actions { flex-direction:column; gap:10rpx; margin-left:12rpx; }
 	.score-line { grid-template-columns:1fr; }
 }

@@ -90,6 +90,30 @@
 			<text class="s-page">{{page}}/{{pageTotal}}</text>
 		</view>
 
+		<view class="lesson-content-list" v-if="chapterLessons.length">
+			<view
+				class="lesson-content-row"
+				v-for="(item, index) in chapterLessons"
+				:key="`${item.title}-${index}`"
+				:class="{active: item.active}"
+				@click="openChapterLesson(item)"
+			>
+				<view class="lesson-content-index">{{index + 1}}</view>
+				<view class="lesson-content-main">
+					<view class="lesson-content-title">{{item.title}}</view>
+					<view class="lesson-content-meta">{{item.chapterTitle || chapterTitle || lessonCategoryTitle}}</view>
+				</view>
+				<view class="lesson-content-action">{{item.active ? '正在学习' : '去学习'}}</view>
+			</view>
+		</view>
+		<view class="lesson-card-panel" v-else-if="lessonCard && lessonCard.items && lessonCard.items.length">
+			<view class="lesson-card-title">{{lessonCard.title || '讲点卡'}}</view>
+			<view class="lesson-card-item" v-for="(item, index) in lessonCard.items" :key="index">
+				<view class="lesson-card-index">{{index + 1}}</view>
+				<view class="lesson-card-text">{{item}}</view>
+			</view>
+		</view>
+
 		<view class="rating-panel">
 			<view class="rating-head">
 				<text class="rating-title">课程评分</text>
@@ -118,7 +142,7 @@
 </template>
 
 <script>
-import { getLessonRatingApi, getLessonVideo, isLoggedIn, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
+import { getCourse, getLessonRatingApi, getLessonVideo, isLoggedIn, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
 export default {
 	data() {
 		return {
@@ -157,6 +181,7 @@ export default {
 			prevTitle: '',
 			nextTitle: '',
 			lessonCard: null,
+			chapterLessons: [],
 			page: 1,
 			pageTotal: 1,
 			myRating: 0,
@@ -175,6 +200,7 @@ export default {
 		this.syncPageTitle();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		await this.loadLesson();
+		await this.loadChapterLessons();
 		if (isLoggedIn()) await this.loadRatingState();
 	},
 	onReady() {
@@ -252,6 +278,8 @@ export default {
 				this.lessonLocked = false;
 				this.videoUrl = data.videoUrl || '';
 				this.poster = data.poster || '';
+				if (!this.courseTitle && data.courseTitle) this.courseTitle = data.courseTitle;
+				if (!this.chapterTitle && data.chapterTitle) this.chapterTitle = data.chapterTitle;
 				this.pageTotal = data.pageTotal || 1;
 				this.prevTitle = data.prevTitle || '';
 				this.nextTitle = data.nextTitle || '';
@@ -268,6 +296,95 @@ export default {
 				this.videoError = true;
 				console.warn('视频接口不可用', err);
 			}
+		},
+		async loadChapterLessons() {
+			if (!this.courseId) return;
+			try {
+				const course = await getCourse(this.courseId);
+				const context = this.findLessonContext(course, this.lessonId || this.title);
+				if (!context || !context.lessons.length) return;
+				this.chapterLessons = context.lessons;
+				this.pageTotal = context.lessons.length;
+				this.page = Math.max(1, context.activeIndex + 1);
+				if (!this.chapterTitle && context.chapterTitle) this.chapterTitle = context.chapterTitle;
+			} catch (err) {
+				console.warn('课程章节加载失败', err);
+			}
+		},
+		findLessonContext(course = {}, lessonId = '') {
+			const versions = this.courseVersionsForDisplay(course);
+			const normalizedId = this.normalizeLessonKey(lessonId || this.title);
+			const preferredVersion = this.preferredVersionIndex();
+			const orderedVersions = versions
+				.map((version, index) => ({ version, index }))
+				.sort((a, b) => (a.index === preferredVersion ? -1 : b.index === preferredVersion ? 1 : a.index - b.index));
+			let fallback = null;
+			for (const entry of orderedVersions) {
+				const chapters = Array.isArray(entry.version.chapters) ? entry.version.chapters : [];
+				for (const chapter of chapters) {
+					if (!this.isVisible(chapter)) continue;
+					const items = (chapter.items || chapter.children || []).filter(item => this.isVisible(item));
+					if (!items.length) continue;
+					const mapped = items.map((item, index) => {
+						const title = String(item.title || item.name || `章节内容${index + 1}`).trim();
+						const active = this.sameLesson(title, normalizedId) || this.lessonContainsMatch(item, normalizedId);
+						return {
+							...item,
+							title,
+							active,
+							chapterTitle: chapter.title || entry.version.name || '',
+							versionIndex: entry.index
+						};
+					});
+					const activeIndex = mapped.findIndex(item => item.active);
+					const sameChapter = this.chapterTitle && chapter.title && this.normalizeLessonKey(chapter.title) === this.normalizeLessonKey(this.chapterTitle);
+					if (activeIndex >= 0) {
+						return { chapterTitle: chapter.title || '', lessons: mapped, activeIndex };
+					}
+					if (!fallback && sameChapter) {
+						fallback = { chapterTitle: chapter.title || '', lessons: mapped, activeIndex: 0 };
+					}
+				}
+			}
+			return fallback;
+		},
+		courseVersionsForDisplay(course = {}) {
+			const versions = Array.isArray(course.versions) ? course.versions : [];
+			if (versions.length) return versions;
+			return [{ name: course.title || '课程', chapters: Array.isArray(course.chapters) ? course.chapters : [] }];
+		},
+		preferredVersionIndex() {
+			const title = `${this.categoryTitle || ''} ${this.title || ''}`;
+			if (/知识巩固|知识点/.test(title)) return 2;
+			if (/技巧|绝招/.test(title)) return 1;
+			return 0;
+		},
+		normalizeLessonKey(value = '') {
+			return String(value || '')
+				.replace(/【\s*\d+\s*[.．、]\s*/g, '【')
+				.replace(/[【】]/g, '')
+				.replace(/复习加强|复习测试|技巧绝招|技巧干货|视频课程|真题讲练|知识点巩固|巩固练习/g, '')
+				.replace(/\s+/g, '')
+				.trim();
+		},
+		sameLesson(title = '', normalizedId = '') {
+			const normalizedTitle = this.normalizeLessonKey(title);
+			return !!normalizedTitle && !!normalizedId && (normalizedTitle === normalizedId || normalizedId.includes(normalizedTitle) || normalizedTitle.includes(normalizedId));
+		},
+		lessonContainsMatch(lesson = {}, normalizedId = '') {
+			if (!normalizedId) return false;
+			const values = [lesson.name, lesson.title]
+				.concat((lesson.children || []).map(child => child.name || child.title));
+			return values.some(value => this.sameLesson(value, normalizedId));
+		},
+		isVisible(item = {}) {
+			return item && item.visible !== false;
+		},
+		openChapterLesson(item = {}) {
+			if (!item.title || item.active) return;
+			uni.redirectTo({
+				url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&lessonId=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.courseTitle)}&chapterTitle=${encodeURIComponent(item.chapterTitle || this.chapterTitle || '')}&categoryTitle=${encodeURIComponent(this.categoryTitle || '')}`
+			});
 		},
 		async loadRatingState() {
 			try {
@@ -758,15 +875,13 @@ page { background:#fff; }
 .lesson-lock-ico { font-size:64rpx; }
 .lesson-lock-title { margin-top:16rpx; color:#fff; font-size:30rpx; font-weight:800; }
 .lesson-lock-sub { margin-top:12rpx; max-width:520rpx; color:rgba(255,255,255,.82); font-size:24rpx; line-height:1.5; }
-/* 控件与视频融合：覆盖在视频底部的半透明控制条 */
+/* 控件放在视频下方，避免遮挡授课画面 */
 .player-controls {
-	position:absolute;
-	left:0;
-	right:0;
-	bottom:0;
+	position:relative;
 	z-index:6;
-	padding:18rpx 20rpx;
-	background:linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.5) 42%, rgba(15,23,42,.82) 100%);
+	padding:14rpx 20rpx 18rpx;
+	background:#0f172a;
+	border-top:1rpx solid rgba(255,255,255,.12);
 }
 .player-progress-track {
 	position:relative;
@@ -859,7 +974,7 @@ page { background:#fff; }
 .desktop-speed-menu {
 	position:absolute;
 	right:0;
-	bottom:60rpx;
+	bottom:58rpx;
 	width:118rpx;
 	padding:8rpx 0;
 	border-radius:14rpx;
@@ -894,11 +1009,87 @@ page { background:#fff; }
 .s-title { font-size:30rpx; color:#222; font-weight:800; }
 .s-page { font-size:28rpx; color:#999; padding-top:2rpx; }
 
-/* 讲点卡 */
+/* 本节章节内容 */
 .content {
 	position:relative;
 	min-height: 360rpx;
 }
+.lesson-content-list {
+	margin: 4rpx 24rpx 22rpx;
+	border:1rpx solid #eef0f3;
+	border-radius:16rpx;
+	overflow:hidden;
+	background:#fff;
+	box-shadow:0 4rpx 12rpx rgba(15,23,42,.04);
+}
+.lesson-content-row {
+	display:flex;
+	align-items:center;
+	min-height:86rpx;
+	padding:16rpx 20rpx;
+	border-top:1rpx solid #f1f4f8;
+	cursor:pointer;
+	box-sizing:border-box;
+}
+.lesson-content-row:first-child {
+	border-top:0;
+}
+.lesson-content-row.active {
+	background:#eef6ff;
+}
+.lesson-content-index {
+	width:42rpx;
+	height:42rpx;
+	line-height:42rpx;
+	text-align:center;
+	border-radius:50%;
+	background:#edf2f7;
+	color:#64748b;
+	font-size:23rpx;
+	font-weight:800;
+	margin-right:16rpx;
+	flex-shrink:0;
+}
+.lesson-content-row.active .lesson-content-index {
+	background:#1677d2;
+	color:#fff;
+}
+.lesson-content-main {
+	flex:1;
+	min-width:0;
+}
+.lesson-content-title {
+	color:#1f2937;
+	font-size:26rpx;
+	font-weight:800;
+	white-space:nowrap;
+	overflow:hidden;
+	text-overflow:ellipsis;
+}
+.lesson-content-meta {
+	margin-top:6rpx;
+	color:#94a3b8;
+	font-size:22rpx;
+	white-space:nowrap;
+	overflow:hidden;
+	text-overflow:ellipsis;
+}
+.lesson-content-action {
+	margin-left:18rpx;
+	padding:8rpx 14rpx;
+	border-radius:999rpx;
+	background:#f3f6fb;
+	color:#64748b;
+	font-size:22rpx;
+	font-weight:800;
+	flex-shrink:0;
+}
+.lesson-content-row.active .lesson-content-action {
+	background:#dbeafe;
+	color:#1677d2;
+}
+
+/* 讲点卡 */
 .lesson-card-panel {
 	margin: 20rpx 24rpx 34rpx;
 	padding: 26rpx;

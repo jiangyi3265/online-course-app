@@ -74,7 +74,8 @@ export default {
 		openCourse(c) {
 			if (c.id || c.subject === 'gaokao-math') {
 				const idPart = c.id ? `id=${encodeURIComponent(c.id)}&` : '';
-				uni.navigateTo({ url:`/pages/course-full/course-full?${idPart}title=${encodeURIComponent('高考数学')}&subject=${c.subject || 'gaokao-math'}&kind=${c.kind || 'full'}` });
+				const title = c.title || c.sub || '课程';
+				uni.navigateTo({ url:`/pages/course-full/course-full?${idPart}title=${encodeURIComponent(title)}&subject=${c.subject || 'gaokao-math'}&kind=${c.kind || 'full'}` });
 				return;
 			}
 			this.toast('点击学习');
