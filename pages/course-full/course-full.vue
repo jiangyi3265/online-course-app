@@ -18,7 +18,6 @@
 		<view class="info-block">
 			<view class="info-top">
 				<view class="info-title">{{displayCourseName}}</view>
-				<view class="star">☆</view>
 			</view>
 			<view class="info-meta">共计{{total}}节，课程时长：{{duration}}</view>
 			<view class="update-meta">
@@ -56,7 +55,7 @@
 
 				<view class="chap-list">
 					<view class="chap" v-for="(c,i) in chapters" :key="i">
-						<view class="chap-head" @click="toggle(i)">
+						<view class="chap-head" @click.stop="toggle(i)">
 							<text class="chap-title">{{c.title}}</text>
 							<view class="chap-right">
 								<text class="lock" v-if="locked">🔒</text>
@@ -128,7 +127,7 @@
 				</view>
 				<view class="chap-list knowledge-chapter-list" v-if="knowledgeChapters.length">
 					<view class="chap" v-for="(c,i) in knowledgeChapters" :key="i">
-						<view class="chap-head" @click="toggleKnowledge(i)">
+						<view class="chap-head" @click.stop="toggleKnowledge(i)">
 							<text class="chap-title">{{c.title}}</text>
 							<view class="chap-right">
 								<text class="lock" v-if="locked">🔒</text>
@@ -763,9 +762,8 @@ page { background:#f5f7fa; }
 }
 
 .info-block { background:#fff; padding: 24rpx 30rpx; }
-.info-top { display:flex; justify-content:space-between; align-items:center; }
+.info-top { display:flex; justify-content:flex-start; align-items:center; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
-.star { font-size:42rpx; color:#cfd3da; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
 .update-meta {
 	display:inline-flex;
@@ -874,6 +872,7 @@ page { background:#f5f7fa; }
 }
 
 /* 章节 */
+.course-actions-area, .chap-list, .chap, .chap-head, .sub-row, .lesson-children { overflow-anchor:none; }
 .chap-list { padding: 10rpx 24rpx; }
 .chap { margin-bottom: 18rpx; }
 .chap-head {

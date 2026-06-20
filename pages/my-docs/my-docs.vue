@@ -69,7 +69,6 @@
 						<view class="doc-info">
 							<view class="doc-title-line">
 								<view class="doc-title">{{doc.title}}</view>
-								<view class="paper-score-tag" v-if="doc.reviewSubmitted">已上传分数</view>
 							</view>
 							<view class="doc-meta">{{doc.size || '未知大小'}}</view>
 							<view class="doc-time">更新日期：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
@@ -494,7 +493,6 @@ page { background:#f5f7fa; }
 .doc-info { flex:1; min-width:0; margin-left:20rpx; }
 .doc-title-line { display:flex; align-items:flex-start; gap:12rpx; min-width:0; }
 .doc-title { color:#1f2933; font-size:28rpx; font-weight:900; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.paper-score-tag { flex-shrink:0; margin-top:2rpx; padding:5rpx 12rpx; border-radius:999rpx; background:#eaf7ef; color:#16a05f; font-size:20rpx; font-weight:900; }
 .doc-meta, .doc-time { margin-top:8rpx; color:#697386; font-size:24rpx; }
 .doc-time { color:#6a5aa8; }
 .doc-actions { display:flex; align-items:center; gap:18rpx; margin-left:18rpx; flex-shrink:0; }

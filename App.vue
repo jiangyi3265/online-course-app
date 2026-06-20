@@ -34,6 +34,10 @@
 	}
 
 	@media screen and (min-width: 768px) {
+		:root {
+			--wk-app-width: calc(100vw - 2cm);
+		}
+
 		* {
 			box-sizing: border-box;
 		}
@@ -51,6 +55,31 @@
 
 		body {
 			margin: 0;
+		}
+
+		html,
+		body,
+		#app,
+		uni-app,
+		uni-page,
+		uni-page-wrapper,
+		uni-page-body,
+		page {
+			scrollbar-width: none;
+			-ms-overflow-style: none;
+		}
+
+		html::-webkit-scrollbar,
+		body::-webkit-scrollbar,
+		#app::-webkit-scrollbar,
+		uni-app::-webkit-scrollbar,
+		uni-page::-webkit-scrollbar,
+		uni-page-wrapper::-webkit-scrollbar,
+		uni-page-body::-webkit-scrollbar,
+		page::-webkit-scrollbar {
+			width: 0;
+			height: 0;
+			display: none;
 		}
 
 		#app {

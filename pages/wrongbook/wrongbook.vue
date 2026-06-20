@@ -5,7 +5,7 @@
 			<view class="nav-title">错题与巩固</view>
 		</view>
 
-		<view class="study-band">
+		<view class="study-band" v-if="false">
 			<view class="band-row">
 				<view>
 					<view class="band-label">共计 {{course.totalLessons || 0}} 节，总时长：{{course.totalDuration || '--'}}</view>
@@ -483,7 +483,7 @@ page { background:#f4f6f8; }
 .band-total { color:#143b35; font-size:27rpx; font-weight:900; white-space:nowrap; }
 .band-score { min-width:116rpx; text-align:center; color:#0f766e; font-size:42rpx; font-weight:900; }
 .band-score text { display:block; margin-top:4rpx; font-size:21rpx; font-weight:700; }
-.action-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:24rpx; }
+.action-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:28rpx 24rpx 24rpx; }
 .action-card {
 	min-height:138rpx;
 	padding:22rpx;
@@ -714,7 +714,7 @@ page { background:#eef3f7; }
 }
 .action-grid {
 	gap:16rpx;
-	padding:18rpx 24rpx 22rpx;
+	padding:28rpx 24rpx 22rpx;
 }
 .action-card {
 	min-height:148rpx;
@@ -834,7 +834,7 @@ page { background:#eef3f7; }
 	}
 	.action-grid {
 		gap:14rpx;
-		padding-top:16rpx;
+		padding-top:28rpx;
 	}
 	.action-card {
 		min-height:132rpx;

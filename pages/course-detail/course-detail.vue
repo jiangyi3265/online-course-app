@@ -32,7 +32,6 @@
 		<view class="info-block">
 			<view class="info-top">
 				<view class="info-title">{{displayCourseName}}</view>
-				<view class="star">☆</view>
 			</view>
 			<view class="info-meta">共计{{totalLessons}}节，课程时长：{{totalDuration}}</view>
 			<view class="update-meta">
@@ -76,7 +75,7 @@
 				</view>
 
 				<view class="chapter" v-for="(c,i) in chapters" :key="i">
-					<view class="ch-head" @click="toggle(i)">
+					<view class="ch-head" @click.stop="toggle(i)">
 						<text class="ch-title">{{c.title}}</text>
 						<view class="ch-right">
 							<text class="trial" v-if="c.audition !== false">试听</text>
@@ -472,9 +471,8 @@ page { background:#f5f7fa; }
 	background:#fff;
 	padding: 24rpx 30rpx;
 }
-.info-top { display:flex; justify-content:space-between; align-items:center; }
+.info-top { display:flex; justify-content:flex-start; align-items:center; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
-.star { font-size:42rpx; color:#cfd3da; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
 .update-meta {
 	display:inline-flex;
