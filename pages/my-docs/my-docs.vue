@@ -82,11 +82,21 @@
 
 					<view class="paper-review">
 						<view class="review-top">
-							<view class="upload-btn" :class="{active: doc.reviewExpanded}" @click="choosePaperImages(doc)">{{doc.reviewSubmitted ? '查看分数' : '上传试卷照片'}}</view>
+							<view class="upload-btn" :class="{active: doc.reviewExpanded}" @click="choosePaperImages(doc)">{{reviewActionText(doc)}}</view>
 							<view class="image-count" :class="{submitted: doc.reviewSubmitted}">{{doc.reviewSubmitted ? '已上传分数' : `${paperImageCount(doc)}/3 张`}}</view>
 						</view>
 						<!-- 试卷自评默认折叠，点击「上传试卷照片」后展开 -->
 						<view class="review-collapse" v-if="doc.reviewExpanded">
+							<view class="paper-image-strip" v-if="paperImages(doc).length">
+								<image
+									v-for="(url, imageIndex) in paperImages(doc)"
+									:key="`${doc.id}-paper-${imageIndex}`"
+									class="paper-thumb"
+									:src="url"
+									mode="aspectFill"
+									@click="previewPaperImages(doc, imageIndex)"
+								/>
+							</view>
 							<view class="review-box">
 								<view class="review-title">试卷自评：<text class="review-locked-tag" v-if="doc.reviewSubmitted">已记录 · 不可更改</text></view>
 								<view class="score-line">
@@ -133,7 +143,8 @@
 </template>
 
 <script>
-import { getFavorites, getMyDocs, isLoggedIn, toggleFavorite } from '@/common/api.js'
+import { getFavorites, getMyDocs, isLoggedIn, resolveMediaUrl, toggleFavorite } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 
 const REVIEW_KEY = 'offlineExamReviews';
 const LOCAL_DOCS = [
@@ -154,7 +165,7 @@ export default {
 			list:[],
 			favoriteMap: {},
 			showLogin:false,
-			expandedSections: { lecture:true, paper:true }
+			expandedSections: { lecture:false, paper:false }
 		}
 	},
 	computed: {
@@ -308,18 +319,20 @@ export default {
 				uni.showToast({ title: err.message || '收藏失败', icon:'none' });
 			}
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); },
+		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); },
 		search() { this.loadDocs(); },
 		openDoc(doc) {
-			if (doc.fileUrl && doc.fileUrl !== '#' && typeof window !== 'undefined') {
-				window.open(doc.fileUrl, '_blank');
+			const url = resolveMediaUrl(doc.fileUrl || '');
+			if (url && url !== '#' && typeof window !== 'undefined') {
+				window.open(url, '_blank');
 				return;
 			}
 			uni.showToast({ title: doc.title, icon:'none' });
 		},
 		downloadDoc(doc) {
-			if (doc.fileUrl && doc.fileUrl !== '#' && typeof window !== 'undefined') {
-				window.open(doc.fileUrl, '_blank');
+			const url = resolveMediaUrl(doc.fileUrl || '');
+			if (url && url !== '#' && typeof window !== 'undefined') {
+				window.open(url, '_blank');
 				return;
 			}
 			uni.showToast({ title:'文件下载已准备', icon:'none' });
@@ -351,7 +364,25 @@ export default {
 		paperImageCount(doc = {}) {
 			return Number(doc.imageCount || ((doc.images || []).length) || 0);
 		},
+		paperImages(doc = {}) {
+			return (doc.images || []).map(item => resolveMediaUrl(item)).filter(Boolean);
+		},
+		reviewActionText(doc = {}) {
+			if (this.paperImageCount(doc) > 0) return '图片已上传【点击查看】';
+			return doc.reviewSubmitted ? '查看分数' : '上传试卷照片';
+		},
+		previewPaperImages(doc = {}, index = 0) {
+			const urls = this.paperImages(doc);
+			if (!urls.length) return;
+			uni.previewImage({ urls, current: urls[index] || urls[0] });
+		},
 		choosePaperImages(doc) {
+			const currentImages = this.paperImages(doc);
+			if (currentImages.length) {
+				doc.reviewExpanded = true;
+				this.previewPaperImages(doc, 0);
+				return;
+			}
 			// 已提交的试卷只展开查看（只读），不再上传/修改
 			if (doc.reviewSubmitted) {
 				doc.reviewExpanded = !doc.reviewExpanded;
@@ -509,6 +540,8 @@ page { background:#f5f7fa; }
 .review-box { color:#334155; }
 .review-title { font-size:24rpx; font-weight:900; margin-bottom:12rpx; }
 .review-locked-tag { margin-left:12rpx; padding:2rpx 12rpx; border-radius:999rpx; background:#eef2f7; color:#64748b; font-size:20rpx; font-weight:800; }
+.paper-image-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12rpx; margin-bottom:16rpx; }
+.paper-thumb { width:100%; height:128rpx; border-radius:10rpx; background:#e8eef6; border:1rpx solid #dbe4ef; box-sizing:border-box; }
 .score-line { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
 .score-field {
 	min-width:0;

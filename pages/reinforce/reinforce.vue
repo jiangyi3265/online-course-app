@@ -18,6 +18,7 @@
 
 <script>
 import { getReinforce } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 export default {
 	data() { return { courseId:'gk-math-full', list:[] } },
 	onLoad(opts = {}) { this.courseId = opts.courseId || 'gk-math-full'; this.loadData(); },
@@ -28,7 +29,7 @@ export default {
 		},
 		start(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&chapterTitle=${encodeURIComponent('复习加强')}&categoryTitle=${encodeURIComponent('复习加强课')}` }); },
 		formatDateTime(value) { return value ? String(value).replace('T', ' ').slice(0, 19) : '2026-01-25 19:57:51'; },
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); }
 	}
 }
 </script>

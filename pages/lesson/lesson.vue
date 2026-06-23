@@ -29,6 +29,16 @@
 					@fullscreenchange="onNativeFullscreenChange"
 					@error="onVideoError"
 				></video>
+				<image
+					v-if="showPosterCover"
+					class="poster-cover"
+					:src="poster"
+					mode="aspectFill"
+					@click.stop="toggleVideoPlayback"
+				/>
+				<view v-if="showTapPlayLayer" class="tap-play-layer" @click.stop="toggleVideoPlayback">
+					<view class="tap-play-button">▶</view>
+				</view>
 				<view class="video-error" v-if="videoError">
 					<view class="video-error-title">视频暂时无法加载</view>
 					<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
@@ -142,7 +152,7 @@
 </template>
 
 <script>
-import { getCourse, getLessonRatingApi, getLessonVideo, isLoggedIn, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
+import { getCourse, getLessonRatingApi, getLessonVideo, isLoggedIn, resolveMediaUrl, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
 export default {
 	data() {
 		return {
@@ -168,7 +178,7 @@ export default {
 			lastSavedAt: 0,
 			videoContext: null,
 			playbackRate: 1,
-			playbackRates: [2, 1.5, 1, 0.75, 0.5],
+			playbackRates: [1.5, 1, 0.75, 0.5],
 			showSpeedMenu: false,
 			speedMenuTimer: null,
 			controlsVisible: true,
@@ -238,6 +248,12 @@ export default {
 		showWatermark() {
 			return this.videoPlaying && !!this.watermarkText && !this.videoError;
 		},
+		showPosterCover() {
+			return !!this.poster && !this.videoPlaying && !this.videoError && !this.lessonLocked && this.currentSeconds <= 0;
+		},
+		showTapPlayLayer() {
+			return !!this.videoUrl && !this.videoPlaying && !this.videoError && !this.lessonLocked;
+		},
 		volumeIcon() {
 			return this.muted || this.volume === 0 ? '🔇' : '🔊';
 		},
@@ -258,7 +274,7 @@ export default {
 		inferCategoryTitle(...values) {
 			const text = values.filter(Boolean).join(' ');
 			if (/复习加强课|复习加强|复习测试/.test(text)) return '复习加强课';
-			if (/技巧绝招课|绝招课/.test(text)) return '技巧绝招课';
+			if (/技巧绝招课|技巧绝招|绝招课/.test(text)) return '技巧绝招';
 			if (/知识巩固|知识点巩固/.test(text)) return '知识巩固';
 			return '讲点';
 		},
@@ -281,8 +297,8 @@ export default {
 					return;
 				}
 				this.lessonLocked = false;
-				this.videoUrl = data.videoUrl || '';
-				this.poster = data.poster || '';
+				this.videoUrl = resolveMediaUrl(data.videoUrl || '');
+				this.poster = resolveMediaUrl(data.poster || '');
 				if (!this.courseTitle && data.courseTitle) this.courseTitle = data.courseTitle;
 				if (!this.chapterTitle && data.chapterTitle) this.chapterTitle = data.chapterTitle;
 				this.pageTotal = data.pageTotal || 1;
@@ -549,12 +565,24 @@ export default {
 			this.markPlayerActivity();
 			const ctx = this.videoContext || uni.createVideoContext('lessonVideo', this);
 			this.videoContext = ctx;
+			const video = this.nativeVideoElement();
 			if (this.videoPlaying) {
 				if (ctx && typeof ctx.pause === 'function') ctx.pause();
+				if (video && typeof video.pause === 'function') video.pause();
 				this.videoPlaying = false;
 			} else {
 				if (ctx && typeof ctx.play === 'function') ctx.play();
+				if (video && typeof video.play === 'function') {
+					const playResult = video.play();
+					if (playResult && typeof playResult.catch === 'function') {
+						playResult.catch(() => {
+							this.videoPlaying = false;
+							this.showControls();
+						});
+					}
+				}
 				this.videoPlaying = true;
+				this.scheduleControlsHide();
 			}
 		},
 		seekByClick(e) {
@@ -879,6 +907,39 @@ page { background:#fff; }
 .video-wrap :deep(.uni-video-cover-play-button),
 .video-wrap :deep(.uni-video-toast) {
 	display:none !important;
+}
+.poster-cover {
+	position:absolute;
+	inset:0;
+	z-index:2;
+	width:100%;
+	height:420rpx;
+	background:#0f172a;
+}
+.tap-play-layer {
+	position:absolute;
+	inset:0;
+	z-index:3;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	background:linear-gradient(180deg, rgba(15,23,42,.08), rgba(15,23,42,.38));
+	cursor:pointer;
+}
+.tap-play-button {
+	width:92rpx;
+	height:92rpx;
+	border-radius:50%;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	padding-left:6rpx;
+	box-sizing:border-box;
+	background:rgba(255,255,255,.92);
+	color:#1677ff;
+	font-size:42rpx;
+	font-weight:900;
+	box-shadow:0 12rpx 34rpx rgba(15,23,42,.22);
 }
 .moving-watermark {
 	position:absolute;
@@ -1361,7 +1422,7 @@ page { background:#fff; }
 
 @media (hover:hover) and (pointer:fine) {
 	.page {
-		max-width:680px;
+		max-width:var(--wk-app-width, 430px);
 		margin:0 auto;
 		box-shadow:0 0 0 1px #e5e7eb;
 	}
@@ -1380,7 +1441,7 @@ page { background:#fff; }
 	}
 	.footer {
 		left:50%;
-		width:680px;
+		width:var(--wk-app-width, 430px);
 		right:auto;
 		transform:translateX(-50%);
 	}

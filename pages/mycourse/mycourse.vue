@@ -2,7 +2,10 @@
 	<view class="page">
 		<view class="course-list" v-if="logined">
 			<view class="course-card" v-for="(c,i) in courses" :key="i">
-				<image class="course-cover" :src="c.cover" mode="aspectFill" />
+				<view class="course-cover">
+					<image v-if="c.cover && !c.coverError" class="course-cover-img" :src="c.cover" mode="aspectFill" @error="markCourseCoverError(c)" />
+					<view v-else class="course-cover-fallback">{{courseInitial(c)}}</view>
+				</view>
 				<view class="course-info">
 					<view class="course-title">{{c.title}}</view>
 					<view class="course-sub">{{c.sub}}</view>
@@ -60,6 +63,7 @@ export default {
 					sub: stripCourseYear(item.sub),
 					expiry: item.expiry,
 					cover: resolveMediaUrl(item.cover),
+					coverError: false,
 					subject: item.subject,
 					kind: item.kind
 				}));
@@ -82,6 +86,13 @@ export default {
 		},
 		openReport(c) {
 			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(c.id || 'gk-math-full')}` });
+		},
+		markCourseCoverError(course) {
+			course.coverError = true;
+		},
+		courseInitial(course = {}) {
+			const name = String(course.title || course.sub || '课').replace(/[《》]/g, '').trim();
+			return name.slice(0, 2) || '课程';
 		},
 		toast(title) {
 			uni.showToast({ title, icon:'none' });
@@ -112,10 +123,28 @@ page { background:#fff; }
 	box-shadow:0 4rpx 12rpx rgba(0,0,0,.04);
 }
 .course-cover {
+	display:flex;
+	align-items:center;
+	justify-content:center;
 	width:220rpx;
 	height:154rpx;
 	border-radius:12rpx;
+	overflow:hidden;
 	flex-shrink:0;
+	background:linear-gradient(135deg,#e8f3ff,#f8fafc);
+	color:#1677ff;
+	font-size:30rpx;
+	font-weight:900;
+}
+.course-cover-img {
+	width:100%;
+	height:100%;
+	display:block;
+}
+.course-cover-fallback {
+	padding:0 18rpx;
+	text-align:center;
+	line-height:1.2;
 }
 .course-info {
 	flex:1;

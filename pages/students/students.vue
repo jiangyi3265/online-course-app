@@ -67,6 +67,7 @@
 
 <script>
 import { bindStudent, getMyStudents, sendSmsCode, unbindStudent } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 
 export default {
 	data() {
@@ -207,7 +208,7 @@ export default {
 				}
 			});
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/member/member'); }
 	}
 }
 </script>

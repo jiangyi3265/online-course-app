@@ -53,6 +53,7 @@
 
 <script>
 import { activateCourse, getCourses, getMyCourses, getProfile } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 export default {
 	data() {
 		return {
@@ -195,7 +196,7 @@ export default {
 			});
 		},
 		goMyCourses() { uni.navigateTo({ url:'/pages/mycourse/mycourse' }); },
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/member/member'); }
 	}
 }
 </script>

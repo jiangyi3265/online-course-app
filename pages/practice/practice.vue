@@ -262,14 +262,30 @@
 		</view>
 
 		<view class="overview" v-if="result">
-			<view class="overview-title">题目总览</view>
-			<view class="overview-row" v-for="(item, index) in resultDetails" :key="item.id">
-				<view class="overview-count">题目数：{{index + 1}}/{{resultDetails.length}}</view>
-				<image v-if="imageList(item.stemImageUrl).length" class="question-image compact" :src="imageList(item.stemImageUrl)[0]" mode="widthFix" @click="previewMedia(imageList(item.stemImageUrl)[0], imageList(item.stemImageUrl))" />
-				<question-audio-player :src="stemAudio(item)" />
-				<math-rich-text :text="'我的答案：' + displayAnswer(item, 'selected')" />
-				<math-rich-text :text="'参考答案：' + displayAnswer(item, 'answer')" />
-				<analysis-viewer :item="item" :text="item.analysis" />
+			<view class="overview-head">
+				<view class="overview-title">题目总览</view>
+				<view class="overview-summary">
+					共{{answerCardStats.total}}道题，答对<text class="summary-ok">{{answerCardStats.correct}}</text>道，半对<text class="summary-partial">{{answerCardStats.partial}}</text>道，答错<text class="summary-bad">{{answerCardStats.wrong}}</text>道，{{answerCardStats.unanswered}}道未答题
+				</view>
+			</view>
+			<view class="answer-legend">
+				<view class="legend-item"><text class="legend-dot ok-dot"></text>答对</view>
+				<view class="legend-item"><text class="legend-dot partial-dot"></text>半对</view>
+				<view class="legend-item"><text class="legend-dot bad-dot"></text>答错</view>
+				<view class="legend-item"><text class="legend-dot empty-dot"></text>未答</view>
+			</view>
+			<view class="answer-card-grid">
+				<view
+					class="answer-card-cell"
+					v-for="item in answerCardItems"
+					:key="item.id"
+					:class="item.className"
+					@click="jumpToQuestion(item.index)"
+				>
+					<view class="answer-card-no">{{item.no}}</view>
+					<view class="answer-card-type">{{item.typeText}}</view>
+					<view class="answer-card-state">{{item.statusText}}</view>
+				</view>
 			</view>
 		</view>
 
@@ -282,6 +298,7 @@
 
 <script>
 import { getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
@@ -324,6 +341,30 @@ export default {
 		},
 		resultDetails() {
 			return (this.result && this.result.details) || [];
+		},
+		answerCardItems() {
+			return this.resultDetails.map((item, index) => {
+				const status = this.answerCardStatus(item);
+				return {
+					id: item.id || index,
+					index,
+					no: index + 1,
+					typeText: this.questionTypeText(item),
+					statusText: this.answerCardStatusText(status),
+					className: `answer-${status}`
+				};
+			});
+		},
+		answerCardStats() {
+			return this.answerCardItems.reduce((stats, item) => {
+				const status = String(item.className || '').replace('answer-', '');
+				stats.total += 1;
+				if (status === 'ok') stats.correct += 1;
+				else if (status === 'partial') stats.partial += 1;
+				else if (status === 'empty') stats.unanswered += 1;
+				else stats.wrong += 1;
+				return stats;
+			}, { total: 0, correct: 0, partial: 0, wrong: 0, unanswered: 0 });
 		},
 		totalQuestionCount() {
 			return this.questions.reduce((total, question) => {
@@ -541,9 +582,9 @@ export default {
 		normalizeQuestionMedia(item = {}) {
 			return {
 				...item,
-				stemImageUrl: this.imageList(item.stemImageUrl || item.questionImageUrl || item.stemImage).join(','),
+				stemImageUrl: this.imageList(item.stemImageUrl || item.questionImageUrl || item.stemImage || item.imageUrl || item.imageUrls || item.images || item.questionImages).join(','),
 				stemAudioUrl: this.stemAudio(item),
-				stemFileUrl: this.fileList(item.stemFileUrl || item.questionFileUrl || item.stemFile).join(','),
+				stemFileUrl: this.fileList(item.stemFileUrl || item.questionFileUrl || item.stemFile || item.fileUrl || item.files || item.questionFiles).join(','),
 				optionImageUrls: this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl),
 				subQuestions: this.normalizeSubQuestions(item),
 				answerImageUrl: this.imageList(item.answerImageUrl).join(','),
@@ -562,6 +603,8 @@ export default {
 					id,
 					parentQuestionId: parentId,
 					questionType: this.questionType(sub),
+					stemImageUrl: this.imageList(sub.stemImageUrl || sub.questionImageUrl || sub.stemImage || sub.imageUrl || sub.imageUrls || sub.images || sub.questionImages).join(','),
+					stemFileUrl: this.fileList(sub.stemFileUrl || sub.questionFileUrl || sub.stemFile || sub.fileUrl || sub.files || sub.questionFiles).join(','),
 					optionImageUrls: this.imageList(sub.optionImageUrls || sub.optionImages || sub.optionImageUrl),
 					answerImageUrl: this.imageList(sub.answerImageUrl).join(','),
 					answerFileUrl: this.fileList(sub.answerFileUrl).join(','),
@@ -671,6 +714,26 @@ export default {
 			if (item && item.manualReview) return 'review';
 			return item && item.correct ? 'ok' : 'bad';
 		},
+		answerCardStatus(item = {}) {
+			if (!item || item.skipped) return 'bad';
+			if (item.reviewResult === 'partial') return 'partial';
+			if (item.manualReview && !item.selfReviewed) return 'empty';
+			return item.correct ? 'ok' : 'bad';
+		},
+		answerCardStatusText(status) {
+			const map = { ok: '答对', partial: '半对', bad: '答错', empty: '未答' };
+			return map[status] || '答错';
+		},
+		questionTypeText(item = {}) {
+			const map = { choice: '选择', fill: '填空', subjective: '主观', reading: '阅读' };
+			return map[this.questionType(item)] || '题目';
+		},
+		jumpToQuestion(index) {
+			if (typeof document === 'undefined') return;
+			const nodes = document.querySelectorAll('.question');
+			const target = nodes && nodes[index];
+			if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		},
 		difficultyStars(question = {}) {
 			const value = Math.max(1, Math.min(5, Number(question.difficulty || 1)));
 			return '★'.repeat(value) + '☆'.repeat(5 - value);
@@ -683,12 +746,7 @@ export default {
 			uni.navigateTo({ url: `/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId || 'gk-math-full')}` });
 		},
 		goBack() {
-			const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
-			if (pages.length > 1) {
-				uni.navigateBack({ fail: () => this.goHome() });
-				return;
-			}
-			this.goHome();
+			safeNavigateBack('/pages/index/index');
 		},
 		goHome() {
 			uni.reLaunch({ url: '/pages/index/index' });
@@ -780,11 +838,38 @@ page { background:#f5f7fa; }
 .ghost-btn { background:#eef2f7; color:#222; }
 .primary-btn { background:#1677ff; color:#fff; }
 .overview { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
+.overview-head { display:grid; gap:10rpx; margin-bottom:18rpx; }
 .overview-title { color:#222; font-size:30rpx; font-weight:800; }
-.overview-row { padding:18rpx 0; border-bottom:1rpx solid #edf0f4; color:#334155; font-size:26rpx; line-height:1.6; }
-.overview-row:last-child { border-bottom:0; padding-bottom:0; }
-.overview-count { font-weight:800; color:#222; }
-.overview-analysis { margin-top:8rpx; color:#596272; }
+.overview-summary { color:#334155; font-size:24rpx; line-height:1.55; }
+.summary-ok { color:#16a34a; font-weight:900; }
+.summary-partial { color:#b08950; font-weight:900; }
+.summary-bad { color:#dc2626; font-weight:900; }
+.answer-legend { display:flex; align-items:center; flex-wrap:wrap; gap:18rpx; margin:6rpx 0 22rpx; color:#334155; font-size:23rpx; }
+.legend-item { display:flex; align-items:center; gap:8rpx; }
+.legend-dot { width:18rpx; height:18rpx; border-radius:50%; display:inline-block; }
+.ok-dot { background:#22c55e; }
+.partial-dot { background:#c8ad7f; }
+.bad-dot { background:#dc2626; }
+.empty-dot { background:#9ca3af; }
+.answer-card-grid { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:18rpx; }
+.answer-card-cell { min-height:108rpx; border-radius:12rpx; border:2rpx solid #d9e2ef; background:#f8fafc; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4rpx; box-sizing:border-box; cursor:pointer; overflow:hidden; position:relative; }
+.answer-card-cell::after { content:''; position:absolute; left:0; right:0; bottom:0; height:34rpx; opacity:.55; border-radius:50% 50% 0 0; transform:translateY(14rpx); }
+.answer-card-no { position:relative; z-index:1; color:#172033; font-size:34rpx; font-weight:900; line-height:1; }
+.answer-card-type,
+.answer-card-state { position:relative; z-index:1; font-size:20rpx; font-weight:800; line-height:1.1; }
+.answer-card-type { color:#64748b; }
+.answer-ok { border-color:#22c55e; background:#f8fffb; }
+.answer-ok::after { background:#dff8ea; }
+.answer-ok .answer-card-state { color:#16a34a; }
+.answer-partial { border-color:#c8ad7f; background:#fffaf0; }
+.answer-partial::after { background:#f3e6c7; }
+.answer-partial .answer-card-state { color:#9a6a24; }
+.answer-bad { border-color:#ef4444; background:#fffafa; }
+.answer-bad::after { background:#ffe3e3; }
+.answer-bad .answer-card-state { color:#dc2626; }
+.answer-empty { border-color:#9ca3af; background:#f8fafc; }
+.answer-empty::after { background:#e5e7eb; }
+.answer-empty .answer-card-state { color:#64748b; }
 .footer { position:fixed; left:0; right:0; bottom:0; padding:20rpx 24rpx 34rpx; display:flex; gap:16rpx; background:#fff; box-shadow:0 -4rpx 16rpx rgba(0,0,0,.05); box-sizing:border-box; }
 .submit,
 .footer-back { flex:1; height:88rpx; line-height:88rpx; text-align:center; border-radius:44rpx; background:#1677ff; color:#fff; font-size:30rpx; font-weight:800; box-sizing:border-box; }

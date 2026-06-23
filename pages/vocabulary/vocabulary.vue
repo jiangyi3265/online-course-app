@@ -32,6 +32,8 @@
 </template>
 
 <script>
+import { safeNavigateBack } from '@/common/navigation.js'
+
 const WORD_KEY = 'englishVocabularyWords'
 
 export default {
@@ -76,7 +78,7 @@ export default {
 		save() {
 			uni.setStorageSync(WORD_KEY, this.words);
 		},
-		goBack() { uni.navigateBack({ fail:()=>uni.switchTab({ url:'/pages/index/index', fail:()=>{} }) }); }
+		goBack() { safeNavigateBack('/pages/index/index'); }
 	}
 }
 </script>

@@ -31,6 +31,7 @@
 
 <script>
 import { getProfile, submitFeedback } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 
 export default {
 	data() {
@@ -72,7 +73,7 @@ export default {
 				uni.showToast({ title: err.message || '提交失败', icon: 'none' })
 			}
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }) }
+		goBack() { safeNavigateBack('/pages/member/member') }
 	}
 }
 </script>

@@ -53,6 +53,7 @@
 
 <script>
 import { getMyAgency } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 
 export default {
 	data() {
@@ -155,7 +156,7 @@ export default {
 				fail:() => uni.showToast({ title:'复制失败', icon:'none' })
 			});
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/member/member'); }
 	}
 }
 </script>
@@ -192,13 +193,10 @@ page { background:#f6f8fb; }
 .copy-btn { flex-shrink:0; color:#1677ff; background:#eef6ff; border-radius:999rpx; padding:10rpx 18rpx; font-size:23rpx; font-weight:900; }
 .course-name { margin-top:10rpx; color:#344054; font-size:26rpx; font-weight:800; line-height:1.4; }
 .meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:12rpx; margin-top:16rpx; }
-.meta-grid view { min-width:0; padding:14rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #edf1f6; box-sizing:border-box; }
+.meta-grid view { min-width:0; padding:12rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #edf1f6; box-sizing:border-box; }
 .meta-grid text { display:block; color:#8a94a3; font-size:21rpx; }
-.meta-grid strong { display:block; margin-top:7rpx; color:#1f2933; font-size:24rpx; line-height:1.35; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.meta-grid strong { display:block; margin-top:5rpx; color:#1f2933; font-size:23rpx; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .meta-grid strong.success { color:#16a36b; }
 .meta-grid strong.danger { color:#e5484d; }
 .meta-grid strong.muted { color:#667085; }
-@media screen and (max-width: 420px) {
-	.meta-grid { grid-template-columns:1fr; }
-}
 </style>

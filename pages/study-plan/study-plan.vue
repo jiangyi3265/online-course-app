@@ -23,6 +23,7 @@
 
 <script>
 import { getStudyPlan } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 
 export default {
@@ -51,7 +52,7 @@ export default {
 		toggleTask(item) {
 			item.done = !item.done;
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); }
 	}
 }
 </script>

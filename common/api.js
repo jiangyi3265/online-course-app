@@ -53,8 +53,12 @@ function getApiOrigin() {
 export function resolveMediaUrl(url = '') {
 	const value = String(url || '').trim()
 	if (!value || /^(https?:\/\/|data:|blob:|file:)/i.test(value)) return value
+	if (/^\/\//.test(value) && isH5Runtime()) return `${window.location.protocol}${value}`
 	if (/^\/static\//i.test(value)) return value
-	if (/^\/profile\//i.test(value)) return `${getApiOrigin()}${value}`
+	if (/^\/?(profile|upload|uploads)\//i.test(value)) {
+		const path = value.startsWith('/') ? value : `/${value}`
+		return `${getApiOrigin()}${path}`
+	}
 	return value
 }
 

@@ -20,7 +20,7 @@
 
 		<!-- 封面 -->
 		<view class="cover" :class="coverClass">
-			<image v-if="cover" class="cover-img" :src="cover" :mode="coverMode" @load="onCoverLoad" />
+			<image v-if="cover" class="cover-img" :src="cover" :mode="coverMode" @load="onCoverLoad" @error="onCoverError" />
 			<template v-else>
 				<view class="cover-fallback" :style="{background: bg}">
 					<view class="cover-title">{{coverTitle}}</view>
@@ -141,6 +141,7 @@
 <script>
 import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, resolveMediaUrl } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
 	components: { StudyCheckinCard },
@@ -161,7 +162,7 @@ export default {
 			showCheckinPanel: false,
 			detailTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
-			versionChips: ['复习加强课', '技巧绝招课'],
+			versionChips: ['复习加强课', '技巧绝招'],
 			courseVersions: [],
 			chapters: [
 				{ title:'选材与加工高分技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
@@ -243,7 +244,7 @@ export default {
 			this.setVersion(0);
 			this.quizzes = course.quizzes || [];
 		},
-		goBack() { uni.navigateBack({ fail:()=>uni.switchTab({url:'/pages/index/index',fail:()=>{}}) }); },
+		goBack() { safeNavigateBack('/pages/index/index'); },
 		goLogin() { this.showLogin=false; uni.navigateTo({ url:'/pages/login/login' }); },
 		setCover(value) {
 			const next = resolveMediaUrl(value || '');
@@ -256,6 +257,10 @@ export default {
 			if (detail.width && detail.height) {
 				this.coverRatio = detail.width / detail.height;
 			}
+		},
+		onCoverError() {
+			this.cover = '';
+			this.coverRatio = 0;
 		},
 		applyMathCourse() {
 			const course = getGaokaoMathCourse('trial');
@@ -297,12 +302,12 @@ export default {
 			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
 			const normalized = source.map((item, index) => ({
 				...(typeof item === 'object' ? item : { name: item }),
-				name: index === 0 ? '复习加强课' : '技巧绝招课',
+				name: index === 0 ? '复习加强课' : '技巧绝招',
 				chapters: (item && item.chapters) || baseChapters
 			}));
 			while (normalized.length < 2) {
 				normalized.push({
-					name: normalized.length === 0 ? '复习加强课' : '技巧绝招课',
+					name: normalized.length === 0 ? '复习加强课' : '技巧绝招',
 					chapters: baseChapters
 				});
 			}
@@ -350,15 +355,15 @@ export default {
 		},
 		goDocs() {
 			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(this.courseId)}&kw=${encodeURIComponent(this.displayCourseName.replace(/[《》]/g, ''))}` });
+			this.requireFullCourseFeature();
 		},
 		goPlan() {
-			this.showCheckinPanel = !this.showCheckinPanel;
-			if (this.showCheckinPanel) this.activeTab = 0;
+			this.collapseCheckinPanel();
+			this.requireFullCourseFeature();
 		},
 		goReport() {
 			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(this.courseId)}` });
+			this.requireFullCourseFeature();
 		},
 		goAi(context) {
 			this.collapseCheckinPanel();
@@ -395,14 +400,18 @@ export default {
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
 		lessonCategoryTitle(index = this.versionIndex) {
-			return this.versionChips[index] || (index === 0 ? '复习加强课' : '技巧绝招课');
+			return this.versionChips[index] || (index === 0 ? '复习加强课' : '技巧绝招');
 		},
 		childName(item, chapter = {}) {
 			if (this.versionIndex === 0) {
-				return `复习加强【${chapter.title || item.name || '章节'}】`;
+				const name = chapter.title || item.name || '章节';
+				return item.type === 2 ? `复习测试【${name}】` : `复习加强【${name}】`;
 			}
-			if (this.versionIndex === 1) return item.type === 2 ? '真题讲练' : '技巧绝招课';
+			if (this.versionIndex === 1) return item.type === 2 ? '真题讲练' : '技巧绝招';
 			return item.name;
+		},
+		requireFullCourseFeature() {
+			uni.showToast({ title:'请开通正式课程使用完整功能', icon:'none' });
 		},
 		requestPermission() {
 			this.collapseCheckinPanel();

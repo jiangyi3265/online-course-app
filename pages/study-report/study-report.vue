@@ -159,6 +159,7 @@
 <script>
 import { getStudyReport } from '@/common/api.js'
 import { stripCourseYear } from '@/common/course-data.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
@@ -256,7 +257,7 @@ export default {
 			};
 			return [
 				{ name:'复习加强课', ...base },
-				{ name:'技巧绝招课', ...base }
+				{ name:'技巧绝招', ...base }
 			];
 		},
 		reportDetailRows() {
@@ -505,7 +506,7 @@ export default {
 			}
 			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` });
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); }
 	}
 }
 </script>
@@ -517,8 +518,9 @@ page { background:#f5f7fa; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; font-weight:700; }
 .course-card, .panel, .detail-panel { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
+.course-card { display:flex; align-items:center; gap:14rpx; flex-wrap:wrap; }
 .course-label { color:#697386; font-size:24rpx; font-weight:700; }
-.course-name { color:#222; font-size:36rpx; font-weight:900; margin-top:8rpx; }
+.course-name { color:#222; font-size:32rpx; font-weight:900; line-height:1.25; }
 .summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14rpx; padding:0 24rpx; }
 .summary-item { background:#fff; border:1rpx solid #edf0f4; border-radius:16rpx; padding:22rpx 14rpx; min-height:150rpx; box-sizing:border-box; }
 .summary-label { color:#596272; font-size:24rpx; font-weight:700; }

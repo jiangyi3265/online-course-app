@@ -34,6 +34,7 @@
 
 <script>
 import { bindReferrer, getMyReferrer } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 
 export default {
 	data() {
@@ -74,7 +75,7 @@ export default {
 				this.loading = false;
 			}
 		},
-		goBack() { uni.navigateBack({ fail:()=>uni.switchTab({ url:'/pages/member/member', fail:()=>{} }) }); }
+		goBack() { safeNavigateBack('/pages/member/member'); }
 	}
 }
 </script>

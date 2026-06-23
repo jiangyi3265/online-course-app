@@ -73,7 +73,7 @@
 		</view>
 
 		<view class="english-panel" v-if="englishStats">
-			<view class="english-title">英语外语科目</view>
+			<view class="english-title">英语词汇</view>
 			<view class="english-grid">
 				<view class="english-item" v-for="item in englishStats.items" :key="item.label">
 					<text>{{item.label}}</text>
@@ -81,11 +81,11 @@
 				</view>
 			</view>
 			<view class="english-daily">
-				<view>今日学习词汇名字：高考单词3500词</view>
-				<view>今日认读完成：xx个</view>
-				<view>今日听写完成：xx个</view>
-				<view>今日新学：xx个</view>
-				<view>今日复习：xx个</view>
+				<view>今日学习词汇名字：{{englishVocabularyStats.bookName}}</view>
+				<view>今日认读完成：{{englishVocabularyStats.read}}个</view>
+				<view>今日听写完成：{{englishVocabularyStats.dictation}}个</view>
+				<view>今日新学：{{englishVocabularyStats.newWords}}个</view>
+				<view>今日复习：{{englishVocabularyStats.review}}个</view>
 			</view>
 		</view>
 	</view>
@@ -95,6 +95,7 @@
 import { getStudySummary } from '@/common/study-summary.js'
 import { getStudyReport, getStudySummaryApi, getMyCourses, getMyStudents, isLoggedIn } from '@/common/api.js'
 import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 
 const CHECKIN_KEY = 'studyCheckins';
 
@@ -135,6 +136,16 @@ export default {
 		},
 		englishStats() {
 			return (this.studySummary && this.studySummary.sections || []).find(section => /英语|外语/.test(section.title));
+		},
+		englishVocabularyStats() {
+			const data = (this.studySummary && (this.studySummary.englishVocabulary || this.studySummary.vocabularyStats)) || {};
+			return {
+				bookName: data.bookName || data.name || '高考单词3500词',
+				read: Number(data.readToday || data.todayRead || data.read || 0),
+				dictation: Number(data.dictationToday || data.todayDictation || data.listenWrite || 0),
+				newWords: Number(data.newToday || data.todayNew || data.newWords || 0),
+				review: Number(data.reviewToday || data.todayReview || data.review || 0)
+			};
 		},
 		nonEnglishSections() {
 			return (this.studySummary && this.studySummary.sections || []).filter(section => !/英语|外语/.test(section.title));
@@ -274,7 +285,7 @@ export default {
 			}
 			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(course.id)}&kw=${encodeURIComponent(course.title)}` });
 		},
-		goBack() { uni.navigateBack({ fail:()=>uni.switchTab({ url:'/pages/member/member', fail:()=>{} }) }); }
+		goBack() { safeNavigateBack('/pages/member/member'); }
 	}
 }
 </script>

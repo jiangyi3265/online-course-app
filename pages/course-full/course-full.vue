@@ -8,7 +8,7 @@
 
 		<!-- 封面 -->
 		<view class="cover" :class="coverClass">
-			<image v-if="cover" class="cover-img" :src="cover" :mode="coverMode" @load="onCoverLoad" />
+			<image v-if="cover" class="cover-img" :src="cover" :mode="coverMode" @load="onCoverLoad" @error="onCoverError" />
 			<view v-else class="cover-fallback" :style="{background: bg}">
 				<view class="cover-title">{{title}}</view>
 			</view>
@@ -201,6 +201,7 @@
 <script>
 import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, getLessonLocks, getReinforce, resolveMediaUrl } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
 	components: { StudyCheckinCard },
@@ -224,7 +225,7 @@ export default {
 			versionIndex: 0,
 			versions: [
 				{ name:'复习加强课', chapters: [] },
-				{ name:'技巧绝招课', chapters: [] }
+				{ name:'技巧绝招', chapters: [] }
 			],
 			locked: true,
 			showFooter: true,
@@ -349,7 +350,7 @@ export default {
 				return value === true || value === 'true' || value === 1 || value === '1';
 			});
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); },
+		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); },
 		setCover(value) {
 			const next = resolveMediaUrl(value || '');
 			if (next === this.cover) return;
@@ -361,6 +362,10 @@ export default {
 			if (detail.width && detail.height) {
 				this.coverRatio = detail.width / detail.height;
 			}
+		},
+		onCoverError() {
+			this.cover = '';
+			this.coverRatio = 0;
 		},
 		collapseCheckinPanel() {
 			if (this.showCheckinPanel) this.showCheckinPanel = false;
@@ -424,18 +429,18 @@ export default {
 			const normalized = source.length
 				? source.map((item, index) => ({
 					...(typeof item === 'object' ? item : { name: item }),
-					name: index === 0 ? '复习加强课' : (index === 1 ? '技巧绝招课' : '知识巩固'),
+					name: index === 0 ? '复习加强课' : (index === 1 ? '技巧绝招' : '知识巩固'),
 					chapters: item && Array.isArray(item.chapters) ? item.chapters : []
 				}))
 				: [{ name: '复习加强课', chapters: baseChapters }];
 			while (normalized.length < 3) {
 				normalized.push({
-					name: normalized.length === 0 ? '复习加强课' : (normalized.length === 1 ? '技巧绝招课' : '知识巩固'),
+					name: normalized.length === 0 ? '复习加强课' : (normalized.length === 1 ? '技巧绝招' : '知识巩固'),
 					chapters: []
 				});
 			}
 			normalized[0].name = '复习加强课';
-			normalized[1].name = '技巧绝招课';
+			normalized[1].name = '技巧绝招';
 			normalized[2].name = '知识巩固';
 			return normalized.slice(0, 3).map((version, index) => ({
 				...version,
@@ -503,7 +508,7 @@ export default {
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
 		versionLabel(version, index) {
-			return (version && version.name) || (index === 0 ? '复习加强课' : '技巧绝招课');
+			return (version && version.name) || (index === 0 ? '复习加强课' : '技巧绝招');
 		},
 		lessonCategoryTitle(index = this.versionIndex) {
 			if (index === 2) return '知识巩固';
@@ -541,8 +546,8 @@ export default {
 				// 复习加强课：视频统一「复习加强【小节名】」，练习统一「复习测试【小节名】」
 				return Number(child.type) === 2 ? `复习测试【${name}】` : `复习加强【${name}】`;
 			}
-			// 技巧绝招课：练习库统一「真题讲练」，视频保持「技巧干货」
-			return Number(child.type) === 2 ? '真题讲练' : (child.name || '技巧干货');
+			// 技巧绝招：练习库统一「真题讲练」，视频统一「技巧绝招」
+			return Number(child.type) === 2 ? '真题讲练' : '技巧绝招';
 		},
 		reinforceLessonName(chapter, lesson, child = {}, lessonIndex = 0) {
 			return `复习加强【${this.lessonDisplayName(lesson, child, chapter, lessonIndex)}】`;
@@ -707,7 +712,7 @@ export default {
 			if (child.type === 2) {
 				const isReinforce = this.versionIndex === 0;
 				const type = isReinforce ? 'reinforce' : 'practice';
-				// 复习加强课记录定位为「【序号.小节名】复习测试」；技巧绝招课保留题库标题以便正确取题
+				// 复习加强课记录定位为「【序号.小节名】复习测试」；技巧绝招保留题库标题以便正确取题
 				const title = isReinforce ? recordLabel('复习测试') : (this.practiceBankName(child, lesson) || rawTitle);
 				const questionIds = Array.isArray(child.questionIds) && child.questionIds.length
 					? child.questionIds

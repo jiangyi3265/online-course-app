@@ -74,6 +74,7 @@
 
 <script>
 import { answerFavoriteQuestion, getFavorites } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
@@ -184,7 +185,7 @@ export default {
 			if (this.questionType(item) === 'choice') return this.optionText(item, result.answer);
 			return result.answerText || result.answer || '--';
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/member/member'); }
 	}
 }
 </script>

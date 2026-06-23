@@ -5,7 +5,7 @@
 			<view class="nav-title">错题与巩固</view>
 		</view>
 
-		<view class="study-band" v-if="false">
+		<view class="study-band">
 			<view class="band-row">
 				<view>
 					<view class="band-label">共计 {{course.totalLessons || 0}} 节，总时长：{{course.totalDuration || '--'}}</view>
@@ -80,7 +80,7 @@
 				</view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
 						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
@@ -118,7 +118,7 @@
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
 						<math-rich-text class="detail-stem" :text="detailStem(detail)" />
 						<question-audio-player :src="stemAudio(detail)" />
-						<image v-if="detail.stemImageUrl" class="question-image compact" :src="detail.stemImageUrl" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" />
+						<image v-if="detail.stemImageUrl" class="question-image compact" :src="mediaUrl(detail.stemImageUrl)" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" />
 						<math-rich-text class="detail-answer bad" :text="'我的答案：' + detailMyAnswer(detail)" />
 						<view class="test-record-strip" v-if="showTestRecordDetail(detail)">
 							<view class="test-record-title">查看测试记录</view>
@@ -153,7 +153,7 @@
 				<view class="tag-row"><view class="tag">{{source}}</view></view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 			</view>
 		</view>
 
@@ -181,7 +181,7 @@
 				</view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
 						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
@@ -206,8 +206,10 @@ import {
 	getWrongBookRecords,
 	getWeakWrongBook,
 	getWrongRetry,
+	resolveMediaUrl,
 	toggleFavorite
 } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
@@ -424,27 +426,31 @@ export default {
 			}
 		},
 		previewDetailImage(detail = {}) {
-			const url = detail.studentAnswerImageUrl || ''
+			const url = this.mediaUrl(detail.studentAnswerImageUrl || '')
 			if (!url) {
 				uni.showToast({ title: '暂无作答图片', icon: 'none' })
 				return
 			}
 			uni.previewImage({ urls: [url], current: url })
 		},
+		mediaUrl(url = '') {
+			return resolveMediaUrl(url)
+		},
 		mediaList(value) {
-			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean)
-			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean)
+			if (Array.isArray(value)) return value.map(item => this.mediaUrl(String(item || '').trim())).filter(Boolean)
+			return String(value || '').split(/[,\n]/).map(item => this.mediaUrl(item.trim())).filter(Boolean)
 		},
 		optionImage(item = {}, index) {
 			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl)
 			return urls[index] || ''
 		},
 		stemAudio(item = {}) {
-			return item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || ''
+			return this.mediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '')
 		},
 		previewMedia(url) {
 			if (!url) return
-			uni.previewImage({ urls: [url], current: url })
+			const current = this.mediaUrl(url)
+			uni.previewImage({ urls: [current], current })
 		},
 		optionText(item, index) {
 			const options = item.options || []
@@ -463,7 +469,7 @@ export default {
 			return value ? String(value).replace('T', ' ').slice(0, 16) : '--'
 		},
 		goBack() {
-			uni.navigateBack({ fail: () => {} })
+			safeNavigateBack('/pages/mycourse/mycourse')
 		}
 	}
 }

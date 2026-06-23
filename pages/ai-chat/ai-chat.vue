@@ -17,6 +17,7 @@
 
 <script>
 import { askAi } from '@/common/api.js'
+import { safeNavigateBack } from '@/common/navigation.js'
 export default {
 	data() { return { context:'当前课程', message:'', list:[] } },
 	onLoad(opts = {}) { this.context = decodeURIComponent(opts.context || '当前课程'); },
@@ -28,7 +29,7 @@ export default {
 			try { this.list.push(await askAi(text, this.context)); }
 			catch (err) { uni.showToast({ title: err.message || '发送失败', icon:'none' }); }
 		},
-		goBack() { uni.navigateBack({ fail:()=>{} }); }
+		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); }
 	}
 }
 </script>
