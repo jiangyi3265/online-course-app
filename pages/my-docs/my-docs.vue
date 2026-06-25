@@ -95,8 +95,10 @@
 									:src="url"
 									mode="aspectFill"
 									@click="previewPaperImages(doc, imageIndex)"
+									@error="onPaperImageError(doc)"
 								/>
 							</view>
+							<view class="paper-image-tip" v-if="doc.paperImageError">图片预览已失效，请重新上传后保存。</view>
 							<view class="review-box">
 								<view class="review-title">试卷自评：<text class="review-locked-tag" v-if="doc.reviewSubmitted">已记录 · 不可更改</text></view>
 								<view class="score-line">
@@ -376,6 +378,34 @@ export default {
 			if (!urls.length) return;
 			uni.previewImage({ urls, current: urls[index] || urls[0] });
 		},
+		onPaperImageError(doc = {}) {
+			doc.paperImageError = true;
+			if (!doc.reviewSubmitted) {
+				doc.images = [];
+				doc.imageCount = 0;
+			}
+		},
+		normalizeChosenPaperImages(res = {}) {
+			const paths = (res.tempFilePaths || []).slice(0, 3).filter(Boolean);
+			// H5 的临时 blob 地址刷新后会失效，转成 dataURL 后电脑端也能稳定预览。
+			// #ifdef H5
+			const files = Array.isArray(res.tempFiles) ? res.tempFiles.slice(0, 3) : [];
+			if (typeof FileReader !== 'undefined' && files.length) {
+				const tasks = files.map((item, index) => {
+					const file = item && (item.file || item);
+					if (typeof Blob === 'undefined' || !(file instanceof Blob)) return Promise.resolve(paths[index] || '');
+					return new Promise(resolve => {
+						const reader = new FileReader();
+						reader.onload = () => resolve(reader.result || paths[index] || '');
+						reader.onerror = () => resolve(paths[index] || '');
+						reader.readAsDataURL(file);
+					});
+				});
+				return Promise.all(tasks).then(items => items.filter(Boolean));
+			}
+			// #endif
+			return Promise.resolve(paths);
+		},
 		choosePaperImages(doc) {
 			const currentImages = this.paperImages(doc);
 			if (currentImages.length) {
@@ -392,8 +422,10 @@ export default {
 			doc.reviewExpanded = true;
 			uni.chooseImage({
 				count: 3,
-				success: res => {
-					doc.images = (res.tempFilePaths || []).slice(0, 3);
+				success: async res => {
+					doc.images = await this.normalizeChosenPaperImages(res);
+					doc.imageCount = doc.images.length;
+					doc.paperImageError = false;
 					uni.showToast({ title:`已上传${doc.images.length}张`, icon:'none' });
 				}
 			});
@@ -542,6 +574,7 @@ page { background:#f5f7fa; }
 .review-locked-tag { margin-left:12rpx; padding:2rpx 12rpx; border-radius:999rpx; background:#eef2f7; color:#64748b; font-size:20rpx; font-weight:800; }
 .paper-image-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12rpx; margin-bottom:16rpx; }
 .paper-thumb { width:100%; height:128rpx; border-radius:10rpx; background:#e8eef6; border:1rpx solid #dbe4ef; box-sizing:border-box; }
+.paper-image-tip { margin:-4rpx 0 14rpx; color:#d14343; font-size:22rpx; }
 .score-line { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
 .score-field {
 	min-width:0;

@@ -84,7 +84,13 @@
 							</view>
 							<view class="control-button rate-button" :class="{active: showSpeedMenu}" @click.stop="toggleSpeedMenu">{{rateLabel(playbackRate)}}</view>
 						</view>
-						<view class="control-button volume-button" :class="{muted: muted || volume === 0}" @click.stop="toggleMute">{{volumeIcon}}</view>
+						<view class="control-button volume-button" :class="{muted: muted || volume === 0}" @click.stop="toggleMute">
+							<view class="speaker-icon">
+								<view class="speaker-core"></view>
+								<view class="speaker-wave wave-one"></view>
+								<view class="speaker-wave wave-two"></view>
+							</view>
+						</view>
 						<view class="control-button fullscreen-button" :class="{active:isWebFullscreen}" @click.stop="toggleWebFullscreen">⛶</view>
 					</view>
 				</view>
@@ -92,7 +98,7 @@
 		</view>
 
 		<!-- 本节内容 -->
-		<view class="section">
+		<view class="section" v-if="showLessonOutline">
 			<view class="section-left">
 				<text class="s-title">本节内容</text>
 				<!-- 已学进度仅后台记录，不在页面展示 -->
@@ -100,7 +106,7 @@
 			<text class="s-page">{{page}}/{{pageTotal}}</text>
 		</view>
 
-		<view class="lesson-content-list" v-if="chapterLessons.length">
+		<view class="lesson-content-list" v-if="showLessonOutline && chapterLessons.length">
 			<view
 				class="lesson-content-row"
 				v-for="(item, index) in chapterLessons"
@@ -116,7 +122,7 @@
 				<view class="lesson-content-action">{{item.active ? '正在学习' : '去学习'}}</view>
 			</view>
 		</view>
-		<view class="lesson-card-panel" v-else-if="lessonCard && lessonCard.items && lessonCard.items.length">
+		<view class="lesson-card-panel" v-else-if="showLessonOutline && lessonCard && lessonCard.items && lessonCard.items.length">
 			<view class="lesson-card-title">{{lessonCard.title || '讲点卡'}}</view>
 			<view class="lesson-card-item" v-for="(item, index) in lessonCard.items" :key="index">
 				<view class="lesson-card-index">{{index + 1}}</view>
@@ -254,8 +260,8 @@ export default {
 		showTapPlayLayer() {
 			return !!this.videoUrl && !this.videoPlaying && !this.videoError && !this.lessonLocked;
 		},
-		volumeIcon() {
-			return this.muted || this.volume === 0 ? '🔇' : '🔊';
+		showLessonOutline() {
+			return false;
 		},
 		ratingHint() {
 			if (this.myRating) return '已记录本节课程评分，不可更改。';
@@ -1081,6 +1087,74 @@ page { background:#fff; }
 	background:rgba(22,119,210,.92);
 	color:#fff;
 	border-color:rgba(255,255,255,.55);
+}
+.volume-button {
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	padding:0;
+}
+.speaker-icon {
+	position:relative;
+	width:34rpx;
+	height:30rpx;
+}
+.speaker-core::before {
+	content:'';
+	position:absolute;
+	left:2rpx;
+	top:9rpx;
+	width:10rpx;
+	height:12rpx;
+	border-radius:3rpx;
+	background:#fff;
+}
+.speaker-core::after {
+	content:'';
+	position:absolute;
+	left:10rpx;
+	top:5rpx;
+	width:0;
+	height:0;
+	border-top:10rpx solid transparent;
+	border-bottom:10rpx solid transparent;
+	border-right:16rpx solid #fff;
+}
+.speaker-wave {
+	position:absolute;
+	border:3rpx solid rgba(255,255,255,.92);
+	border-left:0;
+	border-top-color:transparent;
+	border-bottom-color:transparent;
+	border-radius:0 999rpx 999rpx 0;
+}
+.wave-one {
+	right:4rpx;
+	top:8rpx;
+	width:9rpx;
+	height:14rpx;
+}
+.wave-two {
+	right:-2rpx;
+	top:4rpx;
+	width:16rpx;
+	height:22rpx;
+	opacity:.78;
+}
+.volume-button.muted .speaker-wave {
+	display:none;
+}
+.volume-button.muted .speaker-icon::after {
+	content:'';
+	position:absolute;
+	right:1rpx;
+	top:2rpx;
+	width:4rpx;
+	height:28rpx;
+	border-radius:999rpx;
+	background:#fff;
+	transform:rotate(45deg);
+	box-shadow:0 0 0 2rpx rgba(22,119,210,.4);
 }
 .control-time {
 	color:#fff;

@@ -32,11 +32,18 @@
 		<view class="info-block">
 			<view class="info-top">
 				<view class="info-title">{{displayCourseName}}</view>
+				<view class="update-meta">
+					<text class="update-label">最近更新</text>
+					<text class="update-date">{{displayUpdateDate}}</text>
+				</view>
 			</view>
 			<view class="info-meta">共计{{totalLessons}}节，课程时长：{{totalDuration}}</view>
-			<view class="update-meta">
-				<text class="update-label">最近更新</text>
-				<text class="update-date">{{displayUpdateDate}}</text>
+			<view class="version-stats" v-if="versionSummaries.length">
+				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
+					<text class="version-stat-name">{{item.label}}</text>
+					<text v-if="item.total">共{{item.total}}节</text>
+					<text>课程时长：{{item.duration}}</text>
+				</view>
 			</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
@@ -181,7 +188,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFit';
+			return this.isPosterCover ? 'aspectFit' : 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -196,6 +203,17 @@ export default {
 		},
 		trialQuizzes() {
 			return (this.quizzes || []).slice(0, 1);
+		},
+		versionSummaries() {
+			return this.courseVersions.slice(0, 2).map((version, index) => {
+				const title = index === 0 ? '复习加强' : '技巧绝招';
+				const chapters = (version && version.chapters) || [];
+				return {
+					label: title,
+					total: this.countChapters(chapters),
+					duration: this.versionDuration(version, index)
+				};
+			}).filter(item => item.total || item.duration);
 		},
 		isChineseTrial() {
 			return /中考语文|高考语文|初中语文|高中语文/.test(`${this.title}${this.courseName}`);
@@ -353,6 +371,9 @@ export default {
 				}, 0);
 			}, 0);
 		},
+		versionDuration(version = {}, index = 0) {
+			return version.duration || version.totalDuration || version.courseDuration || (index === 0 ? this.totalDuration : this.practiceDuration) || '00小时00分';
+		},
 		goDocs() {
 			this.collapseCheckinPanel();
 			this.requireFullCourseFeature();
@@ -404,8 +425,7 @@ export default {
 		},
 		childName(item, chapter = {}) {
 			if (this.versionIndex === 0) {
-				const name = chapter.title || item.name || '章节';
-				return item.type === 2 ? `复习测试【${name}】` : `复习加强【${name}】`;
+				return item.type === 2 ? '复习测试' : '复习加强';
 			}
 			if (this.versionIndex === 1) return item.type === 2 ? '真题讲练' : '技巧绝招';
 			return item.name;
@@ -480,14 +500,13 @@ page { background:#f5f7fa; }
 	background:#fff;
 	padding: 24rpx 30rpx;
 }
-.info-top { display:flex; justify-content:flex-start; align-items:center; }
+.info-top { display:flex; justify-content:flex-start; align-items:center; gap:16rpx; flex-wrap:wrap; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
 .update-meta {
 	display:inline-flex;
 	align-items:center;
 	gap:10rpx;
-	margin-top:14rpx;
 	padding:8rpx 14rpx;
 	border:1rpx solid #f3d8c5;
 	border-radius:10rpx;
@@ -498,6 +517,24 @@ page { background:#f5f7fa; }
 }
 .update-label { color:#8a94a3; font-weight:700; }
 .update-date { color:#c2410c; font-weight:900; }
+.version-stats {
+	display:grid;
+	gap:8rpx;
+	margin-top:14rpx;
+}
+.version-stat {
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:12rpx 18rpx;
+	color:#64748b;
+	font-size:23rpx;
+	line-height:1.45;
+}
+.version-stat-name {
+	color:#0f172a;
+	font-weight:800;
+}
 
 .progress-row {
 	display:flex; align-items:center;
@@ -754,36 +791,39 @@ page { background:#f5f7fa; }
 
 /* Desktop course cover polish */
 .cover {
-	margin:18rpx 24rpx 0;
-	border-radius:18rpx;
+	margin:0;
+	border-radius:0;
 	border:1rpx solid #e2e8f0;
+	border-left:0;
+	border-right:0;
+	border-bottom:0;
 	box-shadow:0 10rpx 24rpx rgba(31,41,51,.045);
 	background:#f8fafc;
 }
 .cover-banner,
 .cover-poster {
-	height:336rpx;
+	height:264rpx;
 }
 .cover-img {
-	object-fit:contain;
+	object-fit:cover;
 	background:#f8fafc;
 }
 .info-block {
-	margin:0 24rpx;
-	border-left:1rpx solid #edf2f7;
-	border-right:1rpx solid #edf2f7;
+	margin:0;
+	border-left:0;
+	border-right:0;
 }
 @media screen and (max-width: 420px) {
 	.cover {
-		margin:14rpx 18rpx 0;
-		border-radius:14rpx;
+		margin:0;
+		border-radius:0;
 	}
 	.cover-banner,
 	.cover-poster {
-		height:300rpx;
+		height:226rpx;
 	}
 	.info-block {
-		margin:0 18rpx;
+		margin:0;
 	}
 }
 </style>

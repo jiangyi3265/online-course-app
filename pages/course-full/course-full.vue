@@ -18,11 +18,18 @@
 		<view class="info-block">
 			<view class="info-top">
 				<view class="info-title">{{displayCourseName}}</view>
+				<view class="update-meta">
+					<text class="update-label">最近更新</text>
+					<text class="update-date">{{displayUpdateDate}}</text>
+				</view>
 			</view>
 			<view class="info-meta">共计{{total}}节，课程时长：{{duration}}</view>
-			<view class="update-meta">
-				<text class="update-label">最近更新</text>
-				<text class="update-date">{{displayUpdateDate}}</text>
+			<view class="version-stats" v-if="versionSummaries.length">
+				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
+					<text class="version-stat-name">{{item.label}}</text>
+					<text v-if="item.total">共{{item.total}}节</text>
+					<text>课程时长：{{item.duration}}</text>
+				</view>
 			</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
@@ -247,7 +254,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFit';
+			return this.isPosterCover ? 'aspectFit' : 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -262,6 +269,19 @@ export default {
 		},
 		visibleVersions() {
 			return this.versions.slice(0, 2);
+		},
+		versionSummaries() {
+			return this.visibleVersions.map((version, index) => {
+				const title = index === 0 ? '复习加强' : '技巧绝招';
+				const chapters = (version && version.chapters) || [];
+				const rawChapters = (version && version.rawChapters) || chapters;
+				const declaredTotal = this.countDeclaredChapters(rawChapters);
+				return {
+					label: title,
+					total: declaredTotal || this.countChapters(chapters) || (index === 0 ? this.total : Number(version.totalLessons || version.lessonCount || 0)),
+					duration: this.versionDuration(version, index)
+				};
+			}).filter(item => item.total || item.duration);
 		},
 		visibleQuizzes() {
 			return (this.quizzes || []).filter(item => this.isVisible(item) && this.hasPracticeQuestions(item));
@@ -444,6 +464,7 @@ export default {
 			normalized[2].name = '知识巩固';
 			return normalized.slice(0, 3).map((version, index) => ({
 				...version,
+				rawChapters: version.chapters || [],
 				chapters: this.visibleCourseChapters(version.chapters || [], index)
 			}));
 		},
@@ -479,7 +500,7 @@ export default {
 			}
 		},
 		resolveCourseStats(course = {}) {
-			const totalLessons = this.countCourseLessons(course);
+			const totalLessons = this.countCourseLessons(course) || Number(course.totalLessons || 0);
 			return {
 				totalLessons,
 				totalDuration: course.totalDuration || ''
@@ -502,6 +523,23 @@ export default {
 					return sum + (Number(item.type) === 2 || !this.hasVideoContent(item, item) ? 0 : 1);
 				}, 0);
 			}, 0);
+		},
+		countDeclaredChapters(chapters = []) {
+			return chapters.reduce((total, chapter) => {
+				if (!this.isVisible(chapter)) return total;
+				const items = chapter.items || chapter.children || [];
+				return total + items.reduce((sum, item) => {
+					if (!this.isVisible(item)) return sum;
+					if (item.children && item.children.length) {
+						const videoCount = item.children.filter(child => this.isVisible(child) && Number(child.type) !== 2).length;
+						return sum + (videoCount || 1);
+					}
+					return sum + (Number(item.type) === 2 ? 0 : 1);
+				}, 0);
+			}, 0);
+		},
+		versionDuration(version = {}, index = 0) {
+			return version.duration || version.totalDuration || version.courseDuration || (index === 0 ? this.duration : this.realDuration) || '00小时00分';
 		},
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
@@ -541,23 +579,21 @@ export default {
 			return `${this.lessonSeq(chapterIndex, lessonIndex)}.${this.cleanLessonName(lesson)}`;
 		},
 		childName(child, chapter, lesson, lessonIndex) {
-			const name = this.cleanLessonName(lesson);
 			if (this.versionIndex === 0) {
-				// 复习加强课：视频统一「复习加强【小节名】」，练习统一「复习测试【小节名】」
-				return Number(child.type) === 2 ? `复习测试【${name}】` : `复习加强【${name}】`;
+				return Number(child.type) === 2 ? '复习测试' : '复习加强';
 			}
 			// 技巧绝招：练习库统一「真题讲练」，视频统一「技巧绝招」
 			return Number(child.type) === 2 ? '真题讲练' : '技巧绝招';
 		},
 		reinforceLessonName(chapter, lesson, child = {}, lessonIndex = 0) {
-			return `复习加强【${this.lessonDisplayName(lesson, child, chapter, lessonIndex)}】`;
+			return '复习加强';
 		},
 		knowledgeChildName(child, lesson = {}) {
 			if (Number(child.type) === 2) return this.practiceBankName(child, lesson) || '巩固练习';
 			return child.name || lesson.title || '视频课程';
 		},
 		reinforceTestName(chapter, lesson, lessonIndex, child = {}) {
-			return `复习测试【${this.practiceBankName(child, lesson) || this.lessonDisplayName(lesson, child, chapter, lessonIndex)}】`;
+			return '复习测试';
 		},
 		chapterShortName(chapter) {
 			const raw = String((chapter && chapter.title) || '');
@@ -767,14 +803,13 @@ page { background:#f5f7fa; }
 }
 
 .info-block { background:#fff; padding: 24rpx 30rpx; }
-.info-top { display:flex; justify-content:flex-start; align-items:center; }
+.info-top { display:flex; justify-content:flex-start; align-items:center; gap:16rpx; flex-wrap:wrap; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
 .update-meta {
 	display:inline-flex;
 	align-items:center;
 	gap:10rpx;
-	margin-top:14rpx;
 	padding:8rpx 14rpx;
 	border:1rpx solid #f3d8c5;
 	border-radius:10rpx;
@@ -790,6 +825,24 @@ page { background:#f5f7fa; }
 .update-date {
 	color:#c2410c;
 	font-weight:900;
+}
+.version-stats {
+	display:grid;
+	gap:8rpx;
+	margin-top:14rpx;
+}
+.version-stat {
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:12rpx 18rpx;
+	color:#64748b;
+	font-size:23rpx;
+	line-height:1.45;
+}
+.version-stat-name {
+	color:#0f172a;
+	font-weight:800;
 }
 .progress-row {
 	display:flex; align-items:center;
@@ -1131,36 +1184,39 @@ page { background:#f5f7fa; }
 
 /* Desktop course cover polish */
 .cover {
-	margin:18rpx 24rpx 0;
-	border-radius:18rpx;
+	margin:0;
+	border-radius:0;
 	border:1rpx solid #e2e8f0;
+	border-left:0;
+	border-right:0;
+	border-bottom:0;
 	box-shadow:0 10rpx 24rpx rgba(31,41,51,.045);
 	background:#f8fafc;
 }
 .cover-banner,
 .cover-poster {
-	height:336rpx;
+	height:264rpx;
 }
 .cover-img {
-	object-fit:contain;
+	object-fit:cover;
 	background:#f8fafc;
 }
 .info-block {
-	margin:0 24rpx;
-	border-left:1rpx solid #edf2f7;
-	border-right:1rpx solid #edf2f7;
+	margin:0;
+	border-left:0;
+	border-right:0;
 }
 @media screen and (max-width: 420px) {
 	.cover {
-		margin:14rpx 18rpx 0;
-		border-radius:14rpx;
+		margin:0;
+		border-radius:0;
 	}
 	.cover-banner,
 	.cover-poster {
-		height:300rpx;
+		height:226rpx;
 	}
 	.info-block {
-		margin:0 18rpx;
+		margin:0;
 	}
 }
 </style>
