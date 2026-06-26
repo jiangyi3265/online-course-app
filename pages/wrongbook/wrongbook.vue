@@ -7,9 +7,14 @@
 
 		<view class="study-band">
 			<view class="band-row">
-				<view>
-					<view class="band-label">共计 {{course.totalLessons || 0}} 节，总时长：{{course.totalDuration || '--'}}</view>
-					<view class="band-sub">已学节数：{{course.readStudyCount || 0}} 节，已学时长：{{course.readDuration || '00小时00分'}}</view>
+				<view class="version-stat-list">
+					<view class="version-stat-row" v-for="item in courseVersionStats" :key="item.label">
+						<view class="version-stat-name">{{item.label}}</view>
+						<view class="version-stat-copy">
+							<view class="band-label">共计 {{item.totalLessons}} 节，总时长：{{item.totalDuration}}</view>
+							<view class="band-sub">已学节数：{{item.readStudyCount}} 节，已学时长：{{item.readDuration}}</view>
+						</view>
+					</view>
 				</view>
 				<view class="band-stats">
 					<view class="band-total">共收录错题：{{summary.total || 0}}道</view>
@@ -213,6 +218,7 @@ import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
+import { getGaokaoMathCourse } from '@/common/course-data.js'
 
 export default {
 	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
@@ -251,6 +257,42 @@ export default {
 		},
 		visibleWeakList() {
 			return this.weakList.filter(item => this.statusMatched(item))
+		},
+		courseVersionStats() {
+			const rows = this.explicitVersionStats()
+			if (rows.length) return rows
+			const course = this.course || {}
+			const localCourse = this.localCourseData()
+			const hasCourseVersions = Array.isArray(course.versions) && course.versions.length
+			const versions = hasCourseVersions ? course.versions : (Array.isArray(localCourse.versions) ? localCourse.versions : [])
+			const labels = ['复习加强课', '技巧绝招课']
+			return labels.map((label, index) => {
+				const version = versions[index] || {}
+				const localVersion = (localCourse.versions || [])[index] || {}
+				const totalLessons = this.firstNumber(
+					version.totalLessons,
+					version.lessonCount,
+					hasCourseVersions ? this.countVersionLessons(version) : 0,
+					index === 0 ? course.totalLessons : 0,
+					index === 1 ? (course.practiceLessons || course.practiceTotalLessons || course.realLessons || course.realLessonCount) : 0,
+					!hasCourseVersions ? this.countVersionLessons(localVersion) : 0
+				)
+				const totalDuration = this.firstText(
+					version.totalDuration,
+					version.duration,
+					version.courseDuration,
+					index === 0 ? course.totalDuration : '',
+					index === 1 ? (course.practiceDuration || course.realDuration) : '',
+					index === 0 ? localCourse.totalDuration : localCourse.practiceDuration
+				)
+				return {
+					label,
+					totalLessons,
+					totalDuration,
+					readStudyCount: this.firstNumber(version.readStudyCount, version.learnedLessons, index === 0 ? course.readStudyCount : 0),
+					readDuration: this.firstText(version.readDuration, version.learnedDuration, index === 0 ? course.readDuration : '', '00小时00分')
+				}
+			})
 		}
 	},
 	onLoad(opts = {}) {
@@ -346,6 +388,52 @@ export default {
 			if (this.statusFilter === 'mastered') return !!item.mastered
 			if (this.statusFilter === 'weak') return !!item.weak
 			return true
+		},
+		explicitVersionStats() {
+			const source = this.summary.versionStats || this.summary.courseVersionStats || this.course.versionStats || this.course.courseVersionStats || []
+			if (!Array.isArray(source) || !source.length) return []
+			const labels = ['复习加强课', '技巧绝招课']
+			return source.slice(0, 2).map((item = {}, index) => ({
+				label: item.label || item.name || labels[index] || '课程',
+				totalLessons: this.firstNumber(item.totalLessons, item.lessonCount, item.total, 0),
+				totalDuration: this.firstText(item.totalDuration, item.duration, item.courseDuration, '00小时00分'),
+				readStudyCount: this.firstNumber(item.readStudyCount, item.learnedLessons, item.readCount, 0),
+				readDuration: this.firstText(item.readDuration, item.learnedDuration, item.studyDuration, '00小时00分')
+			}))
+		},
+		localCourseData() {
+			if (/gk-math|高考数学|高中数学/i.test(String(this.courseId || this.course.title || ''))) return getGaokaoMathCourse('full')
+			return {}
+		},
+		firstNumber(...values) {
+			for (const value of values) {
+				const number = Number(value)
+				if (Number.isFinite(number) && number > 0) return number
+			}
+			return 0
+		},
+		firstText(...values) {
+			for (const value of values) {
+				const text = String(value || '').trim()
+				if (text && text !== '0' && text !== '00小时00分') return text
+			}
+			return '00小时00分'
+		},
+		countVersionLessons(version = {}) {
+			const chapters = version.chapters || version.items || version.children || []
+			if (!Array.isArray(chapters)) return 0
+			return chapters.reduce((total, chapter = {}) => {
+				const items = chapter.items || chapter.children || []
+				if (!Array.isArray(items)) return total
+				return total + items.reduce((sum, item = {}) => {
+					const children = item.children || item.items || []
+					if (Array.isArray(children) && children.length) {
+						const videoCount = children.filter(child => Number(child.type) !== 2).length
+						return sum + (videoCount || 1)
+					}
+					return sum + (Number(item.type) === 2 ? 0 : 1)
+				}, 0)
+			}, 0)
 		},
 		setRetryCount(count) {
 			this.retryCount = count
@@ -483,6 +571,24 @@ page { background:#f4f6f8; }
 .nav-title { font-size:31rpx; font-weight:800; }
 .study-band { padding:24rpx; background:#fff; }
 .band-row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:20rpx; padding:28rpx; border-radius:14rpx; background:#eef9f6; border:1rpx solid #cce9e1; }
+.version-stat-list { min-width:0; display:flex; flex-direction:column; gap:12rpx; }
+.version-stat-row {
+	display:grid;
+	grid-template-columns:128rpx minmax(0, 1fr);
+	align-items:center;
+	gap:14rpx;
+	padding:12rpx 14rpx;
+	border-radius:12rpx;
+	background:rgba(255,255,255,.64);
+	border:1rpx solid rgba(191,221,215,.72);
+}
+.version-stat-name {
+	color:#0f766e;
+	font-size:24rpx;
+	font-weight:900;
+	line-height:1.25;
+}
+.version-stat-copy { min-width:0; }
 .band-label { font-size:27rpx; font-weight:800; color:#143b35; line-height:1.5; }
 .band-sub { margin-top:8rpx; font-size:24rpx; color:#526b66; line-height:1.5; }
 .band-stats { flex-shrink:0; display:flex; align-items:center; gap:24rpx; }
@@ -796,6 +902,17 @@ page { background:#eef3f7; }
 		padding:24rpx 26rpx;
 		gap:18rpx;
 	}
+	.version-stat-list {
+		gap:10rpx;
+	}
+	.version-stat-row {
+		grid-template-columns:118rpx minmax(0, 1fr);
+		gap:12rpx;
+		padding:10rpx 12rpx;
+	}
+	.version-stat-name {
+		font-size:22rpx;
+	}
 	.band-label {
 		font-size:26rpx;
 		line-height:1.32;
@@ -878,6 +995,9 @@ page { background:#eef3f7; }
 @media screen and (max-width: 420px) {
 	.band-row {
 		grid-template-columns:1fr;
+	}
+	.version-stat-row {
+		grid-template-columns:108rpx minmax(0, 1fr);
 	}
 	.band-total {
 		text-align:left;

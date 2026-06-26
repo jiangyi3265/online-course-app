@@ -98,7 +98,11 @@
 									@error="onPaperImageError(doc)"
 								/>
 							</view>
-							<view class="paper-image-tip" v-if="doc.paperImageError">图片预览已失效，请重新上传后保存。</view>
+							<view class="paper-image-tip" v-if="doc.paperImageError">图片预览已失效，请重新上传。</view>
+							<view class="paper-image-reupload" v-if="doc.paperImageError && !paperImages(doc).length" @click="choosePaperImages(doc)">
+								<view class="reupload-title">图片无法显示</view>
+								<view class="reupload-sub">点击重新上传试卷照片，分数记录保持不变。</view>
+							</view>
 							<view class="review-box">
 								<view class="review-title">试卷自评：<text class="review-locked-tag" v-if="doc.reviewSubmitted">已记录 · 不可更改</text></view>
 								<view class="score-line">
@@ -145,7 +149,7 @@
 </template>
 
 <script>
-import { getFavorites, getMyDocs, isLoggedIn, resolveMediaUrl, toggleFavorite } from '@/common/api.js'
+import { getFavorites, getMyDocs, isLoggedIn, resolveMediaUrl, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
 const REVIEW_KEY = 'offlineExamReviews';
@@ -351,6 +355,7 @@ export default {
 					decorated.images = review.images || [];
 					decorated.imageCount = Number(review.imageCount || (review.images || []).length || 0);
 					decorated.reviewSubmitted = true;
+					decorated.paperImageError = decorated.imageCount > 0 && !this.paperImages(decorated).length;
 				} else {
 					decorated.reviewSubmitted = false;
 				}
@@ -364,13 +369,23 @@ export default {
 			return records.find(item => item.docId !== undefined && String(item.docId) === String(doc.id)) || null;
 		},
 		paperImageCount(doc = {}) {
-			return Number(doc.imageCount || ((doc.images || []).length) || 0);
+			return Number(((doc.images || []).length) || doc.imageCount || 0);
 		},
 		paperImages(doc = {}) {
-			return (doc.images || []).map(item => resolveMediaUrl(item)).filter(Boolean);
+			return (doc.images || [])
+				.map(item => resolveMediaUrl(item))
+				.filter(url => this.isUsablePaperImage(url));
+		},
+		isUsablePaperImage(url = '') {
+			const value = String(url || '').trim();
+			if (!value) return false;
+			// H5 的 blob 地址刷新后无法恢复，直接视为失效，避免电脑端显示灰块。
+			if (/^blob:/i.test(value)) return false;
+			return true;
 		},
 		reviewActionText(doc = {}) {
-			if (this.paperImageCount(doc) > 0) return '图片已上传【点击查看】';
+			if (this.paperImages(doc).length > 0) return '图片已上传【点击查看】';
+			if (doc.paperImageError || this.paperImageCount(doc) > 0) return '图片失效，重新上传';
 			return doc.reviewSubmitted ? '查看分数' : '上传试卷照片';
 		},
 		previewPaperImages(doc = {}, index = 0) {
@@ -380,13 +395,17 @@ export default {
 		},
 		onPaperImageError(doc = {}) {
 			doc.paperImageError = true;
-			if (!doc.reviewSubmitted) {
-				doc.images = [];
-				doc.imageCount = 0;
-			}
+			doc.images = [];
+			doc.imageCount = 0;
+			if (doc.reviewSubmitted) this.updatePaperReviewImages(doc, []);
 		},
-		normalizeChosenPaperImages(res = {}) {
+		async normalizeChosenPaperImages(res = {}) {
 			const paths = (res.tempFilePaths || []).slice(0, 3).filter(Boolean);
+			if (paths.length) {
+				const uploaded = await Promise.all(paths.map(path => uploadAnswerImage(path).catch(() => '')));
+				const serverImages = uploaded.filter(Boolean);
+				if (serverImages.length) return serverImages.slice(0, 3);
+			}
 			// H5 的临时 blob 地址刷新后会失效，转成 dataURL 后电脑端也能稳定预览。
 			// #ifdef H5
 			const files = Array.isArray(res.tempFiles) ? res.tempFiles.slice(0, 3) : [];
@@ -401,20 +420,20 @@ export default {
 						reader.readAsDataURL(file);
 					});
 				});
-				return Promise.all(tasks).then(items => items.filter(Boolean));
+				return (await Promise.all(tasks)).filter(Boolean);
 			}
 			// #endif
-			return Promise.resolve(paths);
+			return paths;
 		},
 		choosePaperImages(doc) {
 			const currentImages = this.paperImages(doc);
-			if (currentImages.length) {
+			if (currentImages.length && !doc.paperImageError) {
 				doc.reviewExpanded = true;
 				this.previewPaperImages(doc, 0);
 				return;
 			}
-			// 已提交的试卷只展开查看（只读），不再上传/修改
-			if (doc.reviewSubmitted) {
+			// 已提交且没有图片的试卷只展开查看分数；图片失效时允许重传图片，分数仍锁定。
+			if (doc.reviewSubmitted && !doc.paperImageError && this.paperImageCount(doc) === 0) {
 				doc.reviewExpanded = !doc.reviewExpanded;
 				return;
 			}
@@ -426,9 +445,23 @@ export default {
 					doc.images = await this.normalizeChosenPaperImages(res);
 					doc.imageCount = doc.images.length;
 					doc.paperImageError = false;
+					if (doc.reviewSubmitted) this.updatePaperReviewImages(doc, doc.images);
 					uni.showToast({ title:`已上传${doc.images.length}张`, icon:'none' });
 				}
 			});
+		},
+		updatePaperReviewImages(doc = {}, images = []) {
+			if (!doc.id) return;
+			const records = uni.getStorageSync(REVIEW_KEY) || [];
+			const index = records.findIndex(item => item.docId !== undefined && String(item.docId) === String(doc.id));
+			if (index === -1) return;
+			records[index] = {
+				...records[index],
+				images,
+				imageCount: images.length,
+				updatedAt: new Date().toISOString()
+			};
+			uni.setStorageSync(REVIEW_KEY, records);
 		},
 		savePaperReview(doc) {
 			if (doc.reviewSubmitted) {
@@ -575,6 +608,17 @@ page { background:#f5f7fa; }
 .paper-image-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12rpx; margin-bottom:16rpx; }
 .paper-thumb { width:100%; height:128rpx; border-radius:10rpx; background:#e8eef6; border:1rpx solid #dbe4ef; box-sizing:border-box; }
 .paper-image-tip { margin:-4rpx 0 14rpx; color:#d14343; font-size:22rpx; }
+.paper-image-reupload {
+	margin:0 0 16rpx;
+	padding:18rpx 20rpx;
+	border-radius:12rpx;
+	background:#fff7ed;
+	border:1rpx dashed #fdba74;
+	color:#9a3412;
+	cursor:pointer;
+}
+.reupload-title { font-size:25rpx; font-weight:900; }
+.reupload-sub { margin-top:6rpx; font-size:22rpx; line-height:1.45; color:#b45309; }
 .score-line { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
 .score-field {
 	min-width:0;
