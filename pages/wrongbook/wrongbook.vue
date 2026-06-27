@@ -5,24 +5,6 @@
 			<view class="nav-title">错题与巩固</view>
 		</view>
 
-		<view class="study-band">
-			<view class="band-row">
-				<view class="version-stat-list">
-					<view class="version-stat-row" v-for="item in courseVersionStats" :key="item.label">
-						<view class="version-stat-name">{{item.label}}</view>
-						<view class="version-stat-copy">
-							<view class="band-label">共计 {{item.totalLessons}} 节，总时长：{{item.totalDuration}}</view>
-							<view class="band-sub">已学节数：{{item.readStudyCount}} 节，已学时长：{{item.readDuration}}</view>
-						</view>
-					</view>
-				</view>
-				<view class="band-stats">
-					<view class="band-total">共收录错题：{{summary.total || 0}}道</view>
-					<view class="band-score">{{summary.pending || 0}}<text>待巩固</text></view>
-				</view>
-			</view>
-		</view>
-
 		<view class="action-grid">
 			<view class="action-card" :class="{active: mode === 'review'}" @click="setMode('review')">
 				<view class="action-mark">温</view>
@@ -53,6 +35,28 @@
 				</view>
 			</view>
 		</view>
+		<view class="summary-strip">
+			<view class="summary-item total">
+				<text>总收录</text>
+				<strong>{{summary.total || 0}}</strong>
+				<small>道错题</small>
+			</view>
+			<view class="summary-item">
+				<text>待温习</text>
+				<strong>{{summary.pending || 0}}</strong>
+				<small>道</small>
+			</view>
+			<view class="summary-item">
+				<text>已掌握</text>
+				<strong>{{summary.mastered || 0}}</strong>
+				<small>道</small>
+			</view>
+			<view class="summary-item weak" @click="jumpToWeakQuestions">
+				<text>短板</text>
+				<strong>{{summary.weak || 0}}</strong>
+				<small>道</small>
+			</view>
+		</view>
 
 		<view class="source-filter">
 			<view
@@ -76,6 +80,7 @@
 					<text>短板</text><text class="status-num">{{summary.weak || 0}}</text><text class="status-unit">道</text>
 				</view>
 			</view>
+			<view class="question-list-anchor"></view>
 			<view class="empty" v-if="visibleWrongList.length === 0">暂无错题，先完成一次测试后这里会自动收录</view>
 			<view class="question-card" v-for="item in visibleWrongList" :key="item.id">
 				<view class="source-title">错题来源：</view>
@@ -178,6 +183,7 @@
 					<text>已掌握</text><text class="status-num">{{weakMastered}}</text><text class="status-unit">道</text>
 				</view>
 			</view>
+			<view class="question-list-anchor"></view>
 			<view class="empty" v-if="visibleWeakList.length === 0">暂无短板题，带三个来源标签或多次重练错误后会自动加入</view>
 			<view class="question-card" v-for="item in visibleWeakList" :key="item.id">
 				<view class="source-title">题目来源：</view>
@@ -368,20 +374,41 @@ export default {
 				records
 			}
 		},
-		setMode(mode) {
+		async setMode(mode) {
 			this.mode = mode
 			this.activeRecordId = ''
 			this.statusFilter = 'all'
-			this.loadCurrent()
+			await this.loadCurrent()
+			if (mode === 'weak') this.scrollToQuestions()
 		},
-		setSource(source) {
+		async setSource(source) {
 			this.source = source
 			this.activeRecordId = ''
 			this.statusFilter = 'all'
-			this.loadCurrent()
+			await this.loadCurrent()
+			this.scrollToQuestions()
 		},
 		setStatusFilter(filter) {
 			this.statusFilter = this.statusFilter === filter ? 'all' : filter
+			this.scrollToQuestions()
+		},
+		async jumpToWeakQuestions() {
+			if (this.mode !== 'review') {
+				this.mode = 'review'
+				this.activeRecordId = ''
+				await this.loadWrongBook()
+			}
+			this.statusFilter = 'weak'
+			this.scrollToQuestions()
+		},
+		scrollToQuestions() {
+			this.$nextTick(() => {
+				uni.pageScrollTo({
+					selector: '.question-list-anchor',
+					duration: 240,
+					fail: () => {}
+				})
+			})
 		},
 		statusMatched(item = {}) {
 			if (this.statusFilter === 'pending') return !item.mastered
@@ -626,6 +653,58 @@ page { background:#f4f6f8; }
 .action-mark.weak { background:#fff7ed; color:#c2410c; }
 .action-title { font-size:29rpx; font-weight:800; color:#1f2933; }
 .action-sub { margin-top:10rpx; font-size:23rpx; color:#667085; line-height:1.45; }
+.summary-strip {
+	display:grid;
+	grid-template-columns:1.15fr repeat(3, minmax(0, 1fr));
+	gap:12rpx;
+	margin:0 24rpx 22rpx;
+	padding:14rpx;
+	border-radius:14rpx;
+	background:#fff;
+	border:1rpx solid #e3e8ef;
+	box-shadow:0 3rpx 10rpx rgba(16,24,40,.03);
+}
+.summary-item {
+	min-width:0;
+	min-height:82rpx;
+	border-radius:12rpx;
+	background:#f8fafc;
+	border:1rpx solid #edf2f7;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	color:#64748b;
+}
+.summary-item text {
+	font-size:21rpx;
+	font-weight:800;
+}
+.summary-item strong {
+	margin-top:4rpx;
+	color:#17212f;
+	font-size:34rpx;
+	line-height:1;
+	font-weight:900;
+}
+.summary-item small {
+	margin-top:4rpx;
+	font-size:18rpx;
+	color:#94a3b8;
+}
+.summary-item.total {
+	background:#eef7ff;
+	border-color:#bfdbfe;
+}
+.summary-item.weak {
+	background:#fff7ed;
+	border-color:#fed7aa;
+	cursor:pointer;
+}
+.summary-item.weak strong,
+.summary-item.weak text {
+	color:#c2410c;
+}
 .source-filter { display:flex; gap:12rpx; padding:0 24rpx 20rpx; overflow-x:auto; }
 .source-chip { flex:0 0 auto; height:58rpx; line-height:58rpx; padding:0 22rpx; border-radius:10rpx; background:#fff; color:#52606d; border:1rpx solid #d9e0e8; font-size:24rpx; }
 .source-chip.active { background:#2563eb; border-color:#2563eb; color:#fff; font-weight:800; }
@@ -681,13 +760,13 @@ page { background:#f4f6f8; }
 .answer.ok { color:#047857; }
 .answer.bad { color:#dc2626; }
 .analysis, .detail-analysis { margin-top:14rpx; color:#5f6b7a; font-size:25rpx; line-height:1.55; }
-.row-actions { display:grid; grid-template-columns:120rpx 1fr 1fr; align-items:center; gap:16rpx; margin-top:20rpx; }
-.state, .weak-status { height:64rpx; line-height:64rpx; text-align:center; border-radius:10rpx; background:#f1f5f9; color:#64748b; font-size:23rpx; font-weight:800; }
+.row-actions { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); align-items:center; gap:10rpx; margin-top:20rpx; }
+.state, .weak-status { min-width:0; height:60rpx; line-height:60rpx; text-align:center; border-radius:10rpx; background:#f1f5f9; color:#64748b; font-size:22rpx; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .state.done, .weak-status.done { background:#ecfdf5; color:#047857; }
-.mark-btn, .fav-btn { height:68rpx; line-height:68rpx; text-align:center; border-radius:10rpx; font-size:27rpx; font-weight:800; }
+.mark-btn, .fav-btn { min-width:0; height:60rpx; line-height:60rpx; text-align:center; border-radius:10rpx; font-size:23rpx; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mark-btn { background:#eef5ff; color:#1d4ed8; border:1rpx solid #bfdbfe; }
 .mark-btn.done { background:#edf1f5; color:#667085; border-color:#edf1f5; }
-.fav-btn { background:#0f766e; }
+.fav-btn { background:#0f766e; color:#fff; }
 .weak-actions { grid-template-columns:1fr 1fr; }
 .record-total { font-size:30rpx; font-weight:900; color:#1f2933; }
 .record-subjects { display:flex; flex-wrap:wrap; gap:16rpx; margin-top:12rpx; color:#667085; font-size:24rpx; }
@@ -757,7 +836,7 @@ page { background:#f4f6f8; }
 	.band-stats { justify-content:space-between; }
 	.status-panel { grid-template-columns:1fr; }
 	.status-panel.two { grid-template-columns:1fr 1fr; }
-	.row-actions { grid-template-columns:1fr; }
+	.row-actions { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8rpx; }
 	.weak-actions { grid-template-columns:1fr 1fr; }
 }
 
@@ -1004,6 +1083,17 @@ page { background:#eef3f7; }
 	}
 	.source-chip {
 		flex-basis:calc(50% - 8rpx);
+	}
+	.summary-strip {
+		grid-template-columns:repeat(4, minmax(0, 1fr));
+		gap:8rpx;
+		padding:12rpx;
+	}
+	.summary-item {
+		min-height:78rpx;
+	}
+	.summary-item strong {
+		font-size:30rpx;
 	}
 	.status-panel {
 		grid-template-columns:repeat(3, minmax(0, 1fr));

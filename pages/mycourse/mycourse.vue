@@ -62,7 +62,8 @@ export default {
 					title: stripCourseYear(item.courseName || item.sub || `《${item.full}》`),
 					sub: stripCourseYear(item.sub),
 					expiry: item.expiry,
-					cover: resolveMediaUrl(item.cover),
+					cover: resolveMediaUrl(item.cover || this.fallbackCourseCover(item)),
+					coverFallbackTried: false,
 					coverError: false,
 					subject: item.subject,
 					kind: item.kind
@@ -88,7 +89,31 @@ export default {
 			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(c.id || 'gk-math-full')}` });
 		},
 		markCourseCoverError(course) {
+			if (!course.coverFallbackTried) {
+				const fallback = this.fallbackCourseCover(course);
+				if (fallback && fallback !== course.cover) {
+					course.coverFallbackTried = true;
+					course.cover = fallback;
+					course.coverError = false;
+					return;
+				}
+			}
 			course.coverError = true;
+		},
+		fallbackCourseCover(course = {}) {
+			const text = `${course.title || ''}${course.sub || ''}${course.courseName || ''}${course.full || ''}`;
+			const level = /中考/.test(text) ? 'zk' : 'gk';
+			const subjectMap = [
+				['数学', level === 'gk' ? 'shuxue-full' : 'shuxue'],
+				['语文', 'yuwen'],
+				['英语', level === 'gk' ? 'yingyu-full' : 'yingyu'],
+				['物理', level === 'gk' ? 'wuli-full' : 'wuli'],
+				['化学', 'huaxue'],
+				['地理', 'dili-full']
+			];
+			const found = subjectMap.find(([name]) => text.includes(name));
+			const subject = found ? found[1] : (level === 'gk' ? 'shuxue-full' : 'shuxue');
+			return `/static/courses/${level}-${subject}.jpg`;
 		},
 		courseInitial(course = {}) {
 			const name = String(course.title || course.sub || '课').replace(/[《》]/g, '').trim();

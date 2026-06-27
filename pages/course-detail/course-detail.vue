@@ -37,7 +37,6 @@
 					<text class="update-date">{{displayUpdateDate}}</text>
 				</view>
 			</view>
-			<view class="info-meta">共计{{totalLessons}}节，课程时长：{{totalDuration}}</view>
 			<view class="version-stats" v-if="versionSummaries.length">
 				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
 					<text class="version-stat-name">{{item.label}}</text>
@@ -188,7 +187,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return this.isPosterCover ? 'aspectFit' : 'aspectFill';
+			return 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;

@@ -23,7 +23,6 @@
 					<text class="update-date">{{displayUpdateDate}}</text>
 				</view>
 			</view>
-			<view class="info-meta">共计{{total}}节，课程时长：{{duration}}</view>
 			<view class="version-stats" v-if="versionSummaries.length">
 				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
 					<text class="version-stat-name">{{item.label}}</text>
@@ -111,7 +110,6 @@
 							</view>
 						</view>
 						<view class="quiz-right">
-							<view class="download" @click="goDocs">下载</view>
 							<view class="q-btn" @click="goQuiz(q)">{{q.action || '去测评'}}</view>
 						</view>
 					</view>
@@ -254,7 +252,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return this.isPosterCover ? 'aspectFit' : 'aspectFill';
+			return 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -322,6 +320,7 @@ export default {
 			}
 		},
 		childLessonLocked(child, lesson) {
+			if (!this.locked) return false;
 			if (!this.lockEnabled) return false;
 			const title = (lesson && lesson.title) || '';
 			if (!title) return false;
@@ -432,8 +431,8 @@ export default {
 			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
 			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = course.quizzes;
-			this.locked = true;
-			this.showFooter = true;
+			this.locked = false;
+			this.showFooter = false;
 			this.setVersion(0);
 			this.loadLessonLocks();
 		},
@@ -722,7 +721,7 @@ export default {
 		},
 		goActivate() {
 			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}` });
+			uni.navigateTo({ url:`/pages/activate/activate?courseId=${encodeURIComponent(this.courseId)}&title=${encodeURIComponent(this.displayCourseName)}` });
 		},
 		showApplyAuth() {
 			this.collapseCheckinPanel();

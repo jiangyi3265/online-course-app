@@ -85,10 +85,20 @@ export default {
 		}
 	},
 	onLoad() {
+		this.syncBrowserTitle();
 		this.loadFrontendSettings();
 		this.loadCourses();
 	},
+	onShow() {
+		this.syncBrowserTitle();
+	},
 	methods: {
+		syncBrowserTitle() {
+			if (typeof uni !== 'undefined' && uni.setNavigationBarTitle) {
+				uni.setNavigationBarTitle({ title: '元知智学' });
+			}
+			if (typeof document !== 'undefined') document.title = '元知智学';
+		},
 		async loadFrontendSettings() {
 			try {
 				const settings = await getFrontendSettings();

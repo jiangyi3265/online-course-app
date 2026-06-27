@@ -5,10 +5,11 @@
 			<view class="title">激活课程</view>
 			<view class="hint">请选择要开通的课程，并填写激活码和学生信息。验证成功后课程会加入“我的课程”。</view>
 			<input class="input" v-model="code" placeholder="输入激活码，例如 a1b2c3d4e" confirm-type="next" />
-			<picker mode="selector" :range="coursePickerLabels" :value="coursePickerIndex" @change="onCourseChange">
-				<view class="course-picker" :class="{empty: !courseId}">
+			<picker mode="selector" :range="coursePickerLabels" :value="coursePickerIndex" :disabled="courseLocked" @change="onCourseChange">
+				<view class="course-picker" :class="{empty: !courseId, locked: courseLocked}">
 					<text>{{selectedCourseLabel}}</text>
-					<text class="picker-arrow">›</text>
+					<text class="locked-tag" v-if="courseLocked">已锁定</text>
+					<text class="picker-arrow" v-else>›</text>
 				</view>
 			</picker>
 			<input class="input" v-model="studentName" placeholder="输入学生名字" confirm-type="next" />
@@ -58,6 +59,8 @@ export default {
 	data() {
 		return {
 			courseId:'',
+			initialCourseTitle:'',
+			courseLocked:false,
 			courseOptions:[],
 			coursePickerIndex:0,
 			code:'',
@@ -76,6 +79,8 @@ export default {
 	},
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || '';
+		this.initialCourseTitle = opts.title ? decodeURIComponent(opts.title) : '';
+		this.courseLocked = !!this.courseId;
 		this.loadCourseOptions();
 		this.prefillStudentInfo();
 	},
@@ -87,7 +92,7 @@ export default {
 		selectedCourseLabel() {
 			const course = this.courseOptions.find(item => (item.id || item.courseId) === this.courseId);
 			if (course) return this.courseLabel(course);
-			return this.courseId || '请选择要开通的正式课程';
+			return this.initialCourseTitle || this.courseId || '请选择要开通的正式课程';
 		}
 	},
 	methods: {
@@ -111,6 +116,7 @@ export default {
 			return String(title).replace(/[《》]/g, '');
 		},
 		onCourseChange(event) {
+			if (this.courseLocked) return;
 			const index = Number(event.detail.value || 0);
 			const course = this.courseOptions[index];
 			if (!course) return;
@@ -214,6 +220,8 @@ page { background:#f5f7fa; }
 .input { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 20rpx; font-size:28rpx; margin-top:16rpx; }
 .course-picker { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 20rpx; font-size:28rpx; margin-top:16rpx; display:flex; align-items:center; justify-content:space-between; color:#222; box-sizing:border-box; }
 .course-picker.empty { color:#8a94a6; }
+.course-picker.locked { color:#222; background:#f6f8fb; }
+.locked-tag { flex-shrink:0; color:#1677ff; font-size:22rpx; font-weight:800; }
 .picker-arrow { color:#9aa3b2; font-size:34rpx; transform:rotate(90deg); }
 .gender-field { height:84rpx; border-radius:12rpx; background:#f3f6fa; padding:0 12rpx 0 20rpx; margin-top:16rpx; display:flex; align-items:center; justify-content:space-between; box-sizing:border-box; }
 .gender-label { color:#697386; font-size:28rpx; }

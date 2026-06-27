@@ -16,14 +16,21 @@
 					:poster="poster"
 					:initial-time="initialTime"
 					:controls="false"
+					controlslist="nodownload noplaybackrate noremoteplayback"
+					disablepictureinpicture
+					webkit-playsinline
+					playsinline
+					x5-playsinline
 					:muted="muted"
 					:show-fullscreen-btn="false"
 					:show-play-btn="false"
+					:show-center-play-btn="false"
 					:enable-progress-gesture="false"
 					@loadedmetadata="onLoadedMeta"
 					@play="onPlay"
 					@pause="onPause"
 					@click="onVideoTap"
+					@contextmenu.prevent="noop"
 					@timeupdate="onTimeUpdate"
 					@ended="onEnded"
 					@fullscreenchange="onNativeFullscreenChange"
@@ -42,6 +49,7 @@
 				<view class="video-error" v-if="videoError">
 					<view class="video-error-title">视频暂时无法加载</view>
 					<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
+					<view class="video-error-action" @click.stop="retryVideo">重新加载</view>
 				</view>
 				<view class="lesson-lock" v-if="lessonLocked">
 					<view class="lesson-lock-ico">🔒</view>
@@ -49,8 +57,8 @@
 					<view class="lesson-lock-sub">{{lockReason}}</view>
 				</view>
 				<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
-				<!-- 控件与视频融合：覆盖在视频底部；播放时 3 秒无操作自动隐藏，全屏时改用原生控件 -->
-				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked && !isWebFullscreen">
+				<!-- 控件与视频融合：覆盖在视频底部；播放时 3 秒无操作自动隐藏 -->
+				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked">
 					<view
 						class="player-progress-track"
 						@click.stop="seekByClick"
@@ -177,6 +185,8 @@ export default {
 			durationSeconds: 0,
 			percent: 0,
 			videoError: false,
+			videoErrorTimer: null,
+			videoLoadAttempts: 0,
 			lessonLocked: false,
 			lockReason: '',
 			videoPlaying: false,
@@ -228,10 +238,12 @@ export default {
 		this.videoContext = uni.createVideoContext('lessonVideo', this);
 		this.applyPlaybackRate();
 		this.applyVolume();
+		this.lockNativeVideoPlayback();
 	},
 	onUnload() {
 		this.clearSpeedMenuTimer();
 		this.clearControlsHideTimer();
+		this.clearVideoErrorTimer();
 		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
 		this.setNativeVideoControls(false);
@@ -241,6 +253,7 @@ export default {
 	onHide() {
 		this.closeSpeedMenu();
 		this.clearControlsHideTimer();
+		this.clearVideoErrorTimer();
 		this.unbindSeekDragListeners();
 		this.setNativeVideoControls(false);
 		this.exitWebFullscreen(false);
@@ -303,6 +316,8 @@ export default {
 					return;
 				}
 				this.lessonLocked = false;
+				this.videoError = false;
+				this.videoLoadAttempts = 0;
 				this.videoUrl = resolveMediaUrl(data.videoUrl || '');
 				this.poster = resolveMediaUrl(data.poster || '');
 				if (!this.courseTitle && data.courseTitle) this.courseTitle = data.courseTitle;
@@ -311,10 +326,10 @@ export default {
 				this.prevTitle = data.prevTitle || '';
 				this.nextTitle = data.nextTitle || '';
 				this.lessonCard = data.card || null;
-				this.durationSeconds = Number(data.duration) || 0;
+				this.durationSeconds = this.safeSeconds(data.duration);
 				this.totalTime = this.formatTime(this.durationSeconds);
 				if (data.progress) {
-					this.initialTime = Number(data.progress.currentTime) || 0;
+					this.initialTime = this.safeSeconds(data.progress.currentTime);
 					this.currentSeconds = this.initialTime;
 					this.percent = Number(data.progress.percent) || 0;
 					this.curTime = this.formatTime(this.currentSeconds);
@@ -467,7 +482,7 @@ export default {
 			this.fullscreenListener = () => {
 				const active = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
 				this.isWebFullscreen = !!active;
-				this.setNativeVideoControls(this.isWebFullscreen);
+				this.setNativeVideoControls(false);
 			};
 			['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(name => {
 				document.addEventListener(name, this.fullscreenListener);
@@ -482,11 +497,7 @@ export default {
 		},
 		videoShell() {
 			if (typeof document === 'undefined') return null;
-			const video = this.nativeVideoElement();
-			if (video && (video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen)) {
-				return video;
-			}
-			return document.querySelector('.video-wrap');
+			return document.querySelector('.video-wrap') || this.nativeVideoElement();
 		},
 		nativeVideoElement() {
 			if (typeof document === 'undefined') return null;
@@ -494,7 +505,27 @@ export default {
 		},
 		setNativeVideoControls(enabled) {
 			const video = this.nativeVideoElement();
-			if (video) video.controls = !!enabled;
+			if (!video) return;
+			video.controls = false;
+			this.lockNativeVideoPlayback();
+		},
+		lockNativeVideoPlayback() {
+			this.$nextTick(() => {
+				const video = this.nativeVideoElement();
+				if (!video) return;
+				video.controls = false;
+				video.setAttribute('controlsList', 'nodownload noplaybackrate noremoteplayback');
+				video.setAttribute('controlslist', 'nodownload noplaybackrate noremoteplayback');
+				video.setAttribute('disablePictureInPicture', '');
+				video.setAttribute('playsinline', '');
+				video.setAttribute('webkit-playsinline', '');
+				video.setAttribute('x5-playsinline', '');
+				video.disablePictureInPicture = true;
+				video.oncontextmenu = event => {
+					event.preventDefault();
+					return false;
+				};
+			});
 		},
 		toggleWebFullscreen() {
 			if (this.isWebFullscreen) {
@@ -508,7 +539,7 @@ export default {
 			if (!el) return;
 			const request = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
 			if (request) {
-				this.setNativeVideoControls(true);
+				this.setNativeVideoControls(false);
 				const result = request.call(el);
 				this.isWebFullscreen = true;
 				if (result && typeof result.catch === 'function') {
@@ -536,15 +567,18 @@ export default {
 		onNativeFullscreenChange(e) {
 			const detail = e.detail || {};
 			this.isWebFullscreen = !!detail.fullScreen;
-			this.setNativeVideoControls(this.isWebFullscreen);
+			this.setNativeVideoControls(false);
 		},
 		onLoadedMeta(e) {
-			const duration = Number(e.detail && e.detail.duration) || this.durationSeconds;
-			if (duration) {
+			const duration = this.safeSeconds(e.detail && e.detail.duration) || this.durationSeconds;
+			if (duration > 0) {
 				this.durationSeconds = duration;
 				this.totalTime = this.formatTime(duration);
 			}
-			this.setNativeVideoControls(this.isWebFullscreen);
+			this.videoError = false;
+			this.videoLoadAttempts = 0;
+			this.clearVideoErrorTimer();
+			this.setNativeVideoControls(false);
 			this.applyPlaybackRate();
 			this.applyVolume();
 		},
@@ -669,8 +703,9 @@ export default {
 		},
 		onTimeUpdate(e) {
 			const detail = e.detail || {};
-			this.currentSeconds = Number(detail.currentTime) || 0;
-			if (detail.duration) this.durationSeconds = Number(detail.duration);
+			this.currentSeconds = this.safeSeconds(detail.currentTime);
+			const duration = this.safeSeconds(detail.duration);
+			if (duration > 0) this.durationSeconds = duration;
 			this.curTime = this.formatTime(this.currentSeconds);
 			this.totalTime = this.formatTime(this.durationSeconds);
 			this.percent = this.durationSeconds ? Math.min(100, Math.round((this.currentSeconds / this.durationSeconds) * 100)) : 0;
@@ -685,9 +720,44 @@ export default {
 			this.persistProgress(true);
 		},
 		onVideoError() {
-			this.videoError = true;
 			this.videoPlaying = false;
 			this.clearControlsHideTimer();
+			this.clearVideoErrorTimer();
+			if (this.videoUrl && this.videoLoadAttempts < 1) {
+				this.videoLoadAttempts += 1;
+				this.videoErrorTimer = setTimeout(() => this.reloadVideo(false), 700);
+				return;
+			}
+			this.videoErrorTimer = setTimeout(() => {
+				this.videoError = true;
+				this.videoErrorTimer = null;
+			}, 900);
+		},
+		clearVideoErrorTimer() {
+			if (!this.videoErrorTimer) return;
+			clearTimeout(this.videoErrorTimer);
+			this.videoErrorTimer = null;
+		},
+		retryVideo() {
+			this.videoLoadAttempts = 0;
+			this.reloadVideo(true);
+		},
+		reloadVideo(playAfterReload = false) {
+			const src = this.videoUrl;
+			if (!src) return;
+			this.clearVideoErrorTimer();
+			this.videoError = false;
+			this.videoPlaying = false;
+			this.videoUrl = '';
+			this.$nextTick(() => {
+				this.videoUrl = src;
+				this.$nextTick(() => {
+					this.lockNativeVideoPlayback();
+					const video = this.nativeVideoElement();
+					if (video && typeof video.load === 'function') video.load();
+					if (playAfterReload) this.toggleVideoPlayback();
+				});
+			});
 		},
 		setPlaybackRate(rate) {
 			this.markPlayerActivity();
@@ -737,7 +807,7 @@ export default {
 		},
 		scheduleControlsHide() {
 			this.clearControlsHideTimer();
-			if (!this.videoPlaying || this.seekDragging || this.showSpeedMenu || this.isWebFullscreen) return;
+			if (!this.videoPlaying || this.seekDragging || this.showSpeedMenu) return;
 			this.controlsHideTimer = setTimeout(() => {
 				this.controlsVisible = false;
 				this.controlsHideTimer = null;
@@ -801,11 +871,16 @@ export default {
 			}
 		},
 		formatTime(seconds = 0) {
-			const safe = Math.max(0, Math.floor(Number(seconds) || 0));
+			const safe = Math.max(0, Math.floor(this.safeSeconds(seconds)));
 			const min = String(Math.floor(safe / 60)).padStart(2, '0');
 			const sec = String(safe % 60).padStart(2, '0');
 			return `${min}:${sec}`;
 		},
+		safeSeconds(value = 0) {
+			const number = Number(value);
+			return Number.isFinite(number) && number > 0 ? number : 0;
+		},
+		noop() {},
 		goNext() {
 			if (!this.nextTitle || this.nextTitle === '下一讲') {
 				uni.showToast({ title:'已到当前示例下一讲', icon:'none' });
@@ -982,6 +1057,19 @@ page { background:#fff; }
 .video-error-sub {
 	margin-top:8rpx;
 	font-size:24rpx;
+}
+.video-error-action {
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	height:52rpx;
+	margin-top:16rpx;
+	padding:0 22rpx;
+	border-radius:999rpx;
+	background:#9a3412;
+	color:#fff;
+	font-size:24rpx;
+	font-weight:800;
 }
 .lesson-lock {
 	position:absolute;

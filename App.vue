@@ -2,12 +2,19 @@
 	export default {
 		onLaunch: function() {
 			console.log('App Launch')
+			this.syncH5Title()
 		},
 		onShow: function() {
 			console.log('App Show')
+			this.syncH5Title()
 		},
 		onHide: function() {
 			console.log('App Hide')
+		},
+		methods: {
+			syncH5Title() {
+				if (typeof document !== 'undefined') document.title = '元知智学'
+			}
 		}
 	}
 </script>

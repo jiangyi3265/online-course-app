@@ -38,7 +38,6 @@
 
 				<view class="func-panel">
 					<view class="section-title">常用功能</view>
-					<view class="section-sub">推荐绑定、学生学情和个人资料集中在这里处理。</view>
 					<view class="funcs">
 						<view class="func" :class="{featured: f.featured}" v-for="(f,i) in funcs" :key="i" @click="openFunc(f)">
 							<view class="f-ico">{{f.ico}}</view>
