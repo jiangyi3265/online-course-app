@@ -244,7 +244,8 @@ export default {
 			reinforceLoaded: false,
 			knowledgeChapters: [],
 			chapters: [],
-			quizzes: []
+			quizzes: [],
+			versionStats: []
 		}
 	},
 	computed: {
@@ -269,6 +270,15 @@ export default {
 			return this.versions.slice(0, 2);
 		},
 		versionSummaries() {
+			const statsRows = this.versionStats.slice(0, 2);
+			if (statsRows.length) {
+				const labels = ['复习加强', '技巧绝招'];
+				return statsRows.map((item, index) => ({
+					label: item.label || item.name || item.versionName || labels[index] || '课程',
+					total: Number(item.totalLessons || item.lessonCount || item.total || 0),
+					duration: item.totalDuration || item.duration || item.courseDuration || '00小时00分'
+				})).filter(item => item.total || item.duration);
+			}
 			return this.visibleVersions.map((version, index) => {
 				const title = index === 0 ? '复习加强' : '技巧绝招';
 				const chapters = (version && version.chapters) || [];
@@ -343,6 +353,7 @@ export default {
 			this.courseName = stripCourseYear(course.courseName || this.courseName);
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover || this.cover);
+			this.versionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
 			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons;
 			this.duration = stats.totalDuration || '00小时00分';
@@ -421,6 +432,7 @@ export default {
 			this.courseName = stripCourseYear(course.courseName);
 			this.updatedAt = course.updatedAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover);
+			this.versionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
 			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons;
 			this.duration = stats.totalDuration || course.totalDuration || '00小时00分';
@@ -498,17 +510,31 @@ export default {
 				uni.showToast({ title: err.message || '加载失败', icon: 'none' });
 			}
 		},
+		normalizeVersionStats(rows = []) {
+			return (Array.isArray(rows) ? rows : [])
+				.slice(0, 2)
+				.map((item = {}, index) => ({
+					...item,
+					label: item.label || item.name || item.versionName || (index === 0 ? '复习加强' : '技巧绝招'),
+					totalLessons: Number(item.totalLessons || item.lessonCount || item.total || 0),
+					totalDuration: item.totalDuration || item.duration || item.courseDuration || '00小时00分'
+				}))
+				.filter(item => item.totalLessons || item.totalDuration);
+		},
 		resolveCourseStats(course = {}) {
-			const totalLessons = this.countCourseLessons(course) || Number(course.totalLessons || 0);
+			const statTotal = this.versionStats.reduce((sum, item) => sum + (Number(item.totalLessons) || 0), 0);
+			const totalLessons = statTotal || this.countCourseLessons(course) || Number(course.totalLessons || 0);
 			return {
 				totalLessons,
 				totalDuration: course.totalDuration || ''
 			};
 		},
 		countCourseLessons(course = {}) {
-			const version = course.versions && course.versions[0];
-			const chapters = version && version.chapters ? version.chapters : (course.chapters || []);
-			return this.countChapters(chapters);
+			const versions = Array.isArray(course.versions) ? course.versions.slice(0, 2) : [];
+			if (versions.length) {
+				return versions.reduce((sum, version) => sum + this.countChapters(version && version.chapters ? version.chapters : []), 0);
+			}
+			return this.countChapters(course.chapters || []);
 		},
 		countChapters(chapters = []) {
 			return chapters.reduce((total, chapter) => {
@@ -538,6 +564,10 @@ export default {
 			}, 0);
 		},
 		versionDuration(version = {}, index = 0) {
+			const stat = this.versionStats[index] || {};
+			if (stat.totalDuration || stat.duration || stat.courseDuration) {
+				return stat.totalDuration || stat.duration || stat.courseDuration;
+			}
 			return version.duration || version.totalDuration || version.courseDuration || (index === 0 ? this.duration : this.realDuration) || '00小时00分';
 		},
 		progressText(item) {

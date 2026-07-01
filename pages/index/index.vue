@@ -4,7 +4,7 @@
 		<view class="banner">
 			<swiper class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
 				<swiper-item v-for="item in homeBanners" :key="item.id || item.imageUrl">
-					<image class="banner-img" :src="item.imageUrl" mode="aspectFill" @click="openBanner(item)" />
+					<image class="banner-img" :src="item.imageUrl" mode="aspectFill" @click="openBanner(item)" @error.stop="onBannerError(item)" />
 				</swiper-item>
 			</swiper>
 		</view>
@@ -12,7 +12,8 @@
 		<!-- 4 categories -->
 		<view class="cats">
 			<view class="cat" v-for="(c,i) in cats" :key="i" @click="goTab(i)">
-				<image class="cat-img" :src="c.icon" mode="aspectFit" />
+				<image v-if="c.icon && !c.iconError" class="cat-img" :src="c.icon" mode="aspectFit" @error.stop="onCatIconError(c)" />
+				<view v-else class="cat-fallback">{{catFallbackText(c)}}</view>
 				<text class="cat-text">{{c.text}}</text>
 			</view>
 		</view>
@@ -32,7 +33,8 @@
 		<view class="grid">
 			<view class="card" v-for="(it,i) in list" :key="i" @click="goDetail(it)">
 				<view class="cover">
-					<image class="cover-img" :src="it.cover" mode="aspectFill" />
+					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFill" @error.stop="onCourseCoverError(it)" />
+					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
 					<text class="course-tag">视频+考练</text>
 				</view>
 				<view class="info">
@@ -103,7 +105,7 @@ export default {
 			try {
 				const settings = await getFrontendSettings();
 				const banners = Array.isArray(settings.homeBanners) ? settings.homeBanners.filter(item => item && item.imageUrl) : [];
-				if (banners.length) this.homeBanners = banners.map(item => ({ ...item, imageUrl: resolveMediaUrl(item.imageUrl) }));
+				if (banners.length) this.homeBanners = banners.map(item => ({ ...item, imageUrl: resolveMediaUrl(item.imageUrl), imageError: false }));
 			} catch (err) {
 				console.warn('前端配置接口不可用，使用默认首页图', err);
 			}
@@ -117,6 +119,7 @@ export default {
 					full: stripCourseYear(item.full),
 					learn: item.studyCount || item.learn || 0,
 					cover: resolveMediaUrl(item.cover),
+					coverError: false,
 					subject: item.subject,
 					kind: item.kind,
 					isTry: item.isTry
@@ -133,6 +136,30 @@ export default {
 				return;
 			}
 			uni.navigateTo({ url, fail: () => uni.switchTab({ url, fail: () => uni.redirectTo({ url }) }) });
+		},
+		onBannerError(item = {}) {
+			item.imageUrl = '/static/home-banner.png';
+			item.imageError = true;
+		},
+		onCatIconError(item = {}) {
+			if (this.$set) this.$set(item, 'iconError', true);
+			else item.iconError = true;
+		},
+		onCourseCoverError(item = {}) {
+			if (this.$set) this.$set(item, 'coverError', true);
+			else item.coverError = true;
+		},
+		catFallbackText(item = {}) {
+			const text = String(item.text || '');
+			if (text.includes('中考')) return '中';
+			if (text.includes('高考')) return '高';
+			return text.slice(0, 1) || '课';
+		},
+		coverFallbackText(item = {}) {
+			const text = String(item.full || item.title || '').replace(/[《》]/g, '');
+			if (text.includes('中考')) return '中考';
+			if (text.includes('高考')) return '高考';
+			return text.slice(0, 2) || '课程';
 		},
 		accessLabel(it) {
 			return it.kind === 'full' || it.isTry === false ? '激活课程' : '试听免费';
@@ -162,6 +189,7 @@ page { background:#f7f8fa; }
 .cats { display:flex; justify-content:space-around; padding:24rpx 0 14rpx; background:#f7f8fa; }
 .cat { display:flex; flex-direction:column; align-items:center; cursor:pointer; }
 .cat-img { width:96rpx; height:96rpx; margin-bottom:14rpx; }
+.cat-fallback { width:96rpx; height:96rpx; margin-bottom:14rpx; border-radius:26rpx; background:#eaf4ff; color:#1677ff; display:flex; align-items:center; justify-content:center; font-size:30rpx; font-weight:900; }
 .cat-text { font-size:30rpx; color:rgba(0,0,0,0.9); font-weight:700; }
 .tool-strip { padding:12rpx 20rpx 0; }
 .tool-card { min-height:118rpx; background:#fff; border:1rpx solid #edf0f4; border-radius:16rpx; display:flex; align-items:center; padding:0 24rpx; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
@@ -175,6 +203,7 @@ page { background:#f7f8fa; }
 .card { width:48.5%; background:#fff; border-radius:16rpx; margin-bottom:24rpx; overflow:hidden; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
 .cover { width:100%; height:200rpx; overflow:hidden; position:relative; }
 .cover-img { width:100%; height:100%; display:block; }
+.cover-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#edf5ff,#f8fbff); color:#1677ff; font-size:32rpx; font-weight:900; letter-spacing:2rpx; }
 .course-tag { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.5); color:#fff; font-size:22rpx; padding:8rpx 14rpx; border-top-right-radius:8rpx; }
 .info { padding:16rpx 18rpx 22rpx; }
 .title { font-size:26rpx; color:rgba(0,0,0,0.9); font-weight:700; }

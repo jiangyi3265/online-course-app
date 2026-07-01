@@ -149,7 +149,7 @@
 </template>
 
 <script>
-import { getFavorites, getMyDocs, isLoggedIn, resolveMediaUrl, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
+import { getFavorites, getMyDocs, getOfflinePaperReviews, isLoggedIn, resolveMediaUrl, saveOfflinePaperReview, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
 const REVIEW_KEY = 'offlineExamReviews';
@@ -169,6 +169,7 @@ export default {
 			courseTitle:'',
 			courseId:'',
 			list:[],
+			offlineReviews: [],
 			favoriteMap: {},
 			showLogin:false,
 			expandedSections: { lecture:false, paper:false }
@@ -200,15 +201,49 @@ export default {
 	methods: {
 		async loadDocs() {
 			try {
+				await this.loadOfflineReviews();
 				const docs = await getMyDocs(this.activeKeyword(), this.courseId);
 				const withFallbackDocs = this.ensureCategoryDocs(docs || []);
 				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => this.decorateDoc(doc));
 				await this.syncDocFavorites();
 			} catch (err) {
 				console.warn('文档接口不可用，使用本地文档', err);
+				await this.loadOfflineReviews();
 				this.list = this.filterLocalDocs();
 				await this.syncDocFavorites();
 			}
+		},
+		async loadOfflineReviews() {
+			const localRecords = uni.getStorageSync(REVIEW_KEY) || [];
+			let remoteRecords = [];
+			try {
+				remoteRecords = await getOfflinePaperReviews(this.courseId);
+			} catch (err) {
+				console.warn('线下试卷记录接口不可用，使用本地记录', err);
+			}
+			this.offlineReviews = this.mergePaperReviews(remoteRecords || [], localRecords);
+			uni.setStorageSync(REVIEW_KEY, this.offlineReviews);
+		},
+		mergePaperReviews(remote = [], local = []) {
+			const map = {};
+			remote.concat(local).forEach(item => {
+				if (!item) return;
+				const docId = item.docId === undefined || item.docId === null ? '' : String(item.docId);
+				const courseId = item.courseId || this.courseId || 'gk-math-full';
+				const key = item.id || `${courseId}:${docId}`;
+				const current = map[key];
+				const currentTime = current ? new Date(current.updatedAt || current.createdAt || 0).getTime() : 0;
+				const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
+				if (!current || itemTime >= currentTime) {
+					map[key] = {
+						...item,
+						courseId,
+						images: (item.images || []).map(url => resolveMediaUrl(url)).filter(Boolean),
+						imageCount: Number(item.imageCount || (item.images || []).length || 0)
+					};
+				}
+			});
+			return Object.values(map).sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')));
 		},
 		filterLocalDocs() {
 			const key = this.activeKeyword().toLowerCase();
@@ -348,25 +383,33 @@ export default {
 			if (this.isPaper(doc)) {
 				const review = this.findPaperReview(doc);
 				if (review) {
-					// 已提交过自评：回显已记录的分数，且不可更改
+					const submitted = this.isSubmittedPaperReview(review);
 					decorated.totalScore = review.totalScore;
 					decorated.score = review.score;
 					decorated.wrongCount = review.wrongCount;
-					decorated.images = review.images || [];
+					decorated.images = (review.images || []).map(item => resolveMediaUrl(item)).filter(Boolean);
 					decorated.imageCount = Number(review.imageCount || (review.images || []).length || 0);
-					decorated.reviewSubmitted = true;
+					decorated.reviewSubmitted = submitted;
 					decorated.paperImageError = decorated.imageCount > 0 && !this.paperImages(decorated).length;
 				} else {
 					decorated.reviewSubmitted = false;
+					decorated.images = [];
+					decorated.imageCount = 0;
 				}
 			}
 			return decorated;
 		},
 		findPaperReview(doc = {}) {
 			if (!doc.id) return null;
-			const records = uni.getStorageSync(REVIEW_KEY) || [];
+			const records = this.offlineReviews.length ? this.offlineReviews : (uni.getStorageSync(REVIEW_KEY) || []);
 			// 记录按时间倒序 unshift，find 命中的是最新一条
-			return records.find(item => item.docId !== undefined && String(item.docId) === String(doc.id)) || null;
+			const courseId = this.docCourseId(doc);
+			return records.find(item => item.docId !== undefined && String(item.docId) === String(doc.id) && (!item.courseId || item.courseId === courseId)) || null;
+		},
+		isSubmittedPaperReview(review = {}) {
+			if (review.status === 'draft') return false;
+			if (review.submitted === false || review.reviewSubmitted === false) return false;
+			return review.submitted === true || review.reviewSubmitted === true || review.totalScore !== undefined || review.score !== undefined || review.wrongCount !== undefined;
 		},
 		paperImageCount(doc = {}) {
 			return Number(((doc.images || []).length) || doc.imageCount || 0);
@@ -445,25 +488,62 @@ export default {
 					doc.images = await this.normalizeChosenPaperImages(res);
 					doc.imageCount = doc.images.length;
 					doc.paperImageError = false;
-					if (doc.reviewSubmitted) this.updatePaperReviewImages(doc, doc.images);
+					await this.savePaperReviewDraft(doc);
 					uni.showToast({ title:`已上传${doc.images.length}张`, icon:'none' });
 				}
 			});
 		},
-		updatePaperReviewImages(doc = {}, images = []) {
+		async savePaperReviewDraft(doc = {}) {
 			if (!doc.id) return;
-			const records = uni.getStorageSync(REVIEW_KEY) || [];
-			const index = records.findIndex(item => item.docId !== undefined && String(item.docId) === String(doc.id));
-			if (index === -1) return;
-			records[index] = {
-				...records[index],
-				images,
-				imageCount: images.length,
+			const existed = this.findPaperReview(doc) || {};
+			const record = {
+				...existed,
+				id: existed.id || `offline-${doc.id}-${Date.now()}`,
+				docId: doc.id,
+				courseId: doc.courseId || this.courseId || 'gk-math-full',
+				title: doc.title,
+				totalScore: doc.totalScore,
+				score: doc.score,
+				wrongCount: doc.wrongCount,
+				imageCount: (doc.images || []).length,
+				images: doc.images || [],
+				submitted: doc.reviewSubmitted === true || this.isSubmittedPaperReview(existed),
+				reviewSubmitted: doc.reviewSubmitted === true || this.isSubmittedPaperReview(existed),
+				status: (doc.reviewSubmitted === true || this.isSubmittedPaperReview(existed)) ? 'submitted' : 'draft',
+				type: 'offline-paper',
+				createdAt: existed.createdAt || new Date().toISOString(),
 				updatedAt: new Date().toISOString()
 			};
-			uni.setStorageSync(REVIEW_KEY, records);
+			await this.persistPaperReview(record);
 		},
-		savePaperReview(doc) {
+		async updatePaperReviewImages(doc = {}, images = []) {
+			if (!doc.id) return;
+			doc.images = images;
+			doc.imageCount = images.length;
+			await this.savePaperReviewDraft(doc);
+		},
+		async persistPaperReview(record = {}) {
+			this.upsertLocalPaperReview(record);
+			try {
+				const saved = await saveOfflinePaperReview(record);
+				this.upsertLocalPaperReview(saved || record);
+			} catch (err) {
+				console.warn('线下试卷记录保存到服务器失败，已保留本地记录', err);
+			}
+		},
+		upsertLocalPaperReview(record = {}) {
+			const records = uni.getStorageSync(REVIEW_KEY) || [];
+			const key = record.id || `${record.courseId}:${record.docId}`;
+			const sameRecord = item => {
+				if (key && item.id && item.id === key) return true;
+				return String(item.docId) === String(record.docId) && (!record.courseId || !item.courseId || item.courseId === record.courseId);
+			};
+			const next = records.filter(item => !sameRecord(item));
+			next.unshift(record);
+			this.offlineReviews = next;
+			uni.setStorageSync(REVIEW_KEY, next);
+		},
+		async savePaperReview(doc) {
 			if (doc.reviewSubmitted) {
 				uni.showToast({ title:'已提交，分数不可更改', icon:'none' });
 				return;
@@ -492,12 +572,14 @@ export default {
 				wrongCount,
 				imageCount: (doc.images || []).length,
 				images: doc.images || [],
+				submitted: true,
+				reviewSubmitted: true,
+				status: 'submitted',
 				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
 				type: 'offline-paper'
 			};
-			const records = uni.getStorageSync(REVIEW_KEY) || [];
-			records.unshift(record);
-			uni.setStorageSync(REVIEW_KEY, records);
+			await this.persistPaperReview(record);
 			// 提交后锁定为只读，保持展开以显示已记录的分数
 			doc.reviewSubmitted = true;
 			doc.reviewExpanded = true;

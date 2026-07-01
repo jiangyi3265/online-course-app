@@ -40,7 +40,7 @@
 					<view class="section-title">常用功能</view>
 					<view class="funcs">
 						<view class="func" :class="{featured: f.featured}" v-for="(f,i) in funcs" :key="i" @click="openFunc(f)">
-							<view class="f-ico">{{f.ico}}</view>
+							<view class="f-ico" :class="'icon-' + f.icon"></view>
 							<view class="f-main">
 								<text class="f-text">{{f.text}}</text>
 								<text class="f-desc">{{f.desc}}</text>
@@ -80,13 +80,13 @@ export default {
 			showInvite: false,
 			userInfo: {},
 			funcs: [
-				{ ico:'👥', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
-				{ ico:'🎓', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
-				{ ico:'📊', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
-				{ ico:'🔖', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
-				{ ico:'❓', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
-				{ ico:'📄', text:'隐私政策', desc:'查看隐私说明' },
-				{ ico:'📑', text:'用户协议', desc:'查看服务条款' }
+				{ icon:'referrer', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
+				{ icon:'students', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
+				{ icon:'stats', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
+				{ icon:'favorites', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
+				{ icon:'feedback', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
+				{ icon:'privacy', text:'隐私政策', desc:'查看隐私说明' },
+				{ icon:'agreement', text:'用户协议', desc:'查看服务条款' }
 			]
 		}
 	},
@@ -131,7 +131,7 @@ export default {
 			const index = this.funcs.findIndex(item => item.route === route);
 			const enabled = this.userInfo && this.userInfo.role === 'agency_admin';
 			if (enabled && index < 0) {
-				this.funcs.push({ ico:'校', text:'我的校区', desc:'校区激活码统计', route });
+				this.funcs.push({ icon:'campus', text:'我的校区', desc:'校区激活码统计', route });
 			}
 			if (!enabled && index >= 0) {
 				this.funcs.splice(index, 1);
@@ -598,6 +598,141 @@ page { background:#eef3f7; }
 	box-shadow:none;
 }
 .func:nth-child(8) .f-ico::after {
+	width:22rpx;
+	height:18rpx;
+	left:23rpx;
+	top:13rpx;
+	border:4rpx solid #1769ff;
+	border-bottom:0;
+	border-radius:10rpx 10rpx 0 0;
+	background:transparent;
+	box-shadow:0 22rpx 0 -8rpx #22b07d;
+}
+.func .f-ico.icon-referrer::before {
+	width:18rpx;
+	height:18rpx;
+	left:14rpx;
+	top:15rpx;
+	border:4rpx solid #1769ff;
+	border-radius:50%;
+	background:transparent;
+	box-shadow:22rpx 0 0 -4rpx #9abfff, 22rpx 0 0 0 #1769ff;
+}
+.func .f-ico.icon-referrer::after {
+	width:44rpx;
+	height:20rpx;
+	left:12rpx;
+	top:39rpx;
+	border:4rpx solid #1769ff;
+	border-top:0;
+	border-radius:0 0 22rpx 22rpx;
+	background:transparent;
+}
+.func .f-ico.icon-students::before {
+	width:18rpx;
+	height:18rpx;
+	left:23rpx;
+	top:15rpx;
+	border:4rpx solid #1769ff;
+	border-radius:50%;
+	background:transparent;
+}
+.func .f-ico.icon-students::after {
+	width:34rpx;
+	height:20rpx;
+	left:17rpx;
+	top:39rpx;
+	border:4rpx solid #1769ff;
+	border-top:0;
+	border-radius:0 0 22rpx 22rpx;
+	background:transparent;
+}
+.func .f-ico.icon-stats::before {
+	left:17rpx;
+	bottom:14rpx;
+	width:34rpx;
+	height:32rpx;
+	border-left:4rpx solid #1769ff;
+	border-bottom:4rpx solid #1769ff;
+	background:transparent;
+}
+.func .f-ico.icon-stats::after {
+	left:24rpx;
+	bottom:18rpx;
+	width:6rpx;
+	height:16rpx;
+	border-radius:6rpx 6rpx 0 0;
+	background:#22b07d;
+	box-shadow:12rpx -8rpx 0 #f4a340, 24rpx -16rpx 0 #1769ff;
+}
+.func .f-ico.icon-favorites::before {
+	width:32rpx;
+	height:40rpx;
+	left:18rpx;
+	top:13rpx;
+	border:4rpx solid #1769ff;
+	border-radius:8rpx;
+	background:transparent;
+}
+.func .f-ico.icon-favorites::after {
+	width:14rpx;
+	height:18rpx;
+	right:16rpx;
+	top:13rpx;
+	background:#ffcf5a;
+	clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+}
+.func .f-ico.icon-feedback::before {
+	width:38rpx;
+	height:28rpx;
+	left:15rpx;
+	top:17rpx;
+	border:4rpx solid #1769ff;
+	border-radius:12rpx;
+	background:transparent;
+}
+.func .f-ico.icon-feedback::after {
+	width:13rpx;
+	height:13rpx;
+	left:25rpx;
+	top:42rpx;
+	border-left:4rpx solid #1769ff;
+	border-bottom:4rpx solid #1769ff;
+	transform:skew(-18deg);
+	background:transparent;
+}
+.func .f-ico.icon-privacy::before,
+.func .f-ico.icon-agreement::before {
+	width:30rpx;
+	height:40rpx;
+	left:19rpx;
+	top:13rpx;
+	border:4rpx solid #64748b;
+	border-radius:8rpx;
+	background:transparent;
+}
+.func .f-ico.icon-agreement::before {
+	border-color:#7c3aed;
+}
+.func .f-ico.icon-privacy::after,
+.func .f-ico.icon-agreement::after {
+	width:18rpx;
+	height:4rpx;
+	left:25rpx;
+	top:26rpx;
+	background:#94a3b8;
+	box-shadow:0 10rpx 0 #94a3b8, 0 20rpx 0 #94a3b8;
+}
+.func .f-ico.icon-campus::before {
+	width:40rpx;
+	height:28rpx;
+	left:14rpx;
+	top:26rpx;
+	border:4rpx solid #1769ff;
+	border-radius:6rpx;
+	background:transparent;
+}
+.func .f-ico.icon-campus::after {
 	width:22rpx;
 	height:18rpx;
 	left:23rpx;

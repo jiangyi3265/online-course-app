@@ -16,11 +16,15 @@
 					:poster="poster"
 					:initial-time="initialTime"
 					:controls="false"
-					controlslist="nodownload noplaybackrate noremoteplayback"
+					controlslist="nodownload nofullscreen noplaybackrate noremoteplayback"
 					disablepictureinpicture
+					x-webkit-airplay="deny"
 					webkit-playsinline
 					playsinline
 					x5-playsinline
+					x5-video-player-type="h5-page"
+					x5-video-player-fullscreen="false"
+					preload="metadata"
 					:muted="muted"
 					:show-fullscreen-btn="false"
 					:show-play-btn="false"
@@ -194,7 +198,7 @@ export default {
 			lastSavedAt: 0,
 			videoContext: null,
 			playbackRate: 1,
-			playbackRates: [1.5, 1, 0.75, 0.5],
+			playbackRates: [1.5, 1, 0.75],
 			showSpeedMenu: false,
 			speedMenuTimer: null,
 			controlsVisible: true,
@@ -514,14 +518,25 @@ export default {
 				const video = this.nativeVideoElement();
 				if (!video) return;
 				video.controls = false;
-				video.setAttribute('controlsList', 'nodownload noplaybackrate noremoteplayback');
-				video.setAttribute('controlslist', 'nodownload noplaybackrate noremoteplayback');
+				video.removeAttribute('controls');
+				video.setAttribute('controlsList', 'nodownload nofullscreen noplaybackrate noremoteplayback');
+				video.setAttribute('controlslist', 'nodownload nofullscreen noplaybackrate noremoteplayback');
 				video.setAttribute('disablePictureInPicture', '');
+				video.setAttribute('disableRemotePlayback', '');
+				video.setAttribute('x-webkit-airplay', 'deny');
 				video.setAttribute('playsinline', '');
 				video.setAttribute('webkit-playsinline', '');
 				video.setAttribute('x5-playsinline', '');
+				video.setAttribute('x5-video-player-type', 'h5-page');
+				video.setAttribute('x5-video-player-fullscreen', 'false');
 				video.disablePictureInPicture = true;
+				video.disableRemotePlayback = true;
+				video.preload = 'metadata';
 				video.oncontextmenu = event => {
+					event.preventDefault();
+					return false;
+				};
+				video.ondragstart = event => {
 					event.preventDefault();
 					return false;
 				};
@@ -570,10 +585,15 @@ export default {
 			this.setNativeVideoControls(false);
 		},
 		onLoadedMeta(e) {
-			const duration = this.safeSeconds(e.detail && e.detail.duration) || this.durationSeconds;
+			const nativeVideo = this.nativeVideoElement();
+			const nativeDuration = nativeVideo && Number.isFinite(Number(nativeVideo.duration)) ? Number(nativeVideo.duration) : 0;
+			const duration = this.safeSeconds(e.detail && e.detail.duration) || this.safeSeconds(nativeDuration) || this.durationSeconds;
 			if (duration > 0) {
 				this.durationSeconds = duration;
 				this.totalTime = this.formatTime(duration);
+			} else {
+				this.durationSeconds = 0;
+				this.totalTime = '00:00';
 			}
 			this.videoError = false;
 			this.videoLoadAttempts = 0;
@@ -761,7 +781,8 @@ export default {
 		},
 		setPlaybackRate(rate) {
 			this.markPlayerActivity();
-			this.playbackRate = Number(rate) || 1;
+			const next = Number(rate) || 1;
+			this.playbackRate = this.playbackRates.includes(next) ? next : 1;
 			this.applyPlaybackRate();
 			this.closeSpeedMenu();
 		},
@@ -971,6 +992,9 @@ page { background:#fff; }
 	position:relative;
 	background:#0f172a;
 	overflow:hidden;
+	-webkit-user-select:none;
+	user-select:none;
+	-webkit-touch-callout:none;
 }
 .video-player {
 	width:100%;
@@ -978,6 +1002,9 @@ page { background:#fff; }
 	background:#0f172a;
 	display:block;
 	cursor:pointer;
+	-webkit-user-select:none;
+	user-select:none;
+	-webkit-touch-callout:none;
 }
 .video-wrap .uni-video-bar,
 .video-wrap .uni-video-cover-play-button,
@@ -987,6 +1014,12 @@ page { background:#fff; }
 .video-wrap :deep(.uni-video-bar),
 .video-wrap :deep(.uni-video-cover-play-button),
 .video-wrap :deep(.uni-video-toast) {
+	display:none !important;
+}
+.video-wrap video::-webkit-media-controls,
+.video-wrap video::-webkit-media-controls-enclosure,
+.video-wrap :deep(video::-webkit-media-controls),
+.video-wrap :deep(video::-webkit-media-controls-enclosure) {
 	display:none !important;
 }
 .poster-cover {

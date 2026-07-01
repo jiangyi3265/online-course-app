@@ -25,12 +25,14 @@
 	html,
 	body {
 		background: #eef2f6;
+		color-scheme: only light;
 	}
 
 	#app {
 		position: relative;
 		min-height: 100%;
 		background: #f7f8fa;
+		color-scheme: only light;
 	}
 
 	/* #ifdef H5 */
@@ -38,6 +40,25 @@
 		--wk-app-width: min(430px, 100vw);
 		--wk-page-bg: #f7f8fa;
 		--wk-desktop-bg: #edf1f6;
+		color-scheme: only light;
+	}
+
+	html,
+	body,
+	#app,
+	uni-app,
+	uni-page,
+	uni-page-wrapper,
+	uni-page-body,
+	page {
+		color-scheme: only light;
+		forced-color-adjust: none;
+	}
+
+	img,
+	image,
+	video {
+		-webkit-user-drag: none;
 	}
 
 	@media screen and (min-width: 768px) {

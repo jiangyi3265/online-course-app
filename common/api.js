@@ -50,16 +50,50 @@ function getApiOrigin() {
 	return ''
 }
 
-export function resolveMediaUrl(url = '') {
-	const value = String(url || '').trim()
-	if (!value || /^(https?:\/\/|data:|blob:|file:)/i.test(value)) return value
-	if (/^\/\//.test(value) && isH5Runtime()) return `${window.location.protocol}${value}`
-	if (/^\/?static\//i.test(value)) return `/${value.replace(/^\/+/, '')}`
-	if (/^\/?(profile|upload|uploads)\//i.test(value)) {
-		const path = value.startsWith('/') ? value : `/${value}`
-		return `${getApiOrigin()}${path}`
+function encodeMediaUrl(url = '') {
+	try {
+		return encodeURI(url).replace(/#/g, '%23')
+	} catch (err) {
+		return url
 	}
-	return value
+}
+
+export function resolveMediaUrl(url = '') {
+	const value = String(url || '').trim().replace(/\\/g, '/')
+	if (!value) return ''
+	if (/^(data:|blob:|file:)/i.test(value)) return value
+	if (/^\/\//.test(value)) {
+		const protocol = isH5Runtime() ? window.location.protocol : 'https:'
+		return encodeMediaUrl(`${protocol}${value}`)
+	}
+	if (/^https?:\/\//i.test(value)) {
+		try {
+			const parsed = new URL(value)
+			if (isH5Runtime()) {
+				const apiOrigin = getApiOrigin()
+				const apiHost = apiOrigin ? new URL(apiOrigin, window.location.origin).host : ''
+				const mediaPath = parsed.pathname || ''
+				const isBackendMedia = /^\/(prod-api\/)?(profile|upload|uploads)\//i.test(mediaPath)
+				const sameHost = parsed.host === window.location.host || parsed.hostname === window.location.hostname || parsed.host === apiHost
+				if (!isLocalHost() && isLoopbackUrl(value)) {
+					return encodeMediaUrl(`${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`)
+				}
+				if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && (sameHost || isBackendMedia)) {
+					parsed.protocol = 'https:'
+				}
+			}
+			return encodeMediaUrl(parsed.toString())
+		} catch (err) {
+			return encodeMediaUrl(value)
+		}
+	}
+	const clean = value.replace(/^\/+/, '')
+	if (/^static\//i.test(clean)) return encodeMediaUrl(`/${clean}`)
+	if (/^(prod-api\/)?(profile|upload|uploads)\//i.test(clean)) {
+		const path = `/${clean.replace(/^prod-api\//i, '')}`
+		return encodeMediaUrl(`${getApiOrigin()}${path}`)
+	}
+	return encodeMediaUrl(value)
 }
 
 function buildQuery(params = {}) {
@@ -220,6 +254,17 @@ export function getMyCourses() {
 
 export function getMyDocs(kw = '', courseId = '') {
 	return request('/my/docs', { params: { kw, courseId } })
+}
+
+export function getOfflinePaperReviews(courseId = '', userId = '') {
+	return request('/offline-reviews', { params: { courseId, userId } })
+}
+
+export function saveOfflinePaperReview(payload = {}) {
+	return request('/offline-reviews', {
+		method: 'POST',
+		data: payload
+	})
 }
 
 export function getStudySummaryApi() {

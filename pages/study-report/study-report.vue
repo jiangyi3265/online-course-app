@@ -157,7 +157,7 @@
 </template>
 
 <script>
-import { getStudyReport } from '@/common/api.js'
+import { getOfflinePaperReviews, getStudyReport } from '@/common/api.js'
 import { stripCourseYear } from '@/common/course-data.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
@@ -196,7 +196,7 @@ export default {
 		},
 		offlineRows() {
 			return this.offlineReviews
-				.filter(item => !item.courseId || item.courseId === this.courseId)
+				.filter(item => (!item.courseId || item.courseId === this.courseId) && item.status !== 'draft' && item.submitted !== false && item.reviewSubmitted !== false)
 				.map(item => ({
 					...item,
 					averageScore: item.totalScore ? Math.round(Number(item.score) * 100 / Number(item.totalScore)) : item.score,
@@ -242,6 +242,19 @@ export default {
 			return this.report.suggestions || [];
 		},
 		courseTrackRows() {
+			const versionStats = this.report.versionStats || this.report.courseVersionStats || (this.report.course && (this.report.course.versionStats || this.report.course.courseVersionStats)) || [];
+			if (versionStats.length) {
+				return versionStats.slice(0, 2).map((item, index) => ({
+					name: item.label || item.name || item.versionName || (index === 0 ? '复习加强课' : '技巧绝招课'),
+					today: item.todayText || item.today || (this.report.learningStats && this.report.learningStats.todayText) || '0分钟',
+					week: item.weekText || item.week || (this.report.learningStats && this.report.learningStats.weekText) || '0分钟',
+					total: item.readDuration || item.totalText || item.learnedDuration || '0分钟',
+					totalLessons: Number(item.totalLessons || item.lessonCount || 0),
+					learnedLessons: Number(item.readStudyCount || item.learnedLessons || 0),
+					progress: Math.max(0, Math.min(100, Number(item.progress || 0))),
+					checkins: Number(item.checkins || item.checkinDays || this.report.checkinDays || 0)
+				}));
+			}
 			const stats = this.report.learningStats || {};
 			const totalLessons = Number(this.report.totalLessons || (this.report.course && this.report.course.totalLessons) || 0);
 			const learnedLessons = Number(this.report.readStudyCount || (this.report.course && this.report.course.readStudyCount) || 0);
@@ -289,12 +302,39 @@ export default {
 		async loadData() {
 			try {
 				this.report = await getStudyReport(this.courseId, this.userId);
+				this.offlineReviews = this.mergeOfflineReviews(this.report.offlineReviews || [], uni.getStorageSync(REVIEW_KEY) || []);
+				await this.loadRemoteOfflineReviews();
 				this.selectedPractice = this.practiceRows[0] || null;
 			} catch (err) {
 				console.warn('学习报告接口不可用，使用本地报告', err);
 				this.report = this.localReport();
+				await this.loadRemoteOfflineReviews();
 				this.selectedPractice = this.practiceRows[0] || null;
 			}
+		},
+		async loadRemoteOfflineReviews() {
+			try {
+				const remote = await getOfflinePaperReviews(this.courseId, this.userId);
+				this.offlineReviews = this.mergeOfflineReviews(remote || [], this.offlineReviews || [], uni.getStorageSync(REVIEW_KEY) || []);
+			} catch (err) {
+				this.offlineReviews = this.mergeOfflineReviews(this.offlineReviews || [], uni.getStorageSync(REVIEW_KEY) || []);
+			}
+			uni.setStorageSync(REVIEW_KEY, this.offlineReviews);
+		},
+		mergeOfflineReviews(...groups) {
+			const map = {};
+			[].concat(...groups).forEach(item => {
+				if (!item) return;
+				const stableDocKey = item.docId || item.targetId || '';
+				const key = stableDocKey
+					? `${item.courseId || this.courseId}:${stableDocKey}`
+					: (item.id || `${item.courseId || this.courseId}:${item.title || ''}`);
+				const current = map[key];
+				const currentTime = current ? new Date(current.updatedAt || current.createdAt || 0).getTime() : 0;
+				const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
+				if (!current || itemTime >= currentTime) map[key] = item;
+			});
+			return Object.values(map).sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')));
 		},
 		onRecordDateChange(e) {
 			this.recordDateFilter = e.detail.value || '';
@@ -433,8 +473,8 @@ export default {
 		},
 		isToday(value) {
 			if (!value) return false;
-			const date = new Date(value);
-			if (Number.isNaN(date.getTime())) return false;
+			const date = this.toValidDate(value);
+			if (!date) return false;
 			const now = new Date();
 			return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
 		},

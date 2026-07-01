@@ -35,30 +35,12 @@
 				</view>
 			</view>
 		</view>
-		<view class="summary-strip">
-			<view class="summary-item total">
+		<view class="source-filter">
+			<view class="total-chip">
 				<text>总收录</text>
 				<strong>{{summary.total || 0}}</strong>
-				<small>道错题</small>
-			</view>
-			<view class="summary-item">
-				<text>待温习</text>
-				<strong>{{summary.pending || 0}}</strong>
 				<small>道</small>
 			</view>
-			<view class="summary-item">
-				<text>已掌握</text>
-				<strong>{{summary.mastered || 0}}</strong>
-				<small>道</small>
-			</view>
-			<view class="summary-item weak" @click="jumpToWeakQuestions">
-				<text>短板</text>
-				<strong>{{summary.weak || 0}}</strong>
-				<small>道</small>
-			</view>
-		</view>
-
-		<view class="source-filter">
 			<view
 				class="source-chip"
 				v-for="item in sources"
@@ -69,17 +51,6 @@
 		</view>
 
 		<view v-if="mode === 'review'">
-			<view class="status-panel">
-				<view class="status-item" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">
-					<text>待温习</text><text class="status-num">{{summary.pending || 0}}</text><text class="status-unit">道</text>
-				</view>
-				<view class="status-item" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">
-					<text>已掌握</text><text class="status-num">{{summary.mastered || 0}}</text><text class="status-unit">道</text>
-				</view>
-				<view class="status-item" :class="{active: statusFilter === 'weak'}" @click="setStatusFilter('weak')">
-					<text>短板</text><text class="status-num">{{summary.weak || 0}}</text><text class="status-unit">道</text>
-				</view>
-			</view>
 			<view class="question-list-anchor"></view>
 			<view class="empty" v-if="visibleWrongList.length === 0">暂无错题，先完成一次测试后这里会自动收录</view>
 			<view class="question-card" v-for="item in visibleWrongList" :key="item.id">
@@ -90,7 +61,8 @@
 				</view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
+				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点击重试</view>
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
 						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
@@ -128,7 +100,8 @@
 						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
 						<math-rich-text class="detail-stem" :text="detailStem(detail)" />
 						<question-audio-player :src="stemAudio(detail)" />
-						<image v-if="detail.stemImageUrl" class="question-image compact" :src="mediaUrl(detail.stemImageUrl)" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" />
+						<image v-if="detail.stemImageUrl && !detail.stemImageError" class="question-image compact" :src="mediaUrl(detail.stemImageUrl)" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" @error.stop="onQuestionImageError(detail)" />
+						<view v-if="detail.stemImageError" class="image-fallback compact" @click="retryQuestionImage(detail)">图片加载失败，点击重试</view>
 						<math-rich-text class="detail-answer bad" :text="'我的答案：' + detailMyAnswer(detail)" />
 						<view class="test-record-strip" v-if="showTestRecordDetail(detail)">
 							<view class="test-record-title">查看测试记录</view>
@@ -138,6 +111,13 @@
 								<view class="record-pill" v-if="detail.reviewResult" :class="reviewResultClass(detail)">自评{{reviewResultText(detail)}}</view>
 							</view>
 						</view>
+						<image
+							v-if="detail.studentAnswerImageUrl"
+							class="answer-record-image"
+							:src="mediaUrl(detail.studentAnswerImageUrl)"
+							mode="widthFix"
+							@click="previewDetailImage(detail)"
+						/>
 						<math-rich-text class="detail-answer ok" :text="'正确答案：' + (detail.correctAnswerText || detail.correctAnswer || '--')" />
 						<analysis-viewer :item="detail" :text="detail.analysis" />
 					</view>
@@ -163,26 +143,12 @@
 				<view class="tag-row"><view class="tag">{{source}}</view></view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
+				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点击重试</view>
 			</view>
 		</view>
 
 		<view v-if="mode === 'weak'">
-			<view class="weak-brief">
-				<view>
-					<view class="weak-title">短板题库</view>
-					<view class="weak-sub">多次重练仍出错，或来源标签较多的题会集中到这里。</view>
-				</view>
-				<view class="weak-total">{{weakPending + weakMastered}}<text>道</text></view>
-			</view>
-			<view class="status-panel two">
-				<view class="status-item" :class="{active: statusFilter === 'pending'}" @click="setStatusFilter('pending')">
-					<text>未掌握</text><text class="status-num">{{weakPending}}</text><text class="status-unit">道</text>
-				</view>
-				<view class="status-item" :class="{active: statusFilter === 'mastered'}" @click="setStatusFilter('mastered')">
-					<text>已掌握</text><text class="status-num">{{weakMastered}}</text><text class="status-unit">道</text>
-				</view>
-			</view>
 			<view class="question-list-anchor"></view>
 			<view class="empty" v-if="visibleWeakList.length === 0">暂无短板题，带三个来源标签或多次重练错误后会自动加入</view>
 			<view class="question-card" v-for="item in visibleWeakList" :key="item.id">
@@ -192,7 +158,8 @@
 				</view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
+				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点击重试</view>
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
 						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
@@ -551,6 +518,19 @@ export default {
 		mediaUrl(url = '') {
 			return resolveMediaUrl(url)
 		},
+		onQuestionImageError(item = {}) {
+			if (this.$set) this.$set(item, 'stemImageError', true)
+			else item.stemImageError = true
+		},
+		retryQuestionImage(item = {}) {
+			if (this.$set) this.$set(item, 'stemImageError', false)
+			else item.stemImageError = false
+			const url = item.stemImageUrl
+			item.stemImageUrl = ''
+			this.$nextTick(() => {
+				item.stemImageUrl = url
+			})
+		},
 		mediaList(value) {
 			if (Array.isArray(value)) return value.map(item => this.mediaUrl(String(item || '').trim())).filter(Boolean)
 			return String(value || '').split(/[,\n]/).map(item => this.mediaUrl(item.trim())).filter(Boolean)
@@ -705,7 +685,25 @@ page { background:#f4f6f8; }
 .summary-item.weak text {
 	color:#c2410c;
 }
-.source-filter { display:flex; gap:12rpx; padding:0 24rpx 20rpx; overflow-x:auto; }
+.source-filter { display:flex; flex-wrap:wrap; gap:12rpx; padding:0 24rpx 20rpx; overflow:visible; align-items:center; }
+.total-chip {
+	flex:0 0 auto;
+	min-width:142rpx;
+	height:58rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	gap:8rpx;
+	padding:0 16rpx;
+	border-radius:10rpx;
+	background:#eef7ff;
+	border:1rpx solid #bfdbfe;
+	color:#2563eb;
+	box-sizing:border-box;
+}
+.total-chip text { font-size:22rpx; font-weight:800; }
+.total-chip strong { font-size:28rpx; font-weight:900; color:#17212f; line-height:1; }
+.total-chip small { font-size:20rpx; color:#64748b; }
 .source-chip { flex:0 0 auto; height:58rpx; line-height:58rpx; padding:0 22rpx; border-radius:10rpx; background:#fff; color:#52606d; border:1rpx solid #d9e0e8; font-size:24rpx; }
 .source-chip.active { background:#2563eb; border-color:#2563eb; color:#fff; font-weight:800; }
 .status-panel, .record-summary, .retry-panel { margin:0 24rpx 20rpx; padding:18rpx; border-radius:14rpx; background:#fff; border:1rpx solid #e3e8ef; }
@@ -752,6 +750,8 @@ page { background:#f4f6f8; }
 .stem { margin-top:18rpx; font-size:29rpx; line-height:1.55; font-weight:800; color:#1f2933; }
 .question-image { width:100%; max-height:420rpx; margin:14rpx 0 4rpx; border-radius:12rpx; background:#eef2f7; }
 .question-image.compact { max-height:260rpx; margin:10rpx 0; }
+.image-fallback { min-height:220rpx; margin:14rpx 0 4rpx; border-radius:12rpx; background:#eef2f7; border:1rpx dashed #cbd5e1; color:#64748b; display:flex; align-items:center; justify-content:center; font-size:24rpx; }
+.image-fallback.compact { min-height:150rpx; margin:10rpx 0; }
 .option-list { margin-top:14rpx; padding:14rpx 16rpx; background:#f8fafc; border:1rpx solid #edf0f2; border-radius:8rpx; }
 .option-row { color:#475467; font-size:24rpx; line-height:1.65; }
 .option-row + .option-row { margin-top:12rpx; }
@@ -824,6 +824,14 @@ page { background:#f4f6f8; }
 .record-pill.bad { color:#dc2626; border-color:#fecaca; background:#fff1f2; }
 .record-pill.pending,
 .record-pill.muted { color:#64748b; border-color:#cbd5e1; background:#f1f5f9; }
+.answer-record-image {
+	display:block;
+	width:100%;
+	margin:12rpx 0 4rpx;
+	border-radius:12rpx;
+	background:#eef2f7;
+	border:1rpx solid #e2e8f0;
+}
 .panel-title { font-size:32rpx; font-weight:900; color:#1f2933; }
 .panel-sub, .notice, .retry-meta { margin-top:10rpx; color:#667085; font-size:25rpx; line-height:1.5; }
 .setting-title { margin-top:24rpx; font-size:26rpx; font-weight:900; color:#1f2933; }
