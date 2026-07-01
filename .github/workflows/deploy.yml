@@ -56,6 +56,11 @@ jobs:
         run: |
           set -euo pipefail
           test -d dist/build/h5
+          test -d static
+          rm -rf dist/build/h5/static
+          cp -a static dist/build/h5/static
+          test -f dist/build/h5/static/home-banner.png
+          test -f dist/build/h5/static/courses/zk-yuwen.jpg
           SSH_OPTS="-i ~/.ssh/deploy_key -p $DEPLOY_PORT -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
           SCP_OPTS="-O -i ~/.ssh/deploy_key -P $DEPLOY_PORT -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
           ARCHIVE="wk-h5.tar.gz"
