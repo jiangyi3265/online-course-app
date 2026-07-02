@@ -2,9 +2,44 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="color-scheme" content="light only" />
     <meta name="supported-color-schemes" content="light only" />
     <meta name="theme-color" content="#f7f8fa" />
+    <script>
+      ;(function () {
+        var reloadKey = '__yz_entry_reload__'
+        var staleAssetPattern = /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk|ChunkLoadError|module script/i
+
+        function reloadWithFreshEntry() {
+          try {
+            var now = Date.now()
+            var last = Number(sessionStorage.getItem(reloadKey) || 0)
+            if (now - last < 15000) return
+            sessionStorage.setItem(reloadKey, String(now))
+          } catch (e) {}
+
+          var base = location.origin + location.pathname
+          var hash = location.hash || ''
+          location.replace(base + '?t=' + Date.now() + hash)
+        }
+
+        window.addEventListener('error', function (event) {
+          var target = event && event.target
+          var isAsset = target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')
+          var message = event && event.message ? String(event.message) : ''
+          if (isAsset || staleAssetPattern.test(message)) reloadWithFreshEntry()
+        }, true)
+
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event && event.reason
+          var message = reason && (reason.message || (reason.toString && reason.toString()))
+          if (message && staleAssetPattern.test(String(message))) reloadWithFreshEntry()
+        })
+      })()
+    </script>
     <script>
       var coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)') ||
         CSS.supports('top: constant(a)'))
