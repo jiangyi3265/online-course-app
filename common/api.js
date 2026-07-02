@@ -166,6 +166,33 @@ export function uploadAnswerImage(filePath) {
 	})
 }
 
+export function uploadAnswerImageFile(file) {
+	if (!file) return Promise.resolve('')
+	const rawFile = file.file || file
+	const fallbackPath = file.path || file.tempFilePath || file.url || ''
+	if (typeof Blob !== 'undefined' && rawFile instanceof Blob && typeof FormData !== 'undefined' && typeof fetch !== 'undefined') {
+		const token = getToken()
+		const form = new FormData()
+		form.append('file', rawFile, rawFile.name || 'paper-image.jpg')
+		return fetch(`${getBaseUrl(false)}/upload`, {
+			method: 'POST',
+			headers: token ? { Authorization: `Bearer ${token}` } : {},
+			body: form
+		}).then(async res => {
+			let body = {}
+			try {
+				body = await res.json()
+			} catch (e) {}
+			const data = body.data || body
+			if (res.ok && (body.code === 200 || body.code === 0 || data.url)) {
+				return resolveMediaUrl(data.url || data.fileName || '')
+			}
+			throw new Error(body.msg || `图片上传失败：${res.status}`)
+		})
+	}
+	return uploadAnswerImage(fallbackPath)
+}
+
 export function getToken() {
 	return uni.getStorageSync(TOKEN_KEY) || ''
 }

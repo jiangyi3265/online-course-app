@@ -149,7 +149,7 @@
 </template>
 
 <script>
-import { getFavorites, getMyDocs, getOfflinePaperReviews, isLoggedIn, resolveMediaUrl, saveOfflinePaperReview, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
+import { getFavorites, getMyDocs, getOfflinePaperReviews, isLoggedIn, resolveMediaUrl, saveOfflinePaperReview, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
 const REVIEW_KEY = 'offlineExamReviews';
@@ -422,8 +422,8 @@ export default {
 		isUsablePaperImage(url = '') {
 			const value = String(url || '').trim();
 			if (!value) return false;
-			// H5 的 blob 地址刷新后无法恢复，直接视为失效，避免电脑端显示灰块。
-			if (/^blob:/i.test(value)) return false;
+			// Browser local addresses expire after refresh, so only persisted media URLs are usable.
+			if (/^(blob:|data:|file:)/i.test(value)) return false;
 			return true;
 		},
 		reviewActionText(doc = {}) {
@@ -439,34 +439,33 @@ export default {
 		onPaperImageError(doc = {}) {
 			doc.paperImageError = true;
 			doc.images = [];
-			doc.imageCount = 0;
-			if (doc.reviewSubmitted) this.updatePaperReviewImages(doc, []);
+			doc.imageCount = Math.max(Number(doc.imageCount || 0), 1);
 		},
 		async normalizeChosenPaperImages(res = {}) {
 			const paths = (res.tempFilePaths || []).slice(0, 3).filter(Boolean);
-			if (paths.length) {
-				const uploaded = await Promise.all(paths.map(path => uploadAnswerImage(path).catch(() => '')));
-				const serverImages = uploaded.filter(Boolean);
+			const selectedFiles = Array.isArray(res.tempFiles) ? res.tempFiles.slice(0, 3) : [];
+			if (selectedFiles.length) {
+				const uploaded = await Promise.all(selectedFiles.map(item => uploadAnswerImageFile(item).catch(err => {
+					console.warn('试卷照片文件上传失败', err);
+					return '';
+				})));
+				const serverImages = uploaded
+					.map(item => resolveMediaUrl(item))
+					.filter(url => this.isUsablePaperImage(url));
 				if (serverImages.length) return serverImages.slice(0, 3);
 			}
-			// H5 的临时 blob 地址刷新后会失效，转成 dataURL 后电脑端也能稳定预览。
-			// #ifdef H5
-			const files = Array.isArray(res.tempFiles) ? res.tempFiles.slice(0, 3) : [];
-			if (typeof FileReader !== 'undefined' && files.length) {
-				const tasks = files.map((item, index) => {
-					const file = item && (item.file || item);
-					if (typeof Blob === 'undefined' || !(file instanceof Blob)) return Promise.resolve(paths[index] || '');
-					return new Promise(resolve => {
-						const reader = new FileReader();
-						reader.onload = () => resolve(reader.result || paths[index] || '');
-						reader.onerror = () => resolve(paths[index] || '');
-						reader.readAsDataURL(file);
-					});
-				});
-				return (await Promise.all(tasks)).filter(Boolean);
+			if (paths.length) {
+				const uploaded = await Promise.all(paths.map(path => uploadAnswerImage(path).catch(err => {
+					console.warn('试卷照片路径上传失败', err);
+					return '';
+				})));
+				const serverImages = uploaded
+					.map(item => resolveMediaUrl(item))
+					.filter(url => this.isUsablePaperImage(url));
+				if (serverImages.length) return serverImages.slice(0, 3);
 			}
-			// #endif
-			return paths;
+			// Do not save transient browser-local image URLs.
+			return [];
 		},
 		choosePaperImages(doc) {
 			const currentImages = this.paperImages(doc);
@@ -485,7 +484,13 @@ export default {
 			uni.chooseImage({
 				count: 3,
 				success: async res => {
-					doc.images = await this.normalizeChosenPaperImages(res);
+					const images = await this.normalizeChosenPaperImages(res);
+					if (!images.length) {
+						doc.paperImageError = true;
+						uni.showToast({ title:'图片上传失败，请重新上传', icon:'none' });
+						return;
+					}
+					doc.images = images;
 					doc.imageCount = doc.images.length;
 					doc.paperImageError = false;
 					await this.savePaperReviewDraft(doc);
@@ -496,6 +501,7 @@ export default {
 		async savePaperReviewDraft(doc = {}) {
 			if (!doc.id) return;
 			const existed = this.findPaperReview(doc) || {};
+			const images = this.paperImages(doc);
 			const record = {
 				...existed,
 				id: existed.id || `offline-${doc.id}-${Date.now()}`,
@@ -505,8 +511,8 @@ export default {
 				totalScore: doc.totalScore,
 				score: doc.score,
 				wrongCount: doc.wrongCount,
-				imageCount: (doc.images || []).length,
-				images: doc.images || [],
+				imageCount: images.length,
+				images,
 				submitted: doc.reviewSubmitted === true || this.isSubmittedPaperReview(existed),
 				reviewSubmitted: doc.reviewSubmitted === true || this.isSubmittedPaperReview(existed),
 				status: (doc.reviewSubmitted === true || this.isSubmittedPaperReview(existed)) ? 'submitted' : 'draft',
@@ -518,8 +524,8 @@ export default {
 		},
 		async updatePaperReviewImages(doc = {}, images = []) {
 			if (!doc.id) return;
-			doc.images = images;
-			doc.imageCount = images.length;
+			doc.images = (images || []).map(item => resolveMediaUrl(item)).filter(url => this.isUsablePaperImage(url));
+			doc.imageCount = doc.images.length;
 			await this.savePaperReviewDraft(doc);
 		},
 		async persistPaperReview(record = {}) {
@@ -562,6 +568,7 @@ export default {
 				uni.showToast({ title:'请填写有效的分数和错题数', icon:'none' });
 				return;
 			}
+			const images = this.paperImages(doc);
 			const record = {
 				id: `offline-${Date.now()}`,
 				docId: doc.id,
@@ -570,8 +577,8 @@ export default {
 				totalScore,
 				score,
 				wrongCount,
-				imageCount: (doc.images || []).length,
-				images: doc.images || [],
+				imageCount: images.length,
+				images,
 				submitted: true,
 				reviewSubmitted: true,
 				status: 'submitted',
