@@ -12,8 +12,10 @@
 		<!-- 4 categories -->
 		<view class="cats">
 			<view class="cat" v-for="(c,i) in cats" :key="i" @click="goTab(i)">
-				<image v-if="c.icon && !c.iconError" class="cat-img" :src="c.icon" mode="aspectFit" @error.stop="onCatIconError(c)" />
-				<view v-else class="cat-fallback">{{catFallbackText(c)}}</view>
+				<view class="cat-icon" :class="['cat-tone-' + (i + 1), { 'is-fallback': c.iconError }]">
+					<text class="cat-icon-letter">{{catFallbackText(c)}}</text>
+					<image v-if="c.icon && !c.iconError" class="cat-preload" :src="catIconSrc(c)" mode="aspectFit" @error.stop="onCatIconError(c)" />
+				</view>
 				<text class="cat-text">{{c.text}}</text>
 			</view>
 		</view>
@@ -145,6 +147,9 @@ export default {
 			if (this.$set) this.$set(item, 'iconError', true);
 			else item.iconError = true;
 		},
+		catIconSrc(item = {}) {
+			return resolveMediaUrl(item.icon || '');
+		},
 		onCourseCoverError(item = {}) {
 			if (this.$set) this.$set(item, 'coverError', true);
 			else item.coverError = true;
@@ -187,9 +192,16 @@ page { background:#f7f8fa; }
 .banner-img { width:100%; height:100%; display:block; border-radius:14rpx; }
 
 .cats { display:flex; justify-content:space-around; padding:24rpx 0 14rpx; background:#f7f8fa; }
-.cat { display:flex; flex-direction:column; align-items:center; cursor:pointer; }
-.cat-img { width:96rpx; height:96rpx; margin-bottom:14rpx; }
-.cat-fallback { width:96rpx; height:96rpx; margin-bottom:14rpx; border-radius:26rpx; background:#eaf4ff; color:#1677ff; display:flex; align-items:center; justify-content:center; font-size:30rpx; font-weight:900; }
+.cat { min-width:0; min-height:142rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
+.cat-icon { width:96rpx; height:96rpx; flex:0 0 96rpx; margin-bottom:14rpx; border-radius:28rpx; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10rpx 24rpx rgba(15,23,42,0.08); background-repeat:no-repeat,no-repeat; background-position:center,center; background-size:74rpx 74rpx,100% 100%; }
+.cat-tone-1 { background-image:url('/static/cats/1.png'),linear-gradient(135deg,#eaf7ff,#dff1ff); color:#1677ff; }
+.cat-tone-2 { background-image:url('/static/cats/2.png'),linear-gradient(135deg,#eefcf5,#dcf9ec); color:#16a36a; }
+.cat-tone-3 { background-image:url('/static/cats/3.png'),linear-gradient(135deg,#fff3e7,#ffe6cc); color:#ff7a00; }
+.cat-tone-4 { background-image:url('/static/cats/4.png'),linear-gradient(135deg,#f1edff,#e5dcff); color:#7c3aed; }
+.cat-icon.is-fallback { background-image:linear-gradient(135deg,#eaf4ff,#f8fbff); }
+.cat-preload { position:absolute; left:-1px; top:-1px; width:1px; height:1px; opacity:0; pointer-events:none; }
+.cat-icon-letter { position:relative; z-index:1; font-size:30rpx; line-height:1; font-weight:900; opacity:0; transition:opacity .18s ease; }
+.cat-icon.is-fallback .cat-icon-letter { opacity:1; }
 .cat-text { font-size:30rpx; color:rgba(0,0,0,0.9); font-weight:700; }
 .tool-strip { padding:12rpx 20rpx 0; }
 .tool-card { min-height:118rpx; background:#fff; border:1rpx solid #edf0f4; border-radius:16rpx; display:flex; align-items:center; padding:0 24rpx; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
