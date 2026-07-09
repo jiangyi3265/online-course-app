@@ -18,8 +18,8 @@
 			<view class="member-content">
 				<view class="user-card">
 					<view class="avatar" @click="goProfile">
-						<image v-if="userInfo.avatar" class="avatar-img" :src="userInfo.avatar" mode="aspectFill" />
-						<text v-else>👤</text>
+						<image v-if="avatarUrl" class="avatar-img" :src="avatarUrl" mode="aspectFill" @error="avatarLoadError=true" />
+						<text v-else class="avatar-letter">{{avatarInitial}}</text>
 					</view>
 					<view class="u-info">
 						<view class="u-name">{{userInfo.name || '用户'}}</view>
@@ -40,10 +40,11 @@
 					<view class="section-title">常用功能</view>
 					<view class="funcs">
 						<view class="func" :class="{featured: f.featured}" v-for="(f,i) in funcs" :key="i" @click="openFunc(f)">
-							<view class="f-ico" :class="'icon-' + f.icon"></view>
+							<view class="f-ico" :class="'icon-' + f.icon">
+								<text class="f-symbol">{{f.symbol}}</text>
+							</view>
 							<view class="f-main">
 								<text class="f-text">{{f.text}}</text>
-								<text class="f-desc">{{f.desc}}</text>
 							</view>
 						</view>
 					</view>
@@ -70,7 +71,7 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { clearSession, getProfile, isLoggedIn } from '@/common/api.js'
+import { clearSession, getProfile, isLoggedIn, isUsableMediaUrl, resolveMediaUrl } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() {
@@ -78,15 +79,16 @@ export default {
 			logined: false,
 			showModal: false,
 			showInvite: false,
+			avatarLoadError: false,
 			userInfo: {},
 			funcs: [
-				{ icon:'referrer', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
-				{ icon:'students', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
-				{ icon:'stats', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
-				{ icon:'favorites', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
-				{ icon:'feedback', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
-				{ icon:'privacy', text:'隐私政策', desc:'查看隐私说明' },
-				{ icon:'agreement', text:'用户协议', desc:'查看服务条款' }
+				{ icon:'referrer', symbol:'荐', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
+				{ icon:'students', symbol:'生', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
+				{ icon:'stats', symbol:'统', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
+				{ icon:'favorites', symbol:'藏', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
+				{ icon:'feedback', symbol:'馈', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
+				{ icon:'privacy', symbol:'隐', text:'隐私政策', desc:'查看隐私说明' },
+				{ icon:'agreement', symbol:'协', text:'用户协议', desc:'查看服务条款' }
 			]
 		}
 	},
@@ -106,6 +108,15 @@ export default {
 		},
 		inviteQrUrl() {
 			return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(this.inviteLoginUrl)}`;
+		},
+		avatarUrl() {
+			if (this.avatarLoadError) return '';
+			const media = resolveMediaUrl(this.userInfo.avatar || this.userInfo.avatarUrl || '');
+			return media && isUsableMediaUrl(media) ? media : '';
+		},
+		avatarInitial() {
+			const name = String(this.userInfo.name || this.userInfo.nickName || '用户').trim();
+			return name ? name.slice(0, 1) : '用';
 		}
 	},
 	async onShow() {
@@ -115,6 +126,7 @@ export default {
 			try {
 				const profile = await getProfile();
 				this.userInfo = { ...this.userInfo, ...(profile || {}) };
+				this.avatarLoadError = false;
 				uni.setStorageSync('userInfo', this.userInfo);
 			} catch (err) {
 				console.warn('个人资料刷新失败', err);
@@ -131,7 +143,7 @@ export default {
 			const index = this.funcs.findIndex(item => item.route === route);
 			const enabled = this.userInfo && this.userInfo.role === 'agency_admin';
 			if (enabled && index < 0) {
-				this.funcs.push({ icon:'campus', text:'我的校区', desc:'校区激活码统计', route });
+				this.funcs.push({ icon:'campus', symbol:'校', text:'我的校区', desc:'校区激活码统计', route });
 			}
 			if (!enabled && index >= 0) {
 				this.funcs.splice(index, 1);
@@ -177,8 +189,9 @@ page { background:#f6f8fb; }
 
 .member-content { padding:28rpx 24rpx 0; box-sizing:border-box; }
 .user-card { display:flex; align-items:center; gap:22rpx; padding:28rpx; background:#fff; border:1rpx solid #e8edf3; border-radius:18rpx; box-shadow:0 8rpx 22rpx rgba(16,24,40,.04); }
-.avatar { width:112rpx; height:112rpx; border-radius:50%; background:#e7f1fb; display:flex; align-items:center; justify-content:center; font-size:56rpx; color:#5f8fbd; overflow:hidden; cursor:pointer; flex-shrink:0; }
+.avatar { width:112rpx; height:112rpx; border-radius:50%; background:#e7f1fb; display:flex; align-items:center; justify-content:center; font-size:44rpx; color:#1677ff; overflow:hidden; cursor:pointer; flex-shrink:0; font-weight:900; }
 .avatar-img { width:100%; height:100%; display:block; }
+.avatar-letter { line-height:1; }
 .u-info { flex:1; min-width:0; }
 .u-name { font-size:34rpx; font-weight:900; color:#1f2933; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .u-id { font-size:24rpx; color:#667085; margin-top:8rpx; }
@@ -198,6 +211,15 @@ page { background:#f6f8fb; }
 .invite-line { color:#475467; font-size:27rpx; line-height:1.7; }
 .invite-go { margin-top:24rpx; height:76rpx; line-height:76rpx; border-radius:10rpx; background:#1677ff; color:#fff; font-size:28rpx; font-weight:900; }
 .invite-close { margin-top:12rpx; height:68rpx; line-height:68rpx; color:#667085; font-size:26rpx; }
+
+.f-symbol {
+	position:relative;
+	z-index:2;
+	color:#1769ff;
+	font-size:30rpx;
+	font-weight:900;
+	line-height:1;
+}
 
 .func-panel { margin-top:24rpx; padding:28rpx 24rpx 18rpx; background:#fff; border:1rpx solid #e8edf3; border-radius:18rpx; box-shadow:0 8rpx 22rpx rgba(16,24,40,.04); }
 .section-title { font-size:31rpx; font-weight:900; color:#1f2933; line-height:1.25; }

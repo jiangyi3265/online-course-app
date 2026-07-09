@@ -25,14 +25,23 @@
 			<view v-if="!hasContent" class="analysis-empty">暂无解析</view>
 		</view>
 		<view class="analysis-body" v-else>
-			<video v-if="resolvedVideoUrl" class="analysis-video" :src="resolvedVideoUrl" controls></video>
+			<video
+				v-if="resolvedVideoUrl"
+				class="analysis-video"
+				:src="resolvedVideoUrl"
+				controls
+				controlslist="nodownload noplaybackrate noremoteplayback"
+				disable-picture-in-picture
+				disable-remote-playback
+				@contextmenu.prevent
+			></video>
 			<view v-else class="analysis-empty">暂无视频解析</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { resolveMediaUrl } from '@/common/api.js'
+import { resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 import MathRichText from '@/components/math-rich-text.vue'
 
 export default {
@@ -64,18 +73,18 @@ export default {
 	computed: {
 		resolvedVideoUrl() {
 			const item = this.item || {};
-			return resolveMediaUrl(this.videoUrl || item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl || item.videoUrl || '');
+			return this.mediaUrl(this.videoUrl || item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl || item.videoUrl || '');
 		},
 		resolvedImageUrls() {
 			const item = this.item || {};
 			return this.mediaList(this.imageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl || item.imageUrl)
-				.map(url => resolveMediaUrl(url))
+				.map(url => this.mediaUrl(url))
 				.filter(Boolean);
 		},
 		resolvedFileUrls() {
 			const item = this.item || {};
 			return this.mediaList(item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl)
-				.map(url => resolveMediaUrl(url))
+				.map(url => this.mediaUrl(url))
 				.filter(Boolean);
 		},
 		hasContent() {
@@ -86,6 +95,10 @@ export default {
 		mediaList(value) {
 			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
 			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+		},
+		mediaUrl(url = '') {
+			const resolved = resolveMediaUrl(url);
+			return isUsableMediaUrl(resolved) ? resolved : '';
 		},
 		openContent() {
 			this.mode = 'content';
@@ -100,12 +113,12 @@ export default {
 			}
 		},
 		previewImage(url) {
-			const current = resolveMediaUrl(url);
+			const current = this.mediaUrl(url);
 			if (!current) return;
 			uni.previewImage({ urls: this.resolvedImageUrls, current });
 		},
 		openFile(url) {
-			const fileUrl = resolveMediaUrl(url);
+			const fileUrl = this.mediaUrl(url);
 			if (!fileUrl) return;
 			if (typeof window !== 'undefined') {
 				window.open(fileUrl, '_blank');

@@ -37,6 +37,7 @@
 					<text class="update-date">{{displayUpdateDate}}</text>
 				</view>
 			</view>
+			<view class="course-intro" v-if="courseIntro">{{courseIntro}}</view>
 			<view class="version-stats" v-if="versionSummaries.length">
 				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
 					<text class="version-stat-name">{{item.label}}</text>
@@ -46,8 +47,8 @@
 			</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
-				<view class="bar"><view class="bar-inner" :style="{width: progress+'%'}"></view></view>
-				<text class="p-num">{{progress}}%</text>
+				<view class="bar"><view class="bar-inner" :style="{width: progressBarWidth+'%'}"></view></view>
+				<text class="p-num">{{progressLabel}}%</text>
 			</view>
 			<view class="learnt">已学课程节数{{learntCount}}节，已学时长：{{learntDuration}}</view>
 		</view>
@@ -55,20 +56,18 @@
 		<!-- 三个功能 -->
 		<view class="funcs">
 			<view class="func" @click="goDocs">
-				<view class="f-ico blue">📄</view>
+				<view class="f-ico blue">文</view>
 				<text class="f-text">我的文档</text>
 			</view>
 			<view class="func" @click="goPlan">
-				<view class="f-ico pink">📋</view>
+				<view class="f-ico pink">卡</view>
 				<text class="f-text">学习打卡</text>
 			</view>
 			<view class="func" @click="goReport">
-				<view class="f-ico green">📊</view>
+				<view class="f-ico green">报</view>
 				<text class="f-text">学习报告</text>
 			</view>
 		</view>
-
-		<study-checkin-card v-if="showCheckinPanel" :course-id="courseId" />
 
 		<view class="course-actions-area" @click="collapseCheckinPanel">
 			<view class="tabs">
@@ -148,13 +147,12 @@
 import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, resolveMediaUrl } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
-import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
-	components: { StudyCheckinCard },
 	data() {
 		return {
 			title: '中考语文',
 			courseName: '《中考语文》试听课',
+			courseIntro: '',
 			updatedAt: '2026-05-26T10:11:00',
 			coverTitle: '中考语文',
 			bg: 'linear-gradient(135deg,#c94f7c 0%,#7e3a6b 100%)',
@@ -165,7 +163,6 @@ export default {
 			learntCount: 0,
 			learntDuration: '00小时00分',
 			activeTab: 0,
-			showCheckinPanel: false,
 			detailTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
 			versionChips: ['复习加强课', '技巧绝招'],
@@ -187,7 +184,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFill';
+			return 'aspectFit';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -199,6 +196,12 @@ export default {
 		},
 		displayUpdateDate() {
 			return this.formatCourseDate(this.updatedAt);
+		},
+		progressLabel() {
+			return Math.max(0, Math.round(Number(this.progress) || 0));
+		},
+		progressBarWidth() {
+			return Math.min(this.progressLabel, 100);
 		},
 		trialQuizzes() {
 			return (this.quizzes || []).slice(0, 1);
@@ -220,12 +223,12 @@ export default {
 	},
 	async onLoad(opts) {
 		if (opts && opts.title) {
-			this.title = stripCourseYear(decodeURIComponent(opts.title));
+			this.title = stripCourseYear(this.decodeRouteText(opts.title));
 			this.courseName = `《${this.title}》试听课`;
 			this.courseId = this.resolveCourseId(this.title, 'trial');
 		}
-		if (opts && opts.bg) this.bg = decodeURIComponent(opts.bg);
-		if (opts && opts.cover) this.setCover(decodeURIComponent(opts.cover));
+		if (opts && opts.bg) this.bg = this.decodeRouteText(opts.bg);
+		if (opts && opts.cover) this.setCover(this.decodeRouteText(opts.cover));
 		if (opts && opts.id) {
 			await this.loadCourse(opts.id);
 		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
@@ -235,6 +238,19 @@ export default {
 		this.coverTitle = this.title;
 	},
 	methods: {
+		decodeRouteText(value = '') {
+			let text = String(value || '');
+			for (let index = 0; index < 3; index += 1) {
+				try {
+					const decoded = decodeURIComponent(text);
+					if (decoded === text) break;
+					text = decoded;
+				} catch (err) {
+					break;
+				}
+			}
+			return text;
+		},
 		async loadCourse(id) {
 			try {
 				const course = await getCourse(id);
@@ -248,6 +264,7 @@ export default {
 			this.courseId = course.id || this.courseId;
 			this.title = course.title || this.title;
 			this.courseName = stripCourseYear(course.courseName || this.courseName);
+			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover || this.cover);
 			const stats = this.resolveCourseStats(course);
@@ -284,6 +301,7 @@ export default {
 			this.courseId = 'gk-math-trial';
 			this.title = course.title;
 			this.courseName = stripCourseYear(course.courseName);
+			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
 			this.updatedAt = course.updatedAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover);
 			const stats = this.resolveCourseStats(course);
@@ -297,15 +315,10 @@ export default {
 			this.setVersion(0);
 			this.quizzes = course.quizzes;
 		},
-		collapseCheckinPanel() {
-			if (this.showCheckinPanel) this.showCheckinPanel = false;
-		},
 		toggle(i) {
-			this.collapseCheckinPanel();
 			this.chapters[i].open = !this.chapters[i].open;
 		},
 		setTab(i) {
-			this.collapseCheckinPanel();
 			this.activeTab = i;
 		},
 		setVersion(index) {
@@ -443,19 +456,31 @@ export default {
 
 <style lang="scss">
 page { background:#f5f7fa; }
-.page { min-height:100vh; background:#f5f7fa; }
+.page {
+	min-height:100vh;
+	background:#f5f7fa;
+	padding-top:90rpx;
+	box-sizing:border-box;
+}
 
 .nav {
-	position:relative;
+	position:fixed;
+	top:0;
+	left:50%;
+	transform:translateX(-50%);
+	z-index:120;
+	width:100%;
+	max-width:750rpx;
 	height:90rpx;
 	background:#fff;
 	display:flex; align-items:center; justify-content:center;
 	border-bottom:1rpx solid #eef0f3;
 }
 .back {
-	position:absolute; left:24rpx; top:0; bottom:0;
-	display:flex; align-items:center;
-	font-size:46rpx; color:#222; font-weight:300;
+	position:absolute; left:0; top:0; bottom:0;
+	width:110rpx;
+	display:flex; align-items:center; justify-content:center;
+	font-size:66rpx; color:#222; font-weight:300;
 	cursor:pointer;
 }
 .nav-title { font-size:30rpx; color:#222; font-weight:600; }
@@ -502,6 +527,12 @@ page { background:#f5f7fa; }
 .info-top { display:flex; justify-content:flex-start; align-items:center; gap:16rpx; flex-wrap:wrap; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
+.course-intro {
+	margin-top:12rpx;
+	color:#64748b;
+	font-size:24rpx;
+	line-height:1.6;
+}
 .update-meta {
 	display:inline-flex;
 	align-items:center;
@@ -522,17 +553,18 @@ page { background:#f5f7fa; }
 	margin-top:14rpx;
 }
 .version-stat {
-	display:flex;
-	flex-wrap:wrap;
+	display:grid;
+	grid-template-columns:auto 1fr;
 	align-items:center;
-	gap:12rpx 18rpx;
+	gap:8rpx 14rpx;
 	color:#64748b;
-	font-size:23rpx;
-	line-height:1.45;
+	font-size:21rpx;
+	line-height:1.35;
 }
 .version-stat-name {
 	color:#0f172a;
 	font-weight:800;
+	white-space:nowrap;
 }
 
 .progress-row {
@@ -552,8 +584,9 @@ page { background:#f5f7fa; }
 .p-num { font-size:24rpx; color:#666; }
 
 .learnt {
-	margin-top:14rpx;
-	font-size:24rpx; color:#888;
+	margin-top:10rpx;
+	font-size:22rpx;
+	color:#888;
 }
 
 /* 三个功能 */
@@ -804,8 +837,13 @@ page { background:#f5f7fa; }
 	height:264rpx;
 }
 .cover-img {
-	object-fit:cover;
+	object-fit:contain;
 	background:#f8fafc;
+}
+.cover-img :deep(div) {
+	background-size:contain !important;
+	background-repeat:no-repeat !important;
+	background-position:center center !important;
 }
 .info-block {
 	margin:0;

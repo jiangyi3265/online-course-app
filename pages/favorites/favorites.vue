@@ -21,6 +21,7 @@
 					<view class="doc-time">收藏时间：{{formatDate(item.createdAt)}}</view>
 				</view>
 				<view class="doc-actions">
+					<view class="doc-action cancel" @click="cancelFavorite(item, docTab === 'paper' ? 'paper' : 'doc')">取消收藏</view>
 					<view class="doc-action download" @click="downloadDoc(item)">下载</view>
 					<view class="doc-action open" @click="openDoc(item)">打开</view>
 				</view>
@@ -30,10 +31,13 @@
 		<block v-else>
 			<view class="empty" v-if="!questions.length">暂无收藏题目</view>
 			<view class="question-card" v-for="item in questions" :key="item.id">
-				<view class="tag">{{item.knowledge || '题目'}}</view>
+				<view class="question-head">
+					<view class="tag">{{item.knowledge || '题目'}}</view>
+					<view class="cancel-fav" @click="cancelFavorite(item, 'question')">取消收藏</view>
+				</view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="item.stemImageUrl" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
 				<block v-if="questionType(item) === 'reading'">
 					<view class="reading-sub-card" v-for="(sub, subIndex) in subQuestions(item)" :key="sub.id || subIndex">
 						<view class="reading-sub-head">小题 {{subIndex + 1}}</view>
@@ -73,7 +77,7 @@
 </template>
 
 <script>
-import { answerFavoriteQuestion, getFavorites } from '@/common/api.js'
+import { answerFavoriteQuestion, getFavorites, resolveMediaUrl, isUsableMediaUrl, toggleFavorite } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
@@ -121,8 +125,9 @@ export default {
 			uni.navigateTo({ url:`/pages/course-full/course-full?id=${encodeURIComponent(item.targetId)}&subject=${encodeURIComponent(item.subject || '')}&kind=${encodeURIComponent(item.kind || 'full')}` });
 		},
 		openDoc(item) {
-			if (item.fileUrl && item.fileUrl !== '#' && typeof window !== 'undefined') {
-				window.open(item.fileUrl, '_blank');
+			const fileUrl = this.mediaUrl(item.fileUrl || '');
+			if (fileUrl && fileUrl !== '#' && typeof window !== 'undefined') {
+				window.open(fileUrl, '_blank');
 				return;
 			}
 			uni.showToast({ title:item.title || '文档', icon:'none' });
@@ -158,14 +163,41 @@ export default {
 		},
 		optionImage(item = {}, index) {
 			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
-			return urls[index] || '';
+			return this.mediaUrl(urls[index] || '');
+		},
+		mediaUrl(url = '') {
+			const resolved = resolveMediaUrl(url);
+			return isUsableMediaUrl(resolved) ? resolved : '';
 		},
 		stemAudio(item = {}) {
-			return item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '';
+			return this.mediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '');
 		},
 		previewMedia(url) {
-			if (!url) return;
-			uni.previewImage({ urls: [url], current: url });
+			const current = this.mediaUrl(url);
+			if (!current) return;
+			uni.previewImage({ urls: [current], current });
+		},
+		favoriteTargetId(item = {}) {
+			return String(item.targetId || item.questionId || item.docId || item.paperId || item.id || item.favoriteId || '').trim();
+		},
+		async cancelFavorite(item = {}, type = 'doc') {
+			const targetId = this.favoriteTargetId(item);
+			if (!targetId) return;
+			const favoriteType = type === 'paper' ? 'doc' : type;
+			try {
+				await toggleFavorite({
+					type: favoriteType,
+					targetId,
+					action: 'remove',
+					title: item.title || item.stem || '',
+					courseId: item.courseId || '',
+					category: type === 'paper' ? 'paper' : (type === 'doc' ? (item.category || 'lecture') : '')
+				});
+				uni.showToast({ title:'已取消收藏', icon:'success' });
+				await this.loadData();
+			} catch (err) {
+				uni.showToast({ title: err.message || '取消失败', icon:'none' });
+			}
 		},
 		questionType(item = {}) {
 			const value = item.questionType || item.type || 'choice';
@@ -212,6 +244,7 @@ page { background:#f5f7fa; }
 .doc-meta, .doc-time { margin-top:8rpx; color:#697386; font-size:23rpx; }
 .doc-actions { display:flex; flex-direction:column; gap:10rpx; flex-shrink:0; }
 .doc-action { min-width:86rpx; height:50rpx; line-height:50rpx; text-align:center; border-radius:999rpx; font-size:23rpx; font-weight:800; }
+.doc-action.cancel { background:#fff1f2; color:#e11d48; }
 .doc-action.download { background:#eef6ff; color:#2563eb; }
 .doc-action.open { background:#ecfdf5; color:#0f766e; }
 .cover { width:210rpx; height:146rpx; border-radius:12rpx; flex-shrink:0; background:#e8eef5; }
@@ -222,7 +255,9 @@ page { background:#f5f7fa; }
 .course-state.off { color:#e5484d; }
 .course-btn { display:inline-block; margin-top:12rpx; padding:8rpx 24rpx; border-radius:26rpx; background:#1677ff; color:#fff; font-size:24rpx; }
 .course-btn.disabled { background:#d8dde5; color:#8a929c; }
+.question-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
 .tag { display:inline-block; padding:6rpx 14rpx; border-radius:8rpx; background:#eef6ff; color:#1677ff; font-size:22rpx; }
+.cancel-fav { flex-shrink:0; height:48rpx; line-height:48rpx; padding:0 18rpx; border-radius:999rpx; background:#fff1f2; color:#e11d48; font-size:22rpx; font-weight:800; }
 .stem { margin-top:18rpx; font-size:30rpx; line-height:1.5; font-weight:700; color:#222; }
 .question-image { width:100%; max-height:420rpx; margin:14rpx 0 4rpx; border-radius:12rpx; background:#eef2f7; }
 .option { display:flex; align-items:flex-start; min-height:72rpx; padding:18rpx; margin-top:12rpx; border:1rpx solid #e5e9ef; border-radius:12rpx; font-size:28rpx; color:#333; box-sizing:border-box; }

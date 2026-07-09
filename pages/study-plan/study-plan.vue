@@ -22,7 +22,7 @@
 </template>
 
 <script>
-import { getStudyPlan } from '@/common/api.js'
+import { decodeRouteText, getStudyPlan } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
 
@@ -40,7 +40,7 @@ export default {
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || 'gk-math-full';
 		this.studentId = opts.studentId || '';
-		this.studentName = opts.studentName ? decodeURIComponent(opts.studentName) : '';
+		this.studentName = opts.studentName ? decodeRouteText(opts.studentName) : '';
 		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || !!this.studentId;
 		this.loadData();
 	},

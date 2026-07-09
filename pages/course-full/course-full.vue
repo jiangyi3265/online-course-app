@@ -23,6 +23,7 @@
 					<text class="update-date">{{displayUpdateDate}}</text>
 				</view>
 			</view>
+			<view class="course-intro" v-if="courseIntro">{{courseIntro}}</view>
 			<view class="version-stats" v-if="versionSummaries.length">
 				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
 					<text class="version-stat-name">{{item.label}}</text>
@@ -32,20 +33,18 @@
 			</view>
 			<view class="progress-row">
 				<text class="p-label">学习进度：</text>
-				<view class="bar"><view class="bar-inner" :style="{width: progress+'%'}"></view></view>
-				<text class="p-num">{{progress}}%</text>
+				<view class="bar"><view class="bar-inner" :style="{width: progressBarWidth+'%'}"></view></view>
+				<text class="p-num">{{progressLabel}}%</text>
 				<text class="p-extra">已学课程节数{{learntCount}}节，已学时长：{{learntDuration}}</text>
 			</view>
 		</view>
 
 		<!-- 三功能 -->
 		<view class="funcs">
-			<view class="func" @click="goDocs"><view class="f-ico blue">📄</view><text class="f-text">我的文档</text></view>
-			<view class="func" @click="goPlan"><view class="f-ico pink">📋</view><text class="f-text">学习打卡</text></view>
-			<view class="func" @click="goReport"><view class="f-ico green">📊</view><text class="f-text">学习报告</text></view>
+			<view class="func" @click="goDocs"><view class="f-ico blue">文</view><text class="f-text">我的文档</text></view>
+			<view class="func" @click="goPlan"><view class="f-ico pink">卡</view><text class="f-text">学习打卡</text></view>
+			<view class="func" @click="goReport"><view class="f-ico green">报</view><text class="f-text">学习报告</text></view>
 		</view>
-
-		<study-checkin-card v-if="showCheckinPanel" :course-id="courseId" />
 
 		<view class="course-actions-area" @click="collapseCheckinPanel">
 			<!-- Tabs -->
@@ -207,13 +206,12 @@
 import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, getLessonLocks, getReinforce, resolveMediaUrl } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
-import StudyCheckinCard from '@/components/study-checkin-card.vue'
 export default {
-	components: { StudyCheckinCard },
 	data() {
 		return {
 			title: '中考语文',
 			courseName: '《中考语文》',
+			courseIntro: '',
 			updatedAt: '2026-05-26T10:15:00',
 			bg: 'linear-gradient(135deg,#c94f7c 0%,#7e3a6b 100%)',
 			total: 105,
@@ -225,7 +223,6 @@ export default {
 			cover: '',
 			coverRatio: 0,
 			tab: 0,
-			showCheckinPanel: false,
 			projectTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
 			versions: [
@@ -238,6 +235,8 @@ export default {
 			lockEnabled: false,
 			lockVideos: [],
 			lockPractices: [],
+			localUnlockedVideos: [],
+			localUnlockedPractices: [],
 			wechatId: 'DYR7314',
 			courseId: 'gk-math-full',
 			reinforceList: [],
@@ -253,7 +252,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFill';
+			return 'aspectFit';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -265,6 +264,12 @@ export default {
 		},
 		displayUpdateDate() {
 			return this.formatCourseDate(this.updatedAt);
+		},
+		progressLabel() {
+			return Math.max(0, Math.round(Number(this.progress) || 0));
+		},
+		progressBarWidth() {
+			return Math.min(this.progressLabel, 100);
 		},
 		visibleVersions() {
 			return this.versions.slice(0, 2);
@@ -297,12 +302,12 @@ export default {
 	},
 	async onLoad(opts) {
 		if (opts && opts.title) {
-			this.title = stripCourseYear(decodeURIComponent(opts.title));
+			this.title = stripCourseYear(this.decodeRouteText(opts.title));
 			this.courseName = `《${this.title}》`;
 			this.courseId = this.resolveCourseId(this.title, 'full');
 		}
-		if (opts && opts.bg) this.bg = decodeURIComponent(opts.bg);
-		if (opts && opts.cover) this.setCover(decodeURIComponent(opts.cover));
+		if (opts && opts.bg) this.bg = this.decodeRouteText(opts.bg);
+		if (opts && opts.cover) this.setCover(this.decodeRouteText(opts.cover));
 		if (opts && opts.id) {
 			await this.loadCourse(opts.id);
 		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
@@ -314,9 +319,23 @@ export default {
 	},
 	onShow() {
 		// 每次进入/返回都刷新解锁状态（看完上一节后下一节自动解锁）
+		this.loadLocalLessonUnlocks();
 		this.loadLessonLocks();
 	},
 	methods: {
+		decodeRouteText(value = '') {
+			let text = String(value || '');
+			for (let index = 0; index < 3; index += 1) {
+				try {
+					const decoded = decodeURIComponent(text);
+					if (decoded === text) break;
+					text = decoded;
+				} catch (err) {
+					break;
+				}
+			}
+			return text;
+		},
 		async loadLessonLocks() {
 			try {
 				const data = await getLessonLocks(this.courseId);
@@ -329,12 +348,32 @@ export default {
 				this.lockPractices = [];
 			}
 		},
+		lessonUnlockStorageKey() {
+			return `lesson_unlock_cache_${this.courseId || 'default'}`;
+		},
+		normalizeLessonTitle(value = '') {
+			return String(value || '').trim();
+		},
+		loadLocalLessonUnlocks() {
+			try {
+				const saved = uni.getStorageSync(this.lessonUnlockStorageKey()) || {};
+				this.localUnlockedVideos = Array.isArray(saved.videos) ? saved.videos.map(this.normalizeLessonTitle).filter(Boolean) : [];
+				this.localUnlockedPractices = Array.isArray(saved.practices) ? saved.practices.map(this.normalizeLessonTitle).filter(Boolean) : [];
+			} catch (e) {
+				this.localUnlockedVideos = [];
+				this.localUnlockedPractices = [];
+			}
+		},
 		childLessonLocked(child, lesson) {
 			if (!this.locked) return false;
 			if (!this.lockEnabled) return false;
-			const title = (lesson && lesson.title) || '';
+			const title = this.normalizeLessonTitle((lesson && lesson.title) || '');
 			if (!title) return false;
-			return Number(child.type) === 2 ? this.lockPractices.includes(title) : this.lockVideos.includes(title);
+			const isPractice = Number(child.type) === 2;
+			const localList = isPractice ? this.localUnlockedPractices : this.localUnlockedVideos;
+			if (localList.includes(title)) return false;
+			const remoteList = (isPractice ? this.lockPractices : this.lockVideos).map(this.normalizeLessonTitle);
+			return remoteList.includes(title);
 		},
 		async loadCourse(id) {
 			try {
@@ -351,6 +390,7 @@ export default {
 			this.reinforceList = [];
 			this.title = course.title || this.title;
 			this.courseName = stripCourseYear(course.courseName || this.courseName);
+			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover || this.cover);
 			this.versionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
@@ -397,11 +437,7 @@ export default {
 			this.cover = '';
 			this.coverRatio = 0;
 		},
-		collapseCheckinPanel() {
-			if (this.showCheckinPanel) this.showCheckinPanel = false;
-		},
 		toggle(i) {
-			this.collapseCheckinPanel();
 			this.chapters[i].open = !this.chapters[i].open;
 		},
 		toggleLesson(chapterIndex, lessonIndex) {
@@ -430,6 +466,7 @@ export default {
 			this.reinforceList = [];
 			this.title = course.title;
 			this.courseName = stripCourseYear(course.courseName);
+			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
 			this.updatedAt = course.updatedAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover);
 			this.versionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
@@ -523,11 +560,35 @@ export default {
 		},
 		resolveCourseStats(course = {}) {
 			const statTotal = this.versionStats.reduce((sum, item) => sum + (Number(item.totalLessons) || 0), 0);
+			const statDuration = this.sumDurationText(this.versionStats.map(item => item.totalDuration || item.duration || item.courseDuration));
 			const totalLessons = statTotal || this.countCourseLessons(course) || Number(course.totalLessons || 0);
 			return {
 				totalLessons,
-				totalDuration: course.totalDuration || ''
+				totalDuration: statDuration || course.totalDuration || ''
 			};
+		},
+		sumDurationText(values = []) {
+			const seconds = values.reduce((sum, value) => sum + this.durationTextSeconds(value), 0);
+			return seconds > 0 ? this.secondsToDurationText(seconds) : '';
+		},
+		durationTextSeconds(value = '') {
+			const text = String(value || '');
+			if (!text) return 0;
+			let total = 0;
+			const hour = text.match(/(\d+)\s*(?:小时|时|h)/i);
+			const minute = text.match(/(\d+)\s*(?:分钟|分|m)/i);
+			const second = text.match(/(\d+)\s*(?:秒|s)/i);
+			if (hour) total += Number(hour[1]) * 3600;
+			if (minute) total += Number(minute[1]) * 60;
+			if (second) total += Number(second[1]);
+			if (!total && /^\d+(\.\d+)?$/.test(text)) total = Number(text);
+			return Number.isFinite(total) ? total : 0;
+		},
+		secondsToDurationText(seconds = 0) {
+			const total = Math.max(0, Math.round(Number(seconds) || 0));
+			const hours = Math.floor(total / 3600);
+			const minutes = Math.floor((total % 3600) / 60);
+			return `${String(hours).padStart(2, '0')}小时${String(minutes).padStart(2, '0')}分`;
 		},
 		countCourseLessons(course = {}) {
 			const versions = Array.isArray(course.versions) ? course.versions.slice(0, 2) : [];
@@ -702,8 +763,8 @@ export default {
 		},
 		goPlan() {
 			if (!this.ensureUnlocked()) return;
-			this.showCheckinPanel = !this.showCheckinPanel;
-			if (this.showCheckinPanel) this.tab = 0;
+			this.collapseCheckinPanel();
+			uni.navigateTo({ url:`/pages/study-plan/study-plan?courseId=${encodeURIComponent(this.courseId)}` });
 		},
 		goReport() {
 			this.collapseCheckinPanel();
@@ -805,15 +866,41 @@ export default {
 
 <style lang="scss">
 page { background:#f5f7fa; }
-.page { min-height:100vh; background:#f5f7fa; }
+.page {
+	min-height:100vh;
+	background:#f5f7fa;
+	padding-top:90rpx;
+	box-sizing:border-box;
+}
 
 .nav {
-	position:relative; height:90rpx;
+	position:fixed;
+	top:0;
+	left:50%;
+	transform:translateX(-50%);
+	z-index:120;
+	width:100%;
+	max-width:750rpx;
+	height:90rpx;
 	background:#fff;
 	display:flex; align-items:center; justify-content:center;
 	border-bottom:1rpx solid #eef0f3;
 }
-.back { position:absolute; left:24rpx; font-size:46rpx; font-weight:300; color:#222; cursor:pointer; }
+.back {
+	position:absolute;
+	left:0;
+	top:0;
+	width:110rpx;
+	height:90rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	font-size:66rpx;
+	font-weight:300;
+	color:#222;
+	cursor:pointer;
+	z-index:2;
+}
 .nav-title { font-size:30rpx; color:#222; font-weight:600; }
 
 .cover { position:relative; overflow:hidden; background:#f3f6fb; }
@@ -835,6 +922,12 @@ page { background:#f5f7fa; }
 .info-top { display:flex; justify-content:flex-start; align-items:center; gap:16rpx; flex-wrap:wrap; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
+.course-intro {
+	margin-top:12rpx;
+	color:#64748b;
+	font-size:24rpx;
+	line-height:1.6;
+}
 .update-meta {
 	display:inline-flex;
 	align-items:center;
@@ -861,32 +954,36 @@ page { background:#f5f7fa; }
 	margin-top:14rpx;
 }
 .version-stat {
-	display:flex;
-	flex-wrap:wrap;
+	display:grid;
+	grid-template-columns:auto 1fr;
 	align-items:center;
-	gap:12rpx 18rpx;
+	gap:8rpx 14rpx;
 	color:#64748b;
-	font-size:23rpx;
-	line-height:1.45;
+	font-size:21rpx;
+	line-height:1.35;
 }
 .version-stat-name {
 	color:#0f172a;
 	font-weight:800;
+	white-space:nowrap;
 }
 .progress-row {
 	display:flex; align-items:center;
 	margin-top: 18rpx;
 	flex-wrap:wrap;
+	gap:8rpx 0;
 }
-.p-label { font-size:24rpx; color:#666; }
+.p-label { font-size:23rpx; color:#666; }
 .bar {
-	width:200rpx; height:14rpx;
+	width:150rpx;
+	max-width:28vw;
+	height:12rpx;
 	background:#e6e8ec; border-radius:7rpx;
 	margin: 0 14rpx; overflow:hidden;
 }
 .bar-inner { height:100%; background:#3aa3f5; }
-.p-num { font-size:24rpx; color:#666; margin-right:24rpx; }
-.p-extra { font-size:24rpx; color:#888; }
+.p-num { font-size:23rpx; color:#666; margin-right:18rpx; }
+.p-extra { font-size:22rpx; color:#888; }
 
 .funcs { background:#fff; display:flex; padding: 26rpx 24rpx 34rpx; border-top:1rpx solid #f1f3f6; gap:18rpx; }
 .func {
@@ -1227,8 +1324,13 @@ page { background:#f5f7fa; }
 	height:264rpx;
 }
 .cover-img {
-	object-fit:cover;
+	object-fit:contain;
 	background:#f8fafc;
+}
+.cover-img :deep(div) {
+	background-size:contain !important;
+	background-repeat:no-repeat !important;
+	background-position:center center !important;
 }
 .info-block {
 	margin:0;

@@ -6,7 +6,7 @@
 			<view class="row" @click="chooseAvatar">
 				<text class="label">头像</text>
 				<view class="value avatar-value">
-					<image v-if="form.avatar" class="avatar" :src="form.avatar" mode="aspectFill" />
+					<image v-if="form.avatar" class="avatar" :src="avatarSrc" mode="aspectFill" />
 					<view v-else class="avatar empty">👤</view>
 					<text class="arrow">›</text>
 				</view>
@@ -30,7 +30,7 @@
 </template>
 
 <script>
-import { getProfile, saveSession, updateProfile } from '@/common/api.js'
+import { getProfile, saveSession, updateProfile, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
 export default {
@@ -50,10 +50,20 @@ export default {
 			}
 		}
 	},
+	computed: {
+		avatarSrc() {
+			if (/^(blob:|file:|wxfile:|data:)/i.test(String(this.form.avatar || ''))) return this.form.avatar;
+			return this.mediaUrl(this.form.avatar);
+		}
+	},
 	onShow() {
 		this.loadData()
 	},
 	methods: {
+		mediaUrl(url = '') {
+			const resolved = resolveMediaUrl(url);
+			return isUsableMediaUrl(resolved) ? resolved : '';
+		},
 		async loadData() {
 			try {
 				const user = await getProfile()

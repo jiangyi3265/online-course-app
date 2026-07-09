@@ -48,11 +48,24 @@
 			<view class="panel-title">打卡记录</view>
 			<view class="empty" v-if="!checkinRecords.length">暂无打卡记录</view>
 			<view class="checkin-row" v-for="item in checkinRecords" :key="item.id">
-				<view>
+				<view class="checkin-meta">
 					<view class="checkin-date">{{formatDate(item.updatedAt || item.createdAt || item.date)}}</view>
 					<view class="checkin-course">全科共享</view>
+					<view class="checkin-image-count" v-if="recordImages(item).length">{{recordImages(item).length}}张图片</view>
 				</view>
-				<view class="checkin-content">{{item.content || '已打卡'}}</view>
+				<view class="checkin-main">
+					<view class="checkin-content">{{item.content || '已打卡'}}</view>
+					<view class="checkin-images" v-if="recordImages(item).length">
+						<image
+							v-for="(url, index) in recordImages(item)"
+							:key="url + index"
+							class="checkin-thumb"
+							:src="mediaUrl(url)"
+							mode="aspectFill"
+							@click="previewCheckinImages(item, index)"
+						/>
+					</view>
+				</view>
 			</view>
 		</view>
 
@@ -62,11 +75,11 @@
 			<view class="course-report-grid" v-if="courseReports.length">
 				<view class="course-report" v-for="course in courseReports" :key="course.id">
 					<view class="course-name" @click="goReport(course)">{{course.title}}</view>
-					<view class="course-actions" v-if="!readOnly">
+					<view class="course-actions">
+						<view class="outline-btn" @click="goReport(course)">学习报告</view>
 						<view class="outline-btn" @click="goWrongBook(course)">查看【错题与巩固】</view>
 						<view class="outline-btn" @click="goDocs(course)">查看我的文档</view>
 					</view>
-					<view class="readonly-note" v-else>仅查看统计</view>
 				</view>
 			</view>
 			<view class="empty" v-else>暂无已激活课程，激活课程后这里会显示对应科目的学习报告。</view>
@@ -93,7 +106,7 @@
 
 <script>
 import { getStudySummary } from '@/common/study-summary.js'
-import { getStudyReport, getStudySummaryApi, getMyCourses, getMyStudents, isLoggedIn } from '@/common/api.js'
+import { decodeRouteText, getStudyCheckins, getStudyReport, getStudySummaryApi, getMyCourses, getMyStudents, isLoggedIn, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
@@ -154,7 +167,7 @@ export default {
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || '';
 		this.studentId = opts.studentId || opts.userId || '';
-		this.studentName = opts.studentName ? decodeURIComponent(opts.studentName) : '';
+		this.studentName = opts.studentName ? decodeRouteText(opts.studentName) : '';
 		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || opts.readonly === true;
 	},
 	async onShow() {
@@ -179,6 +192,17 @@ export default {
 				this.learningStats = report.learningStats || null;
 			} catch (err) {
 				console.warn('学习报告接口不可用', err);
+			}
+			try {
+				const remoteCheckins = await getStudyCheckins({ userId: this.studentId || '' });
+				if (Array.isArray(remoteCheckins)) {
+					const local = uni.getStorageSync(CHECKIN_KEY) || [];
+					const merged = this.mergeCheckins(remoteCheckins, local);
+					uni.setStorageSync(CHECKIN_KEY, merged);
+					this.checkinRecords = this.sharedCheckins(merged);
+				}
+			} catch (err) {
+				console.warn('打卡记录接口不可用，使用本地缓存', err);
 			}
 			if (this.readOnly && this.studentId) {
 				try {
@@ -239,10 +263,42 @@ export default {
 				const date = item.date || String(item.updatedAt || item.createdAt || '').slice(0, 10);
 				if (!date) return;
 				if (!byDate[date] || this.checkinTime(item) >= this.checkinTime(byDate[date])) {
-					byDate[date] = { ...item, date };
+					byDate[date] = { ...item, date, images: this.recordImages(item) };
 				}
 			});
 			return Object.values(byDate).sort((a, b) => this.checkinTime(b) - this.checkinTime(a));
+		},
+		mergeCheckins(primary = [], secondary = []) {
+			const byKey = {};
+			[...(Array.isArray(secondary) ? secondary : []), ...(Array.isArray(primary) ? primary : [])].forEach(item => {
+				if (!item || typeof item !== 'object') return;
+				const date = item.date || String(item.updatedAt || item.createdAt || '').slice(0, 10);
+				const studentId = item.studentId || item.userId || item.user_id || '';
+				const key = `${studentId}:${item.courseId || ''}:${date}:${item.id || ''}`;
+				if (!key.replace(/:/g, '')) return;
+				const normalized = { ...item, date, images: this.recordImages(item) };
+				if (!byKey[key] || this.checkinTime(normalized) >= this.checkinTime(byKey[key])) {
+					byKey[key] = normalized;
+				}
+			});
+			return Object.values(byKey).sort((a, b) => this.checkinTime(b) - this.checkinTime(a));
+		},
+		recordImages(item = {}) {
+			const raw = item.images || item.imageUrls || item.photos || item.photoUrls || item.attachments || item.urls || item.imageUrl || '';
+			const list = Array.isArray(raw) ? raw : String(raw || '').split(/[,\n]/);
+			return list
+				.map(url => resolveMediaUrl(String(url || '').trim()))
+				.filter(url => url && isUsableMediaUrl(url))
+				.slice(0, 9);
+		},
+		mediaUrl(url = '') {
+			const resolved = resolveMediaUrl(url);
+			return isUsableMediaUrl(resolved) ? resolved : '';
+		},
+		previewCheckinImages(item = {}, index = 0) {
+			const urls = this.recordImages(item);
+			if (!urls.length) return;
+			uni.previewImage({ urls, current: urls[index] || urls[0] });
 		},
 		sameStudentCheckin(item = {}) {
 			const recordId = item.studentId || item.userId || item.user_id || item.uid || '';
@@ -272,18 +328,14 @@ export default {
 			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}${student}${readonly}` });
 		},
 		goWrongBook(course) {
-			if (this.readOnly) {
-				uni.showToast({ title:'只读查看，不能操作错题', icon:'none' });
-				return;
-			}
-			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}` });
+			const readonly = this.readOnly ? '&readonly=1' : '';
+			const student = this.studentId ? `&studentId=${encodeURIComponent(this.studentId)}` : '';
+			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(course.id)}&title=${encodeURIComponent(course.title)}${student}${readonly}` });
 		},
 		goDocs(course) {
-			if (this.readOnly) {
-				uni.showToast({ title:'只读查看，不能操作文档', icon:'none' });
-				return;
-			}
-			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(course.id)}&kw=${encodeURIComponent(course.title)}` });
+			const readonly = this.readOnly ? '&readonly=1' : '';
+			const student = this.studentId ? `&studentId=${encodeURIComponent(this.studentId)}` : '';
+			uni.navigateTo({ url:`/pages/my-docs/my-docs?courseId=${encodeURIComponent(course.id)}&kw=${encodeURIComponent(course.title)}${student}${readonly}` });
 		},
 		goBack() { safeNavigateBack('/pages/member/member'); }
 	}
@@ -321,7 +373,11 @@ page { background:#f5f7fa; }
 .checkin-row { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-top:1rpx solid #eef0f3; }
 .checkin-date { color:#222; font-size:26rpx; font-weight:800; }
 .checkin-course { margin-top:6rpx; color:#697386; font-size:22rpx; }
+.checkin-image-count { display:inline-flex; margin-top:8rpx; padding:4rpx 12rpx; border-radius:999rpx; background:#ecfdf5; color:#0f766e; font-size:21rpx; font-weight:800; }
+.checkin-main { min-width:0; }
 .checkin-content { flex:1; color:#596272; font-size:24rpx; line-height:1.45; text-align:right; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.checkin-images { display:grid; grid-template-columns:repeat(4, 1fr); gap:10rpx; margin-top:14rpx; }
+.checkin-thumb { width:100%; height:96rpx; border-radius:10rpx; background:#eef2f7; border:1rpx solid #e2e8f0; }
 .english-title { color:#222; font-size:28rpx; font-weight:900; }
 .english-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14rpx; margin-top:18rpx; }
 .english-item { padding:18rpx; border-radius:8rpx; background:#f8fafc; }
@@ -481,6 +537,9 @@ page { background:#eef3f7; }
 	font-size:24rpx;
 	line-height:1.55;
 }
+.checkin-image-count {
+	border:1rpx solid #bfe9d2;
+}
 .course-report-grid {
 	gap:16rpx;
 }
@@ -610,6 +669,13 @@ page { background:#eef3f7; }
 	text-align:left;
 	word-break:break-word;
 }
+.checkin-images {
+	grid-template-columns:repeat(5, minmax(0, 1fr));
+}
+.checkin-thumb {
+	height:108rpx;
+	cursor:pointer;
+}
 .report-panel {
 	padding:28rpx;
 }
@@ -660,6 +726,9 @@ page { background:#eef3f7; }
 @media screen and (max-width: 520px) {
 	.checkin-row {
 		grid-template-columns:1fr;
+	}
+	.checkin-images {
+		grid-template-columns:repeat(3, minmax(0, 1fr));
 	}
 	.course-report {
 		grid-template-columns:1fr;

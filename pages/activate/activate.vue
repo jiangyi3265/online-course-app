@@ -79,7 +79,7 @@ export default {
 	},
 	onLoad(opts = {}) {
 		this.courseId = opts.courseId || '';
-		this.initialCourseTitle = opts.title ? decodeURIComponent(opts.title) : '';
+		this.initialCourseTitle = opts.title ? this.decodeRouteText(opts.title) : '';
 		this.courseLocked = !!this.courseId;
 		this.loadCourseOptions();
 		this.prefillStudentInfo();
@@ -96,6 +96,19 @@ export default {
 		}
 	},
 	methods: {
+		decodeRouteText(value = '') {
+			let text = String(value || '');
+			for (let index = 0; index < 3; index += 1) {
+				try {
+					const decoded = decodeURIComponent(text);
+					if (decoded === text) break;
+					text = decoded;
+				} catch (err) {
+					break;
+				}
+			}
+			return text;
+		},
 		async loadCourseOptions() {
 			try {
 				const courses = await getCourses({ kind:'full' });

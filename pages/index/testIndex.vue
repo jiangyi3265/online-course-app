@@ -7,13 +7,14 @@
 		<scroll-view scroll-y class="list">
 			<view class="row" v-for="(it,i) in currentList" :key="i" @click="goDetail(it)">
 				<view class="cover" :class="{'clean-cover': !it.isTry}">
-					<image class="cover-img" :src="it.cover" mode="aspectFill" />
+					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFit" @error="markCoverError(it)" />
+					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
 					<text class="course-tag">视频+考练</text>
 					<view class="cover-clean-patch" v-if="!it.isTry"></view>
 				</view>
 				<view class="info">
 					<view class="title">《{{it.full}}》{{it.suffix}}</view>
-					<view class="sub">{{it.sub}}</view>
+					<view class="sub" v-if="courseIntro(it)">{{courseIntro(it)}}</view>
 					<view class="bottom">
 						<view class="access" :class="{full: !it.isTry}">
 							<text class="access-title">{{openLabel(it)}}</text>
@@ -34,7 +35,7 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { GAOKAO_MATH_TRIAL, GAOKAO_MATH_FULL, stripCourseYear } from '@/common/course-data.js'
-import { getCourses, resolveMediaUrl } from '@/common/api.js'
+import { getCourses, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 const ZK = {
 	yuwen:'/static/courses/zk-yuwen.jpg', shuxue:'/static/courses/zk-shuxue.jpg',
 	yingyu:'/static/courses/zk-yingyu.jpg', wuli:'/static/courses/zk-wuli.jpg',
@@ -104,7 +105,9 @@ export default {
 						full: stripCourseYear(item.full),
 						suffix: item.isTry ? '试听课' : '',
 						sub: stripCourseYear(item.sub),
-						cover: resolveMediaUrl(item.cover),
+						intro: stripCourseYear(item.introduction || item.intro || item.description || ''),
+						cover: this.safeMediaUrl(item.cover),
+						coverError: false,
 						isTry: item.isTry,
 						available: !!(item.available || item.activated || item.hasAccess),
 						subject: item.subject,
@@ -123,6 +126,22 @@ export default {
 			if (!it.isTry && it.available) return '可直接学习';
 			return it.isTry ? '直接体验' : '验证后学习';
 		},
+		courseIntro(it = {}) {
+			const intro = stripCourseYear(it.intro || '');
+			const sub = stripCourseYear(it.sub || '');
+			if (intro && intro !== `《${stripCourseYear(it.full || '')}》`) return intro;
+			return sub;
+		},
+		markCoverError(item = {}) {
+			this.$set ? this.$set(item, 'coverError', true) : (item.coverError = true);
+		},
+		safeMediaUrl(url = '', fallback = '') {
+			const resolved = resolveMediaUrl(url);
+			return isUsableMediaUrl(resolved) ? resolved : fallback;
+		},
+		coverFallbackText(it = {}) {
+			return stripCourseYear(it.full || it.sub || '课程').replace(/[《》]/g, '').slice(0, 4) || '课程';
+		},
 		goButtonText(it) {
 			if (it.isTry) return '去体验';
 			return it.available ? '去学习' : '去开通';
@@ -135,8 +154,8 @@ export default {
 			const idPart = it.id ? `id=${encodeURIComponent(it.id)}&` : '';
 			const extra = it.subject ? `&subject=${it.subject}&kind=${it.kind || (it.isTry ? 'trial' : 'full')}` : '';
 			const url = it.isTry
-				? `/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover)}${extra}`
-				: `/pages/course-full/course-full?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover)}${extra}`;
+				? `/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover || '')}${extra}`
+				: `/pages/course-full/course-full?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover || '')}${extra}`;
 			uni.navigateTo({ url });
 		}
 	}
@@ -152,7 +171,21 @@ page { background:#f5f7fa; }
 .list { flex:1; padding: 10rpx 24rpx; }
 .row { display:flex; background:#fff; border-radius:16rpx; padding:20rpx; margin-bottom:24rpx; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
 .cover { width:220rpx; height:160rpx; border-radius:12rpx; overflow:hidden; flex-shrink:0; position:relative; }
-.cover-img { width:100%; height:100%; display:block; }
+.cover-img { width:100%; height:100%; display:block; object-fit:contain; background:#f8fafc; }
+.cover-img :deep(div) { background-size:contain !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.cover-fallback {
+	width:100%;
+	height:100%;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	background:linear-gradient(135deg,#e8f3ff,#f8fafc);
+	color:#1677ff;
+	font-size:30rpx;
+	font-weight:900;
+	text-align:center;
+	line-height:1.2;
+}
 .course-tag { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.5); color:#fff; font-size:20rpx; padding:6rpx 12rpx; border-top-right-radius:8rpx; }
 .cover-clean-patch {
 	position:absolute;

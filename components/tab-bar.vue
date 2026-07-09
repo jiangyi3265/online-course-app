@@ -20,13 +20,37 @@ export default {
 	props: { active: { type: String, default: 'home' } },
 	methods: {
 		go(k) {
-			if (k === this.active) return;
 			const map = {
 				home: '/pages/index/index',
 				course: '/pages/mycourse/mycourse',
 				member: '/pages/member/member'
 			};
-			uni.redirectTo({ url: map[k] });
+			const url = map[k];
+			if (!url) return;
+			const current = this.currentPath();
+			if (k === this.active && current === url) return;
+			this.jumpTo(url);
+		},
+		currentPath() {
+			try {
+				const pages = getCurrentPages && getCurrentPages();
+				const page = pages && pages[pages.length - 1];
+				if (page && page.route) return `/${page.route}`;
+			} catch (e) {}
+			if (typeof window !== 'undefined') {
+				const hashPath = (window.location.hash || '').replace(/^#/, '').split('?')[0];
+				if (hashPath) return hashPath;
+			}
+			return '';
+		},
+		jumpTo(url) {
+			const fallback = () => {
+				if (typeof window !== 'undefined') window.location.hash = `#${url}`;
+			};
+			uni.reLaunch({
+				url,
+				fail: () => uni.redirectTo({ url, fail: fallback })
+			});
 		}
 	}
 }

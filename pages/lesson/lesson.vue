@@ -25,6 +25,8 @@
 					x5-video-player-type="h5-page"
 					x5-video-player-fullscreen="false"
 					preload="metadata"
+					title=""
+					data-title=""
 					:muted="muted"
 					:show-fullscreen-btn="false"
 					:show-play-btn="false"
@@ -211,6 +213,7 @@ export default {
 			isDesktopH5: false,
 			isWebFullscreen: false,
 			fullscreenListener: null,
+			nativeVideoGuardTimer: null,
 			prevTitle: '',
 			nextTitle: '',
 			lessonCard: null,
@@ -224,11 +227,11 @@ export default {
 		}
 	},
 	async onLoad(opts) {
-		if (opts && opts.title) this.title = decodeURIComponent(opts.title);
-		this.lessonId = opts && opts.lessonId ? decodeURIComponent(opts.lessonId) : this.title;
-		if (opts && opts.courseId) this.courseId = decodeURIComponent(opts.courseId);
-		if (opts && opts.courseTitle) this.courseTitle = decodeURIComponent(opts.courseTitle);
-		if (opts && opts.chapterTitle) this.chapterTitle = decodeURIComponent(opts.chapterTitle);
+		if (opts && opts.title) this.title = this.decodeRouteText(opts.title);
+		this.lessonId = opts && opts.lessonId ? this.decodeRouteText(opts.lessonId) : this.title;
+		if (opts && opts.courseId) this.courseId = this.decodeRouteText(opts.courseId);
+		if (opts && opts.courseTitle) this.courseTitle = this.decodeRouteText(opts.courseTitle);
+		if (opts && opts.chapterTitle) this.chapterTitle = this.decodeRouteText(opts.chapterTitle);
 		this.categoryTitle = this.resolveCategoryTitle(opts);
 		this.syncPageTitle();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
@@ -251,6 +254,7 @@ export default {
 		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
 		this.setNativeVideoControls(false);
+		this.unbindNativeVideoGuards();
 		this.exitWebFullscreen(false);
 		this.persistProgress(false);
 	},
@@ -260,6 +264,7 @@ export default {
 		this.clearVideoErrorTimer();
 		this.unbindSeekDragListeners();
 		this.setNativeVideoControls(false);
+		this.unbindNativeVideoGuards();
 		this.exitWebFullscreen(false);
 	},
 	computed: {
@@ -290,8 +295,21 @@ export default {
 		}
 	},
 	methods: {
+		decodeRouteText(value = '') {
+			let text = String(value || '');
+			for (let index = 0; index < 3; index += 1) {
+				try {
+					const decoded = decodeURIComponent(text);
+					if (decoded === text) break;
+					text = decoded;
+				} catch (err) {
+					break;
+				}
+			}
+			return text;
+		},
 		resolveCategoryTitle(opts = {}) {
-			if (opts && opts.categoryTitle) return decodeURIComponent(opts.categoryTitle);
+			if (opts && opts.categoryTitle) return this.decodeRouteText(opts.categoryTitle);
 			return this.inferCategoryTitle(this.title, this.chapterTitle);
 		},
 		inferCategoryTitle(...values) {
@@ -308,6 +326,7 @@ export default {
 			}
 			// H5/微信浏览器读取 document.title，uni 的自定义导航不会自动同步这里。
 			if (typeof document !== 'undefined') document.title = title;
+			this.cleanVideoTooltips();
 		},
 		async loadLesson() {
 			try {
@@ -519,6 +538,11 @@ export default {
 				if (!video) return;
 				video.controls = false;
 				video.removeAttribute('controls');
+				video.removeAttribute('title');
+				video.removeAttribute('download');
+				video.removeAttribute('data-title');
+				video.setAttribute('title', '');
+				video.setAttribute('data-title', '');
 				video.setAttribute('controlsList', 'nodownload nofullscreen noplaybackrate noremoteplayback');
 				video.setAttribute('controlslist', 'nodownload nofullscreen noplaybackrate noremoteplayback');
 				video.setAttribute('disablePictureInPicture', '');
@@ -532,6 +556,11 @@ export default {
 				video.disablePictureInPicture = true;
 				video.disableRemotePlayback = true;
 				video.preload = 'metadata';
+				(video.querySelectorAll ? Array.from(video.querySelectorAll('source')) : []).forEach(source => {
+					source.removeAttribute('title');
+					source.removeAttribute('download');
+					source.setAttribute('title', '');
+				});
 				video.oncontextmenu = event => {
 					event.preventDefault();
 					return false;
@@ -540,6 +569,64 @@ export default {
 					event.preventDefault();
 					return false;
 				};
+				video.onratechange = () => {
+					this.enforceAllowedPlaybackRate(video);
+				};
+				this.bindNativeVideoGuardTimer();
+				this.cleanVideoTooltips();
+			});
+		},
+		bindNativeVideoGuardTimer() {
+			if (this.nativeVideoGuardTimer) return;
+			this.nativeVideoGuardTimer = setInterval(() => {
+				const video = this.nativeVideoElement();
+				if (video) {
+					video.controls = false;
+					video.removeAttribute('controls');
+					this.enforceAllowedPlaybackRate(video);
+				}
+				this.cleanVideoTooltips();
+			}, 1200);
+		},
+		unbindNativeVideoGuards() {
+			if (this.nativeVideoGuardTimer) {
+				clearInterval(this.nativeVideoGuardTimer);
+				this.nativeVideoGuardTimer = null;
+			}
+			const video = this.nativeVideoElement();
+			if (video) video.onratechange = null;
+		},
+		enforceAllowedPlaybackRate(video) {
+			if (!video) return;
+			const current = Number(video.playbackRate || 1);
+			const allowed = this.playbackRates.some(rate => Math.abs(rate - current) < 0.01);
+			if (!allowed || current > 1.5) {
+				video.playbackRate = this.playbackRate || 1;
+				return;
+			}
+			if (Math.abs((this.playbackRate || 1) - current) > 0.01) {
+				this.playbackRate = current;
+			}
+		},
+		cleanVideoTooltips() {
+			if (typeof document === 'undefined') return;
+			const nodes = Array.from(document.querySelectorAll('.video-wrap, .video-wrap *, #lessonVideo, #lessonVideo *, video, video *'));
+			const active = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+			if (active && active.querySelectorAll) {
+				nodes.push(...Array.from(active.querySelectorAll('[title],[download],[aria-label],[data-title]')));
+			}
+			nodes.forEach(el => {
+				if (!el || !el.removeAttribute) return;
+				el.removeAttribute('title');
+				el.removeAttribute('download');
+				el.removeAttribute('aria-label');
+				el.removeAttribute('data-title');
+				if (el.tagName && String(el.tagName).toLowerCase() === 'video') {
+					el.setAttribute('controlsList', 'nodownload nofullscreen noplaybackrate noremoteplayback');
+					el.setAttribute('controlslist', 'nodownload nofullscreen noplaybackrate noremoteplayback');
+					el.disablePictureInPicture = true;
+					el.disableRemotePlayback = true;
+				}
 			});
 		},
 		toggleWebFullscreen() {
@@ -847,7 +934,10 @@ export default {
 					ctx.playbackRate(this.playbackRate);
 				}
 				const video = this.nativeVideoElement();
-				if (video) video.playbackRate = this.playbackRate;
+				if (video) {
+					video.playbackRate = this.playbackRate;
+					this.enforceAllowedPlaybackRate(video);
+				}
 			});
 		},
 		rateLabel(rate) {
@@ -872,6 +962,20 @@ export default {
 				video.volume = Math.max(0, Math.min(1, this.volume / 100));
 			});
 		},
+		markLocalLessonUnlocked(kind = 'videos') {
+			if (!this.courseId) return;
+			const title = String(this.lessonId || this.title || '').trim();
+			if (!title) return;
+			try {
+				const key = `lesson_unlock_cache_${this.courseId}`;
+				const saved = uni.getStorageSync(key) || {};
+				const videos = Array.isArray(saved.videos) ? saved.videos.map(item => String(item || '').trim()).filter(Boolean) : [];
+				const practices = Array.isArray(saved.practices) ? saved.practices.map(item => String(item || '').trim()).filter(Boolean) : [];
+				const list = kind === 'practices' ? practices : videos;
+				if (!list.includes(title)) list.push(title);
+				uni.setStorageSync(key, { ...saved, videos, practices, updatedAt: Date.now() });
+			} catch (e) {}
+		},
 		async persistProgress(ended) {
 			if (!isLoggedIn() || !this.videoUrl) return;
 			this.lastSavedAt = Date.now();
@@ -887,6 +991,7 @@ export default {
 					ended
 				});
 				this.progressSaved = true;
+				if (ended || Number(this.percent) >= 95) this.markLocalLessonUnlocked('videos');
 			} catch (err) {
 				console.warn('学习进度保存失败', err);
 			}
@@ -964,7 +1069,7 @@ export default {
 
 <style lang="scss">
 page { background:#fff; }
-.page { min-height:100vh; background:#fff; padding-bottom:150rpx; }
+.page { min-height:100vh; background:#fff; padding-bottom:150rpx; color-scheme:light; }
 
 .nav {
 	position:relative;
@@ -995,6 +1100,7 @@ page { background:#fff; }
 	-webkit-user-select:none;
 	user-select:none;
 	-webkit-touch-callout:none;
+	-webkit-user-drag:none;
 }
 .video-player {
 	width:100%;
@@ -1005,6 +1111,7 @@ page { background:#fff; }
 	-webkit-user-select:none;
 	user-select:none;
 	-webkit-touch-callout:none;
+	-webkit-user-drag:none;
 }
 .video-wrap .uni-video-bar,
 .video-wrap .uni-video-cover-play-button,
@@ -1021,6 +1128,19 @@ page { background:#fff; }
 .video-wrap :deep(video::-webkit-media-controls),
 .video-wrap :deep(video::-webkit-media-controls-enclosure) {
 	display:none !important;
+}
+.video-wrap video::-webkit-media-controls-download-button,
+.video-wrap video::-webkit-media-controls-fullscreen-button,
+.video-wrap video::-webkit-media-controls-playback-rate-button,
+.video-wrap video::-webkit-media-controls-picture-in-picture-button,
+.video-wrap video::-internal-media-controls-download-button,
+.video-wrap :deep(video::-webkit-media-controls-download-button),
+.video-wrap :deep(video::-webkit-media-controls-fullscreen-button),
+.video-wrap :deep(video::-webkit-media-controls-playback-rate-button),
+.video-wrap :deep(video::-webkit-media-controls-picture-in-picture-button) {
+	display:none !important;
+	opacity:0 !important;
+	pointer-events:none !important;
 }
 .poster-cover {
 	position:absolute;

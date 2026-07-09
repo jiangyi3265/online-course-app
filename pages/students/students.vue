@@ -28,7 +28,6 @@
 			<view class="panel-head">
 				<view>
 					<view class="panel-title">学生列表</view>
-					<view class="panel-sub list-sub">一名学生只显示一条记录，可查看学情统计，不可编辑或代填学习打卡。</view>
 				</view>
 				<view class="refresh" @click="loadData">{{loading ? '加载中' : '刷新'}}</view>
 			</view>
@@ -372,7 +371,7 @@ page { background:#eef3f7; }
 	border-radius:999rpx;
 }
 .student-meta {
-	grid-template-columns:repeat(2, minmax(0, 1fr));
+	grid-template-columns:repeat(3, minmax(0, 1fr));
 	gap:12rpx;
 	margin-top:20rpx;
 	padding:18rpx;
@@ -403,23 +402,19 @@ page { background:#eef3f7; }
 	line-height:1.35;
 	word-break:break-word;
 }
-.meta-date,
-.meta-permission {
-	grid-column:1 / -1;
-}
 .meta-date {
-	display:flex;
-	align-items:center;
-	justify-content:space-between;
-	gap:18rpx;
+	display:block;
+	grid-column:1 / -1;
 }
 .meta-date text,
 .meta-date strong {
-	margin-top:0;
+	margin-top:6rpx;
 }
 .meta-date strong {
-	text-align:right;
+	text-align:left;
 	white-space:nowrap;
+	overflow:hidden;
+	text-overflow:ellipsis;
 }
 .metric-row {
 	gap:14rpx;
@@ -482,7 +477,20 @@ page { background:#eef3f7; }
 		margin-top:0;
 	}
 	.student-meta {
-		grid-template-columns:1fr;
+		grid-template-columns:repeat(3, minmax(0, 1fr));
+		gap:8rpx;
+		padding:12rpx;
+	}
+	.meta-item {
+		min-height:58rpx;
+		padding:10rpx 6rpx;
+	}
+	.meta-item text {
+		font-size:19rpx;
+	}
+	.meta-item strong {
+		font-size:20rpx;
+		word-break:break-all;
 	}
 	.metric-row {
 		grid-template-columns:repeat(3, minmax(0, 1fr));

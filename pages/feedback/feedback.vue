@@ -21,7 +21,7 @@
 					<view class="camera">▣</view>
 					<view>上传图片</view>
 				</view>
-				<image class="preview" v-for="(img,index) in form.images" :key="img" :src="img" mode="aspectFill" @click="removeImage(index)" />
+				<image class="preview" v-for="(img,index) in form.images" :key="img" :src="mediaUrl(img)" mode="aspectFill" @click="removeImage(index)" />
 			</view>
 		</view>
 
@@ -30,7 +30,7 @@
 </template>
 
 <script>
-import { getProfile, submitFeedback } from '@/common/api.js'
+import { getProfile, isUsableMediaUrl, resolveMediaUrl, submitFeedback, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
 export default {
@@ -50,10 +50,37 @@ export default {
 				this.form.wechat = user.wechat || this.form.wechat
 			} catch (err) {}
 		},
+		mediaUrl(value) {
+			const url = resolveMediaUrl(value)
+			return url && isUsableMediaUrl(url) ? url : ''
+		},
+		async normalizeChosenImages(res) {
+			const files = res.tempFiles || []
+			const paths = res.tempFilePaths || []
+			const uploaded = []
+			for (let index = 0; index < Math.max(files.length, paths.length); index += 1) {
+				try {
+					const file = files[index]
+					const path = paths[index] || (file && file.path) || ''
+					const url = file ? await uploadAnswerImageFile(file) : await uploadAnswerImage(path)
+					if (url) uploaded.push(resolveMediaUrl(url))
+				} catch (err) {}
+			}
+			return uploaded
+		},
 		chooseImage() {
 			uni.chooseImage({
 				count: Math.max(1, 3 - this.form.images.length),
-				success: res => { this.form.images = this.form.images.concat(res.tempFilePaths || []).slice(0, 3) }
+				success: async res => {
+					uni.showLoading({ title: '上传中' })
+					try {
+						const images = await this.normalizeChosenImages(res)
+						this.form.images = this.form.images.concat(images).slice(0, 3)
+						if (!images.length) uni.showToast({ title: '图片上传失败', icon: 'none' })
+					} finally {
+						uni.hideLoading()
+					}
+				}
 			})
 		},
 		removeImage(index) {
@@ -65,10 +92,15 @@ export default {
 				return
 			}
 			try {
-				await submitFeedback(this.form)
+				await submitFeedback({
+					...this.form,
+					images: this.form.images.map(item => resolveMediaUrl(item)).filter(Boolean)
+						.filter(item => isUsableMediaUrl(item))
+				})
 				uni.showToast({ title: '提交成功', icon: 'success' })
 				this.form.content = ''
 				this.form.images = []
+				setTimeout(() => this.goBack(), 600)
 			} catch (err) {
 				uni.showToast({ title: err.message || '提交失败', icon: 'none' })
 			}

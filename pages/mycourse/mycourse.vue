@@ -3,7 +3,7 @@
 		<view class="course-list" v-if="logined">
 			<view class="course-card" v-for="(c,i) in courses" :key="i">
 				<view class="course-cover">
-					<image v-if="c.cover && !c.coverError" class="course-cover-img" :src="c.cover" mode="aspectFill" @error="markCourseCoverError(c)" />
+					<image v-if="c.cover && !c.coverError" class="course-cover-img" :src="c.cover" mode="aspectFit" @error="markCourseCoverError(c)" />
 					<view v-else class="course-cover-fallback">{{courseInitial(c)}}</view>
 				</view>
 				<view class="course-info">
@@ -44,7 +44,7 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
-import { getMyCourses, isLoggedIn, resolveMediaUrl } from '@/common/api.js'
+import { getMyCourses, isLoggedIn, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() { return { logined:false, showModal:false, courses: AUTHORIZED_COURSES } },
@@ -62,7 +62,7 @@ export default {
 					title: stripCourseYear(item.courseName || item.sub || `《${item.full}》`),
 					sub: stripCourseYear(item.sub),
 					expiry: item.expiry,
-					cover: resolveMediaUrl(item.cover || this.fallbackCourseCover(item)),
+					cover: this.safeMediaUrl(item.cover, this.fallbackCourseCover(item)),
 					coverFallbackTried: false,
 					coverError: false,
 					subject: item.subject,
@@ -99,6 +99,10 @@ export default {
 				}
 			}
 			course.coverError = true;
+		},
+		safeMediaUrl(url = '', fallback = '') {
+			const resolved = resolveMediaUrl(url || fallback);
+			return isUsableMediaUrl(resolved) ? resolved : fallback;
 		},
 		fallbackCourseCover(course = {}) {
 			const text = `${course.title || ''}${course.sub || ''}${course.courseName || ''}${course.full || ''}`;
@@ -165,6 +169,13 @@ page { background:#fff; }
 	width:100%;
 	height:100%;
 	display:block;
+	object-fit:contain;
+	background:#f8fafc;
+}
+.course-cover-img :deep(div) {
+	background-size:contain !important;
+	background-repeat:no-repeat !important;
+	background-position:center center !important;
 }
 .course-cover-fallback {
 	padding:0 18rpx;

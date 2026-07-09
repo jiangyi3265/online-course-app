@@ -4,7 +4,7 @@
 		<view class="banner">
 			<swiper class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
 				<swiper-item v-for="item in homeBanners" :key="item.id || item.imageUrl">
-					<image class="banner-img" :src="item.imageUrl" mode="aspectFill" @click="openBanner(item)" @error.stop="onBannerError(item)" />
+					<image class="banner-img" :src="item.imageUrl" mode="aspectFit" @click="openBanner(item)" @error.stop="onBannerError(item)" />
 				</swiper-item>
 			</swiper>
 		</view>
@@ -12,9 +12,8 @@
 		<!-- 4 categories -->
 		<view class="cats">
 			<view class="cat" v-for="(c,i) in cats" :key="i" @click="goTab(i)">
-				<view class="cat-icon" :class="['cat-tone-' + (i + 1), { 'is-fallback': c.iconError }]">
-					<text class="cat-icon-letter">{{catFallbackText(c)}}</text>
-					<image v-if="c.icon && !c.iconError" class="cat-preload" :src="catIconSrc(c)" mode="aspectFit" @error.stop="onCatIconError(c)" />
+				<view class="cat-icon" :class="'cat-tone-' + (i + 1)">
+					<text class="cat-icon-letter">{{catSymbol(c, i)}}</text>
 				</view>
 				<text class="cat-text">{{c.text}}</text>
 			</view>
@@ -35,7 +34,7 @@
 		<view class="grid">
 			<view class="card" v-for="(it,i) in list" :key="i" @click="goDetail(it)">
 				<view class="cover">
-					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFill" @error.stop="onCourseCoverError(it)" />
+					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFit" @error.stop="onCourseCoverError(it)" />
 					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
 					<text class="course-tag">视频+考练</text>
 				</view>
@@ -60,16 +59,16 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { GAOKAO_MATH_TRIAL, stripCourseYear } from '@/common/course-data.js'
-import { getCourses, getFrontendSettings, resolveMediaUrl } from '@/common/api.js'
+import { getCourses, getFrontendSettings, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() {
 		return {
 			cats: [
-				{ icon:'/static/cats/1.png', text:'中考试听' },
-				{ icon:'/static/cats/2.png', text:'中考课程' },
-				{ icon:'/static/cats/3.png', text:'高考试听' },
-				{ icon:'/static/cats/4.png', text:'高考课程' }
+				{ icon:'', iconError:true, symbol:'听', text:'中考试听' },
+				{ icon:'', iconError:true, symbol:'课', text:'中考课程' },
+				{ icon:'', iconError:true, symbol:'听', text:'高考试听' },
+				{ icon:'', iconError:true, symbol:'课', text:'高考课程' }
 			],
 			homeBanners: [
 				{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }
@@ -107,7 +106,11 @@ export default {
 			try {
 				const settings = await getFrontendSettings();
 				const banners = Array.isArray(settings.homeBanners) ? settings.homeBanners.filter(item => item && item.imageUrl) : [];
-				if (banners.length) this.homeBanners = banners.map(item => ({ ...item, imageUrl: resolveMediaUrl(item.imageUrl), imageError: false }));
+				const usableBanners = banners
+					.map(item => ({ ...item, imageUrl: this.safeMediaUrl(item.imageUrl), imageError: false }))
+					.filter(item => item.imageUrl);
+				if (usableBanners.length) this.homeBanners = usableBanners;
+				else this.homeBanners = [{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }];
 			} catch (err) {
 				console.warn('前端配置接口不可用，使用默认首页图', err);
 			}
@@ -120,7 +123,7 @@ export default {
 					id: item.id,
 					full: stripCourseYear(item.full),
 					learn: item.studyCount || item.learn || 0,
-					cover: resolveMediaUrl(item.cover),
+					cover: this.safeMediaUrl(item.cover),
 					coverError: false,
 					subject: item.subject,
 					kind: item.kind,
@@ -143,6 +146,10 @@ export default {
 			item.imageUrl = '/static/home-banner.png';
 			item.imageError = true;
 		},
+		safeMediaUrl(url = '', fallback = '') {
+			const resolved = resolveMediaUrl(url);
+			return isUsableMediaUrl(resolved) ? resolved : fallback;
+		},
 		onCatIconError(item = {}) {
 			if (this.$set) this.$set(item, 'iconError', true);
 			else item.iconError = true;
@@ -160,6 +167,9 @@ export default {
 			if (text.includes('高考')) return '高';
 			return text.slice(0, 1) || '课';
 		},
+		catSymbol(item = {}, index = 0) {
+			return item.symbol || this.catFallbackText(item) || String(index + 1);
+		},
 		coverFallbackText(item = {}) {
 			const text = String(item.full || item.title || '').replace(/[《》]/g, '');
 			if (text.includes('中考')) return '中考';
@@ -173,35 +183,45 @@ export default {
 			return it.kind === 'full' || it.isTry === false ? '验证后学习' : '直接体验';
 		},
 		goVocabulary() { uni.navigateTo({ url:'/pages/vocabulary/vocabulary' }); },
-		goTab(i) { uni.navigateTo({ url:`/pages/index/testIndex?tab=${i+1}` }); },
+		goTab(i) {
+			const url = `/pages/index/testIndex?tab=${i + 1}`;
+			uni.navigateTo({
+				url,
+				fail: () => {
+					if (typeof window !== 'undefined') window.location.hash = `#${url}`;
+					else uni.redirectTo({ url });
+				}
+			});
+		},
 		goDetail(it) {
 			const idPart = it.id ? `id=${encodeURIComponent(it.id)}&` : '';
 			const extra = it.subject ? `&subject=${it.subject}&kind=${it.kind || 'trial'}` : '';
-			uni.navigateTo({ url:`/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover)}${extra}` });
+			uni.navigateTo({ url:`/pages/course-detail/course-detail?${idPart}title=${encodeURIComponent(stripCourseYear(it.full))}&cover=${encodeURIComponent(it.cover || '')}${extra}` });
 		}
 	}
 }
 </script>
 
 <style lang="scss">
-page { background:#f7f8fa; }
-.page { padding-bottom:130rpx; background:#f7f8fa; min-height:100vh; }
+page { background:#f7f8fa; color-scheme:light; }
+.page { padding-bottom:130rpx; background:#f7f8fa; min-height:100vh; color:#111827; }
 
 .banner { padding: 20rpx 24rpx 8rpx; }
 .banner-swiper { width:100%; height:210rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
-.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; }
+.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:contain; background:#eef2f7; }
+.banner-img :deep(div) { background-size:contain !important; background-repeat:no-repeat !important; background-position:center center !important; }
 
 .cats { display:flex; justify-content:space-around; padding:24rpx 0 14rpx; background:#f7f8fa; }
 .cat { min-width:0; min-height:142rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
-.cat-icon { width:96rpx; height:96rpx; flex:0 0 96rpx; margin-bottom:14rpx; border-radius:28rpx; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10rpx 24rpx rgba(15,23,42,0.08); background-repeat:no-repeat,no-repeat; background-position:center,center; background-size:74rpx 74rpx,100% 100%; }
-.cat-tone-1 { background-image:url('/static/cats/1.png'),linear-gradient(135deg,#eaf7ff,#dff1ff); color:#1677ff; }
-.cat-tone-2 { background-image:url('/static/cats/2.png'),linear-gradient(135deg,#eefcf5,#dcf9ec); color:#16a36a; }
-.cat-tone-3 { background-image:url('/static/cats/3.png'),linear-gradient(135deg,#fff3e7,#ffe6cc); color:#ff7a00; }
-.cat-tone-4 { background-image:url('/static/cats/4.png'),linear-gradient(135deg,#f1edff,#e5dcff); color:#7c3aed; }
-.cat-icon.is-fallback { background-image:linear-gradient(135deg,#eaf4ff,#f8fbff); }
-.cat-preload { position:absolute; left:-1px; top:-1px; width:1px; height:1px; opacity:0; pointer-events:none; }
-.cat-icon-letter { position:relative; z-index:1; font-size:30rpx; line-height:1; font-weight:900; opacity:0; transition:opacity .18s ease; }
-.cat-icon.is-fallback .cat-icon-letter { opacity:1; }
+.cat-icon { width:96rpx; height:96rpx; flex:0 0 96rpx; margin-bottom:14rpx; border-radius:28rpx; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10rpx 24rpx rgba(15,23,42,0.08); }
+.cat-tone-1 { background:linear-gradient(135deg,#eaf7ff,#dff1ff); color:#1677ff; }
+.cat-tone-2 { background:linear-gradient(135deg,#eefcf5,#dcf9ec); color:#16a36a; }
+.cat-tone-3 { background:linear-gradient(135deg,#fff3e7,#ffe6cc); color:#ff7a00; }
+.cat-tone-4 { background:linear-gradient(135deg,#f1edff,#e5dcff); color:#7c3aed; }
+.cat-img { width:74rpx; height:74rpx; display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:0; opacity:.18; }
+.cat-icon-letter { position:relative; z-index:1; font-size:30rpx; line-height:1; font-weight:900; opacity:1; transition:opacity .18s ease; }
+.cat-img + .cat-icon-letter { position:relative; opacity:1; }
+.cat-icon.is-fallback .cat-icon-letter { position:relative; opacity:1; }
 .cat-text { font-size:30rpx; color:rgba(0,0,0,0.9); font-weight:700; }
 .tool-strip { padding:12rpx 20rpx 0; }
 .tool-card { min-height:118rpx; background:#fff; border:1rpx solid #edf0f4; border-radius:16rpx; display:flex; align-items:center; padding:0 24rpx; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
@@ -214,7 +234,8 @@ page { background:#f7f8fa; }
 .grid { display:flex; flex-wrap:wrap; justify-content:space-between; padding:20rpx; }
 .card { width:48.5%; background:#fff; border-radius:16rpx; margin-bottom:24rpx; overflow:hidden; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
 .cover { width:100%; height:200rpx; overflow:hidden; position:relative; }
-.cover-img { width:100%; height:100%; display:block; }
+.cover-img { width:100%; height:100%; display:block; object-fit:contain; background:#f8fafc; }
+.cover-img :deep(div) { background-size:contain !important; background-repeat:no-repeat !important; background-position:center center !important; }
 .cover-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#edf5ff,#f8fbff); color:#1677ff; font-size:32rpx; font-weight:900; letter-spacing:2rpx; }
 .course-tag { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.5); color:#fff; font-size:22rpx; padding:8rpx 14rpx; border-top-right-radius:8rpx; }
 .info { padding:16rpx 18rpx 22rpx; }

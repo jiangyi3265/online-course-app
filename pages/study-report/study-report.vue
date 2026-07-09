@@ -11,7 +11,7 @@
 			<view class="panel-head" @click="showLearningRecords = !showLearningRecords">
 				<view>
 					<view class="panel-title">学习记录</view>
-					<view class="detail-sub">默认收起，展开后按日期倒序查看本课程所有视频学习记录。</view>
+					<view class="detail-sub">默认收起，展开后按日期记录视频课程学习情况。</view>
 				</view>
 				<view class="panel-toggle">{{showLearningRecords ? '收起' : '展开'}}</view>
 			</view>
@@ -62,7 +62,7 @@
 			<view class="panel-head" @click="showCourseRecords = !showCourseRecords">
 				<view>
 					<view class="panel-title">课程记录与练习明细</view>
-					<view class="detail-sub">默认收起，点击展开查看课程进度、章节扫雷、复习测试和真题统计。</view>
+					<view class="detail-sub">默认收起，点击展开查看课程进度、章节扫雷、复习测试、真题讲练、错题重练统计。</view>
 				</view>
 				<view class="panel-toggle">{{showCourseRecords ? '收起' : '展开'}}</view>
 			</view>
@@ -122,7 +122,7 @@
 			<view class="panel-head" @click="showPracticeStats = !showPracticeStats">
 				<view>
 					<view class="panel-title">练习统计</view>
-					<view class="detail-sub">默认收起，展开后查看本课程练习、复习测试和线下自评统计。</view>
+					<view class="detail-sub">默认收起，展开后按日期记录课程线上练习、测试情况。</view>
 				</view>
 				<view class="panel-toggle">{{showPracticeStats ? '收起' : '展开'}}</view>
 			</view>
@@ -157,7 +157,7 @@
 </template>
 
 <script>
-import { getOfflinePaperReviews, getStudyReport } from '@/common/api.js'
+import { getOfflinePaperReviews, getStudyReport, isUsableMediaUrl, resolveMediaUrl } from '@/common/api.js'
 import { stripCourseYear } from '@/common/course-data.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
@@ -340,7 +340,8 @@ export default {
 			this.recordDateFilter = e.detail.value || '';
 		},
 		stemAudio(item = {}) {
-			return item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '';
+			const url = resolveMediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '');
+			return isUsableMediaUrl(url) ? url : '';
 		},
 		normalizeLearningRecord(item = {}, index = 0) {
 			const rawTime = item.recordTime || item.learnTime || item.watchTime || item.updatedAt || item.createdAt || item.time || item.date || '';
@@ -555,7 +556,20 @@ export default {
 page { background:#f5f7fa; }
 .page { min-height:100vh; background:#f5f7fa; padding-bottom:40rpx; }
 .nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
-.back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
+.back {
+	position:absolute;
+	left:0;
+	top:0;
+	width:110rpx;
+	height:90rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	font-size:66rpx;
+	color:#222;
+	cursor:pointer;
+	z-index:2;
+}
 .nav-title { font-size:30rpx; font-weight:700; }
 .course-card, .panel, .detail-panel { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
 .course-card { display:flex; align-items:center; gap:14rpx; flex-wrap:wrap; }
@@ -575,7 +589,7 @@ page { background:#f5f7fa; }
 .learning-panel .record-grid {
 	margin-top:18rpx;
 }
-.learning-body { margin-top:16rpx; }
+.learning-body { margin-top:16rpx; max-height:620rpx; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-right:4rpx; }
 .record-tools {
 	display:flex;
 	align-items:center;
@@ -615,7 +629,9 @@ page { background:#f5f7fa; }
 	padding:18rpx 20rpx;
 	background:#fff;
 }
-.video-record {
+.record.video-record {
+	display:grid;
+	grid-template-columns:minmax(0, 1fr) auto;
 	align-items:flex-start;
 }
 .record-main {
@@ -638,12 +654,14 @@ page { background:#f5f7fa; }
 	line-height:1.35;
 }
 .record-duration {
-	flex-shrink:0;
 	color:#111827;
 	font-size:25rpx;
 	font-weight:800;
 	line-height:1.45;
 	text-align:right;
+	justify-self:end;
+	max-width:230rpx;
+	word-break:break-word;
 }
 .panel-head {
 	display:flex;
@@ -675,9 +693,17 @@ page { background:#f5f7fa; }
 }
 .detail-body {
 	margin-top:18rpx;
+	max-height:640rpx;
+	overflow-y:auto;
+	-webkit-overflow-scrolling:touch;
+	padding-right:4rpx;
 }
 .practice-stats-body {
 	margin-top:18rpx;
+	max-height:620rpx;
+	overflow-y:auto;
+	-webkit-overflow-scrolling:touch;
+	padding-right:4rpx;
 }
 .detail-sub { color:#8a94a3; font-size:24rpx; line-height:1.45; margin-top:-8rpx; margin-bottom:20rpx; }
 .track-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; margin-bottom:20rpx; }
@@ -704,7 +730,11 @@ page { background:#f5f7fa; }
 .metric-warning-success .summary-value, .metric-warning-success .metric-value { color:#16a36b; }
 .practice-row, .row, .record { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-bottom:1rpx solid #eef0f3; font-size:27rpx; color:#333; }
 .practice-row:last-child, .row:last-child, .record:last-child { border-bottom:0; }
-.practice-stat-row { align-items:flex-start; }
+.practice-stat-row {
+	display:grid;
+	grid-template-columns:minmax(0, 1fr) auto;
+	align-items:flex-start;
+}
 .practice-stat-main { flex:1; min-width:0; }
 .practice-stat-title {
 	color:#1f2933;
@@ -722,12 +752,14 @@ page { background:#f5f7fa; }
 	line-height:1.35;
 }
 .practice-stat-score {
-	flex-shrink:0;
 	color:#1f2933;
 	font-size:25rpx;
 	font-weight:800;
 	line-height:1.45;
 	text-align:right;
+	justify-self:end;
+	max-width:240rpx;
+	word-break:break-word;
 }
 .practice-detail { margin-top:18rpx; padding:20rpx; border-radius:14rpx; background:#f8fafc; }
 .detail-title { color:#222; font-size:27rpx; font-weight:800; margin-bottom:14rpx; }
@@ -748,5 +780,20 @@ page { background:#f5f7fa; }
 @media screen and (max-width: 420px) {
 	.track-grid { grid-template-columns:1fr; }
 	.report-metrics { grid-template-columns:1fr 1fr; }
+	.video-record,
+	.practice-stat-row {
+		grid-template-columns:1fr;
+	}
+	.record-duration,
+	.practice-stat-score {
+		justify-self:start;
+		max-width:100%;
+		text-align:left;
+	}
+	.learning-body,
+	.detail-body,
+	.practice-stats-body {
+		max-height:560rpx;
+	}
 }
 </style>

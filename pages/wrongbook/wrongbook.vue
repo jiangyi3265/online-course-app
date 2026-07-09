@@ -5,6 +5,13 @@
 			<view class="nav-title">错题与巩固</view>
 		</view>
 
+		<view class="course-summary">
+			<view class="summary-main">
+				<view class="summary-line"><text>共计 {{summary.chapterCount || course.chapterCount || 0}} 节</text><text>总时长：{{summary.totalDuration || course.totalDuration || '--'}}</text></view>
+				<view class="summary-line"><text>已学节数：{{summary.learnedChapterCount || course.learnedChapterCount || 0}} 节</text><text>已学时长：{{summary.learnedDuration || course.learnedDuration || '--'}}</text></view>
+			</view>
+		</view>
+
 		<view class="action-grid">
 			<view class="action-card" :class="{active: mode === 'review'}" @click="setMode('review')">
 				<view class="action-mark">温</view>
@@ -35,43 +42,56 @@
 				</view>
 			</view>
 		</view>
-		<view class="source-filter">
-			<view class="total-chip">
+
+		<view class="summary-strip">
+			<view class="summary-item total" :class="{active: mode === 'review' && statusFilter === 'all'}" @click="setReviewStatus('all')">
 				<text>总收录</text>
-				<strong>{{summary.total || 0}}</strong>
+				<strong>{{summaryTotal}}</strong>
+				<small>道错题</small>
+			</view>
+			<view v-if="false" class="summary-item" :class="{active: mode === 'review' && statusFilter === 'pending'}" @click="setReviewStatus('pending')">
+				<text>待温习</text>
+				<strong>{{pendingWrongCount}}</strong>
 				<small>道</small>
 			</view>
-			<view
-				class="source-chip"
-				v-for="item in sources"
-				:key="item"
-				:class="{active: source === item}"
-				@click="setSource(item)"
-			>{{item}}</view>
+			<view v-if="false" class="summary-item" :class="{active: mode === 'review' && statusFilter === 'mastered'}" @click="setReviewStatus('mastered')">
+				<text>已掌握</text>
+				<strong>{{masteredWrongCount}}</strong>
+				<small>道</small>
+			</view>
+			<view v-if="false" class="summary-item weak" :class="{active: mode === 'weak'}" @click="jumpToWeakQuestions">
+				<text>短板</text>
+				<strong>{{weakWrongCount}}</strong>
+				<small>道</small>
+			</view>
 		</view>
 
-		<view v-if="mode === 'review'">
+		<view class="source-filter" v-if="mode !== 'records'">
+			<view class="source-chip" v-for="item in sources" :key="item" :class="{active: source === item}" @click="setSource(item)">{{item}}</view>
+		</view>
+
+		<view v-if="mode === 'review'" class="panel">
 			<view class="question-list-anchor"></view>
-			<view class="empty" v-if="visibleWrongList.length === 0">暂无错题，先完成一次测试后这里会自动收录</view>
+			<view class="empty" v-if="visibleWrongList.length === 0">暂无错题，完成测试后会自动收录到这里。</view>
 			<view class="question-card" v-for="item in visibleWrongList" :key="item.id">
 				<view class="source-title">错题来源：</view>
 				<view class="tag-row">
-					<view class="tag" v-for="tag in item.sourceTags" :key="tag">{{tag}}</view>
-					<view class="tag latest-tag">最新收录时间：{{formatFullTime(item.updatedAt)}}</view>
+					<view class="tag" v-for="tag in mediaList(item.sourceTags)" :key="tag">{{tag}}</view>
+					<view class="tag latest-tag">最新收录时间：{{formatFullTime(item.updatedAt || item.createTime)}}</view>
 				</view>
-				<math-rich-text class="stem" :text="item.stem" />
-				<question-audio-player :src="stemAudio(item)" />
+				<math-rich-text class="stem" :text="item.stem || item.question || item.title" />
+				<question-audio-player v-if="stemAudio(item)" :src="stemAudio(item)" />
 				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
-				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点击重试</view>
+				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点此重试</view>
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
 						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
 						<image v-if="optionImage(item, optionIndex)" class="option-image" :src="optionImage(item, optionIndex)" mode="aspectFit" @click="previewMedia(optionImage(item, optionIndex))" />
 					</view>
 				</view>
-				<math-rich-text class="answer ok" :text="'正确答案：' + (item.answerText || optionText(item, item.answer))" />
-				<math-rich-text class="answer bad" :text="'我的答案：' + (item.selectedText || optionText(item, item.selected))" />
-				<analysis-viewer :item="item" :text="item.analysis" />
+				<math-rich-text class="answer ok" :text="'正确答案：' + (item.answerText || optionText(item, item.answer || item.correctAnswer))" />
+				<math-rich-text class="answer bad" :text="'我的答案：' + (item.selectedText || optionText(item, item.selected || item.myAnswer))" />
+				<analysis-viewer :item="item" :text="item.analysis || item.explain" />
 				<view class="row-actions">
 					<view class="state" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
 					<view class="mark-btn" :class="{done:item.mastered}" @click="mark(item)">{{item.mastered ? '已标记' : '标记掌握'}}</view>
@@ -80,97 +100,62 @@
 			</view>
 		</view>
 
-		<view v-if="mode === 'records'">
-			<view class="record-summary">
-				<view class="record-total">累计测试：{{records.total || 0}} 次</view>
-				<view class="record-subjects">
-					<text v-for="item in records.courseCounts" :key="item.label">{{item.label}}：{{item.value}} 次</text>
-				</view>
+		<view v-if="mode === 'records'" class="panel">
+			<view class="record-total">累计测试：{{records.total || 0}} 次</view>
+			<view class="record-courses">
+				<text v-for="item in records.courseCounts || []" :key="item.label || item.courseName">{{courseCountLabel(item)}}</text>
 			</view>
-			<view class="empty" v-if="recordList.length === 0">暂无测试记录</view>
+			<view class="empty" v-if="recordList.length === 0">暂无测试记录。</view>
 			<view class="record-card" v-for="record in recordList" :key="record.id">
-				<view class="record-time">完成时间 {{formatTime(record.completedAt)}}</view>
-				<view class="record-main">
-					<view class="record-title">{{record.subjectTitle}} {{record.title}} {{record.sourceType}}</view>
-					<view class="record-score">得分 {{record.scoreText}}</view>
+				<view class="record-head" @click="toggleRecord(record)">
+					<view>
+						<view class="record-time">完成时间 {{formatFullTime(record.completedAt || record.time || record.createTime)}}</view>
+						<view class="record-name">{{record.courseName || record.title || '测试记录'}} {{record.source || ''}}</view>
+					</view>
+					<view class="record-score">得分 {{record.score || 0}}/{{record.totalScore || 100}} 分</view>
 				</view>
-				<view class="detail-toggle" @click="toggleRecord(record.id)">测试详情</view>
-				<view class="detail-list" v-if="activeRecordId === record.id">
-					<view class="detail-row" v-for="detail in record.details" :key="detail.questionNo">
-						<view class="detail-count">题目数：{{detail.questionNo}}/{{detail.total}}</view>
+				<view class="record-detail" v-if="activeRecordId === record.id">
+					<view class="detail-row" v-for="(detail, index) in mediaList(record.questions || record.details)" :key="detail.id || index">
+						<view class="detail-index">题目数：{{index + 1}}</view>
 						<math-rich-text class="detail-stem" :text="detailStem(detail)" />
-						<question-audio-player :src="stemAudio(detail)" />
-						<image v-if="detail.stemImageUrl && !detail.stemImageError" class="question-image compact" :src="mediaUrl(detail.stemImageUrl)" mode="aspectFit" @click="previewMedia(detail.stemImageUrl)" @error.stop="onQuestionImageError(detail)" />
-						<view v-if="detail.stemImageError" class="image-fallback compact" @click="retryQuestionImage(detail)">图片加载失败，点击重试</view>
-						<math-rich-text class="detail-answer bad" :text="'我的答案：' + detailMyAnswer(detail)" />
-						<view class="test-record-strip" v-if="showTestRecordDetail(detail)">
-							<view class="test-record-title">查看测试记录</view>
-							<view class="test-record-actions">
-								<view class="record-pill muted" v-if="detail.noUpload">暂不上传</view>
-								<view class="record-pill link" v-if="detail.studentAnswerImageUrl" @click.stop="previewDetailImage(detail)">查看图片</view>
-								<view class="record-pill" v-if="detail.reviewResult" :class="reviewResultClass(detail)">自评{{reviewResultText(detail)}}</view>
-							</view>
+						<view class="detail-actions">
+							<button size="mini" @click="showTestRecordDetail(record, detail)">查看测试记录</button>
+							<button size="mini" v-if="detailAnswerImages(detail).length" @click="previewDetailImage(detail)">查看图片</button>
 						</view>
-						<image
-							v-if="detail.studentAnswerImageUrl"
-							class="answer-record-image"
-							:src="mediaUrl(detail.studentAnswerImageUrl)"
-							mode="widthFix"
-							@click="previewDetailImage(detail)"
-						/>
+						<image v-if="detailAnswerImages(detail)[0]" class="answer-image" :src="detailAnswerImages(detail)[0]" mode="aspectFit" @click="previewDetailImage(detail)" />
 						<math-rich-text class="detail-answer ok" :text="'正确答案：' + (detail.correctAnswerText || detail.correctAnswer || '--')" />
-						<analysis-viewer :item="detail" :text="detail.analysis" />
+						<math-rich-text class="detail-answer bad" :text="'我的答案：' + detailMyAnswer(detail)" />
 					</view>
 				</view>
 			</view>
 		</view>
 
-		<view v-if="mode === 'retry'">
-			<view class="retry-panel">
-				<view class="panel-title">错题重练</view>
-				<view class="panel-sub">由【温习错题】题库中组卷出题，开始测试做题。</view>
-				<view class="setting-title">题量设置</view>
-				<view class="count-row">
-					<view class="count-btn" :class="{active: retryCount === 5}" @click="setRetryCount(5)">随机 5 道题</view>
-					<view class="count-btn" :class="{active: retryCount === 20}" @click="setRetryCount(20)">随机 20 题</view>
-				</view>
-				<view class="notice">当前错题库数量不足时，按照最多数量进行分配。</view>
-				<view class="retry-meta">当前可练：{{retryPaper.availableCount || 0}} 道，实际组卷：{{retryPaper.count || 0}} 道</view>
-				<view class="start-btn" @click="startRetry">开始错题重练</view>
+		<view v-if="mode === 'retry'" class="panel">
+			<view class="panel-title">错题重练</view>
+			<view class="retry-select">
+				<view v-for="count in [5,10,15]" :key="count" :class="{active: retryCount === count}" @click="setRetryCount(count)">随机 {{count}} 道题</view>
 			</view>
+			<view class="retry-meta">当前可练：{{retryPaper.availableCount || 0}} 道，实际组卷：{{retryPaper.count || 0}} 道</view>
+			<button class="primary-btn" @click="startRetry">开始错题重练</button>
 			<view class="question-card" v-for="item in retryPreview" :key="item.id">
 				<view class="source-title">温习错题来源：</view>
-				<view class="tag-row"><view class="tag">{{source}}</view></view>
-				<math-rich-text class="stem" :text="item.stem" />
-				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
-				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点击重试</view>
+				<math-rich-text class="stem" :text="item.stem || item.question || item.title" />
 			</view>
 		</view>
 
-		<view v-if="mode === 'weak'">
-			<view class="question-list-anchor"></view>
-			<view class="empty" v-if="visibleWeakList.length === 0">暂无短板题，带三个来源标签或多次重练错误后会自动加入</view>
+		<view v-if="mode === 'weak'" class="panel">
+			<view class="empty" v-if="visibleWeakList.length === 0">暂无短板题，多次重练错误后会自动加入。</view>
 			<view class="question-card" v-for="item in visibleWeakList" :key="item.id">
 				<view class="source-title">题目来源：</view>
 				<view class="tag-row">
-					<view class="tag" v-for="tag in item.sourceTags" :key="tag">{{tag}}</view>
+					<view class="tag" v-for="tag in mediaList(item.sourceTags)" :key="tag">{{tag}}</view>
 				</view>
-				<math-rich-text class="stem" :text="item.stem" />
-				<question-audio-player :src="stemAudio(item)" />
+				<math-rich-text class="stem" :text="item.stem || item.question || item.title" />
+				<question-audio-player v-if="stemAudio(item)" :src="stemAudio(item)" />
 				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
-				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点击重试</view>
-				<view class="option-list" v-if="showOptions(item)">
-					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
-						<math-rich-text :text="`${optionLetter(optionIndex)}. ${option || '图片选项'}`" />
-						<image v-if="optionImage(item, optionIndex)" class="option-image" :src="optionImage(item, optionIndex)" mode="aspectFit" @click="previewMedia(optionImage(item, optionIndex))" />
-					</view>
-				</view>
-				<view class="row-actions weak-actions">
-					<view class="state" :class="{done:item.mastered}">{{item.mastered ? '已掌握' : '未掌握'}}</view>
-					<view class="mark-btn" :class="{done:item.mastered}" @click="mark(item)">{{item.mastered ? '已标记' : '标记掌握'}}</view>
-				</view>
-				<analysis-viewer :item="item" :text="item.analysis" />
+				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点此重试</view>
+				<math-rich-text class="answer ok" :text="'正确答案：' + (item.answerText || optionText(item, item.answer || item.correctAnswer))" />
+				<analysis-viewer :item="item" :text="item.analysis || item.explain" />
 			</view>
 		</view>
 	</view>
@@ -178,12 +163,14 @@
 
 <script>
 import {
-	getWrongBook,
-	markWrongMastered,
-	getWrongBookSummary,
-	getWrongBookRecords,
+	decodeRouteText,
 	getWeakWrongBook,
+	getWrongBook,
+	getWrongBookRecords,
+	getWrongBookSummary,
 	getWrongRetry,
+	isUsableMediaUrl,
+	markWrongMastered,
 	resolveMediaUrl,
 	toggleFavorite
 } from '@/common/api.js'
@@ -191,7 +178,6 @@ import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
-import { getGaokaoMathCourse } from '@/common/course-data.js'
 
 export default {
 	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
@@ -199,242 +185,121 @@ export default {
 		return {
 			mode: 'review',
 			source: '全部',
+			statusFilter: 'all',
 			sources: ['全部', '最新错题', '章节扫雷', '复习测试', '真题讲练', '错题重练'],
-			summary: {},
+			courseId: 'gk-math-full',
+			studentId: '',
+			readOnly: false,
 			course: {},
+			summary: {},
 			wrongList: [],
 			weakList: [],
 			records: { total: 0, courseCounts: [], records: [] },
-			retryPaper: { questions: [], sourceWrongIds: [] },
+			retryPaper: { questions: [], sourceWrongIds: [], availableCount: 0, count: 0 },
 			retryCount: 5,
-			courseId: 'gk-math-full',
-			activeRecordId: '',
-			statusFilter: 'all'
+			activeRecordId: ''
 		}
 	},
 	computed: {
 		recordList() {
-			return this.records.records || []
+			return this.mediaList(this.records.records || this.records.list)
 		},
 		retryPreview() {
-			return (this.retryPaper.questions || []).slice(0, 3)
+			return this.mediaList(this.retryPaper.questions).slice(0, 3)
 		},
-		weakPending() {
-			return this.weakList.filter(item => !item.mastered).length
+		summaryTotal() {
+			return Number(this.summary.total || this.summary.totalWrong || this.wrongList.length || 0)
 		},
-		weakMastered() {
-			return this.weakList.filter(item => item.mastered).length
+		masteredWrongCount() {
+			return Number(this.summary.mastered || this.wrongList.filter(item => item.mastered).length || 0)
+		},
+		pendingWrongCount() {
+			return Number(this.summary.pending || Math.max(this.summaryTotal - this.masteredWrongCount, 0))
+		},
+		weakWrongCount() {
+			return Number(this.summary.weak || this.summary.weakCount || this.weakList.length || 0)
 		},
 		visibleWrongList() {
-			return this.wrongList.filter(item => this.statusMatched(item))
+			return this.scopeCourseItems(this.wrongList).filter(item => this.statusMatched(item))
 		},
 		visibleWeakList() {
-			return this.weakList.filter(item => this.statusMatched(item))
-		},
-		courseVersionStats() {
-			const rows = this.explicitVersionStats()
-			if (rows.length) return rows
-			const course = this.course || {}
-			const localCourse = this.localCourseData()
-			const hasCourseVersions = Array.isArray(course.versions) && course.versions.length
-			const versions = hasCourseVersions ? course.versions : (Array.isArray(localCourse.versions) ? localCourse.versions : [])
-			const labels = ['复习加强课', '技巧绝招课']
-			return labels.map((label, index) => {
-				const version = versions[index] || {}
-				const localVersion = (localCourse.versions || [])[index] || {}
-				const totalLessons = this.firstNumber(
-					version.totalLessons,
-					version.lessonCount,
-					hasCourseVersions ? this.countVersionLessons(version) : 0,
-					index === 0 ? course.totalLessons : 0,
-					index === 1 ? (course.practiceLessons || course.practiceTotalLessons || course.realLessons || course.realLessonCount) : 0,
-					!hasCourseVersions ? this.countVersionLessons(localVersion) : 0
-				)
-				const totalDuration = this.firstText(
-					version.totalDuration,
-					version.duration,
-					version.courseDuration,
-					index === 0 ? course.totalDuration : '',
-					index === 1 ? (course.practiceDuration || course.realDuration) : '',
-					index === 0 ? localCourse.totalDuration : localCourse.practiceDuration
-				)
-				return {
-					label,
-					totalLessons,
-					totalDuration,
-					readStudyCount: this.firstNumber(version.readStudyCount, version.learnedLessons, index === 0 ? course.readStudyCount : 0),
-					readDuration: this.firstText(version.readDuration, version.learnedDuration, index === 0 ? course.readDuration : '', '00小时00分')
-				}
-			})
+			return this.scopeCourseItems(this.weakList)
 		}
 	},
-	onLoad(opts = {}) {
-		this.courseId = decodeURIComponent(opts.courseId || 'gk-math-full')
-	},
-	onShow() {
+	onLoad(query = {}) {
+		this.courseId = decodeRouteText(query.courseId || query.courseid || this.courseId)
+		this.studentId = decodeRouteText(query.studentId || query.userId || '')
+		this.readOnly = query.readonly === '1' || query.readonly === 'true' || query.readOnly === '1' || query.readOnly === 'true'
+		this.course.title = decodeRouteText(query.title || '')
 		this.loadSummary()
 		this.loadCurrent()
 	},
 	methods: {
 		async loadSummary() {
 			try {
-				const data = await getWrongBookSummary(this.courseId)
+				const data = await getWrongBookSummary(this.courseId, this.studentId)
 				this.summary = data || {}
-				this.course = data.course || {}
-			} catch (err) {
-				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
-			}
+				this.course = { ...this.course, ...(data.course || data.courseInfo || {}) }
+			} catch (err) {}
 		},
 		async loadCurrent() {
 			if (this.mode === 'review') return this.loadWrongBook()
 			if (this.mode === 'records') return this.loadRecords()
 			if (this.mode === 'weak') return this.loadWeak()
-			return this.loadRetry()
+			if (this.mode === 'retry') return this.loadRetry()
 		},
 		async loadWrongBook() {
 			try {
-				this.wrongList = this.scopeCourseItems(await getWrongBook(this.source, this.courseId))
+				this.wrongList = this.scopeCourseItems(await getWrongBook(this.source, this.courseId, this.studentId))
 			} catch (err) {
-				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
+				this.wrongList = []
 			}
 		},
 		async loadRecords() {
 			try {
-				this.records = this.scopeCourseRecords(await getWrongBookRecords(this.source, this.courseId))
+				this.records = this.scopeCourseRecords(await getWrongBookRecords(this.source, this.courseId, this.studentId))
 			} catch (err) {
-				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
+				this.records = { total: 0, courseCounts: [], records: [] }
 			}
 		},
 		async loadWeak() {
 			try {
-				this.weakList = this.scopeCourseItems(await getWeakWrongBook(this.source, this.courseId))
+				this.weakList = this.scopeCourseItems(await getWeakWrongBook(this.source, this.courseId, this.studentId))
 			} catch (err) {
-				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
+				this.weakList = []
 			}
 		},
 		async loadRetry() {
 			try {
-				this.retryPaper = await getWrongRetry(this.retryCount, this.source, this.courseId)
+				this.retryPaper = await getWrongRetry(this.retryCount, this.source, this.courseId, this.studentId)
 			} catch (err) {
-				uni.showToast({ title: err.message || '加载失败', icon: 'none' })
+				this.retryPaper = { questions: [], sourceWrongIds: [], availableCount: 0, count: 0 }
 			}
 		},
-		itemCourseId(item = {}) {
-			return item.courseId || 'gk-math-full'
-		},
-		sameCourse(item = {}) {
-			return this.itemCourseId(item) === (this.courseId || 'gk-math-full')
-		},
-		scopeCourseItems(list = []) {
-			return Array.isArray(list) ? list.filter(item => this.sameCourse(item)) : []
-		},
-		courseCountLabel(records = []) {
-			const first = records[0] || {}
-			return first.subjectTitle || first.courseTitle || this.course.title || this.course.courseTitle || this.course.courseName || this.courseId || '当前课程'
-		},
-		scopeCourseRecords(data = {}) {
-			const records = this.scopeCourseItems(data.records || [])
-			return {
-				...data,
-				total: records.length,
-				courseCounts: records.length ? [{ label: this.courseCountLabel(records), value: records.length }] : [],
-				records
-			}
-		},
-		async setMode(mode) {
+		setMode(mode) {
 			this.mode = mode
 			this.activeRecordId = ''
-			this.statusFilter = 'all'
-			await this.loadCurrent()
-			if (mode === 'weak') this.scrollToQuestions()
+			this.loadCurrent()
 		},
-		async setSource(source) {
+		setSource(source) {
 			this.source = source
-			this.activeRecordId = ''
-			this.statusFilter = 'all'
-			await this.loadCurrent()
-			this.scrollToQuestions()
+			this.loadCurrent()
 		},
-		setStatusFilter(filter) {
-			this.statusFilter = this.statusFilter === filter ? 'all' : filter
-			this.scrollToQuestions()
-		},
-		async jumpToWeakQuestions() {
-			if (this.mode !== 'review') {
-				this.mode = 'review'
-				this.activeRecordId = ''
-				await this.loadWrongBook()
-			}
-			this.statusFilter = 'weak'
-			this.scrollToQuestions()
-		},
-		scrollToQuestions() {
-			this.$nextTick(() => {
-				uni.pageScrollTo({
-					selector: '.question-list-anchor',
-					duration: 240,
-					fail: () => {}
-				})
-			})
-		},
-		statusMatched(item = {}) {
-			if (this.statusFilter === 'pending') return !item.mastered
-			if (this.statusFilter === 'mastered') return !!item.mastered
-			if (this.statusFilter === 'weak') return !!item.weak
-			return true
-		},
-		explicitVersionStats() {
-			const source = this.summary.versionStats || this.summary.courseVersionStats || this.course.versionStats || this.course.courseVersionStats || []
-			if (!Array.isArray(source) || !source.length) return []
-			const labels = ['复习加强课', '技巧绝招课']
-			return source.slice(0, 2).map((item = {}, index) => ({
-				label: item.label || item.name || labels[index] || '课程',
-				totalLessons: this.firstNumber(item.totalLessons, item.lessonCount, item.total, 0),
-				totalDuration: this.firstText(item.totalDuration, item.duration, item.courseDuration, '00小时00分'),
-				readStudyCount: this.firstNumber(item.readStudyCount, item.learnedLessons, item.readCount, 0),
-				readDuration: this.firstText(item.readDuration, item.learnedDuration, item.studyDuration, '00小时00分')
-			}))
-		},
-		localCourseData() {
-			if (/gk-math|高考数学|高中数学/i.test(String(this.courseId || this.course.title || ''))) return getGaokaoMathCourse('full')
-			return {}
-		},
-		firstNumber(...values) {
-			for (const value of values) {
-				const number = Number(value)
-				if (Number.isFinite(number) && number > 0) return number
-			}
-			return 0
-		},
-		firstText(...values) {
-			for (const value of values) {
-				const text = String(value || '').trim()
-				if (text && text !== '0' && text !== '00小时00分') return text
-			}
-			return '00小时00分'
-		},
-		countVersionLessons(version = {}) {
-			const chapters = version.chapters || version.items || version.children || []
-			if (!Array.isArray(chapters)) return 0
-			return chapters.reduce((total, chapter = {}) => {
-				const items = chapter.items || chapter.children || []
-				if (!Array.isArray(items)) return total
-				return total + items.reduce((sum, item = {}) => {
-					const children = item.children || item.items || []
-					if (Array.isArray(children) && children.length) {
-						const videoCount = children.filter(child => Number(child.type) !== 2).length
-						return sum + (videoCount || 1)
-					}
-					return sum + (Number(item.type) === 2 ? 0 : 1)
-				}, 0)
-			}, 0)
+		setReviewStatus(status) {
+			this.mode = 'review'
+			this.statusFilter = status
+			this.loadWrongBook()
 		},
 		setRetryCount(count) {
 			this.retryCount = count
 			this.loadRetry()
 		},
 		startRetry() {
-			if (!this.retryPaper.count) {
+			if (this.readOnly) {
+				uni.showToast({ title: '只读查看，不能开始练习', icon: 'none' })
+				return
+			}
+			if (!this.retryPaper.count && !this.retryPaper.availableCount) {
 				uni.showToast({ title: '当前没有可重练的错题', icon: 'none' })
 				return
 			}
@@ -442,681 +307,485 @@ export default {
 				url: `/pages/practice/practice?type=wrongRetry&count=${this.retryCount}&source=${encodeURIComponent(this.source)}&courseId=${encodeURIComponent(this.courseId)}&title=${encodeURIComponent('错题重练')}`
 			})
 		},
+		jumpToWeakQuestions() {
+			this.mode = 'weak'
+			this.loadWeak()
+		},
+		scopeCourseItems(list = []) {
+			const items = Array.isArray(list) ? list : (list.records || list.list || list.questions || [])
+			return items.filter(item => this.sameCourse(item))
+		},
+		scopeCourseRecords(data = {}) {
+			const records = this.mediaList(data.records || data.list).filter(item => this.sameCourse(item))
+			return { ...data, records, total: data.total || records.length }
+		},
+		sameCourse(item = {}) {
+			const id = item.courseId || item.courseID || item.course_id || item.course?.id || ''
+			return !this.courseId || !id || id === this.courseId
+		},
+		statusMatched(item = {}) {
+			if (this.statusFilter === 'mastered') return !!item.mastered
+			if (this.statusFilter === 'pending') return !item.mastered
+			return true
+		},
+		courseCountLabel(item = {}) {
+			return `${item.label || item.courseName || item.name || '课程'}：${item.value || item.count || 0} 次`
+		},
 		async mark(item) {
-			if (item.mastered) return
+			if (this.readOnly) {
+				uni.showToast({ title: '只读查看，不能修改掌握状态', icon: 'none' })
+				return
+			}
 			try {
 				await markWrongMastered(item.id)
 				item.mastered = true
-				item.statusText = '已掌握'
 				this.loadSummary()
 			} catch (err) {
 				uni.showToast({ title: err.message || '标记失败', icon: 'none' })
 			}
 		},
 		async favoriteWrong(item) {
+			if (this.readOnly) {
+				uni.showToast({ title: '只读查看，不能修改收藏', icon: 'none' })
+				return
+			}
 			try {
-				await toggleFavorite({
-					type: 'question',
-					targetId: item.questionId || item.id,
-					title: item.stem,
-					courseId: item.courseId || this.courseId || 'gk-math-full',
-					action: 'add'
-				})
-				uni.showToast({ title: '已加入我的收藏', icon: 'success' })
+				await toggleFavorite({ type: 'question', id: item.id, courseId: this.courseId })
+				uni.showToast({ title: '已加入收藏', icon: 'success' })
 			} catch (err) {
 				uni.showToast({ title: err.message || '收藏失败', icon: 'none' })
 			}
 		},
-		toggleRecord(id) {
-			this.activeRecordId = this.activeRecordId === id ? '' : id
+		toggleRecord(record) {
+			this.activeRecordId = this.activeRecordId === record.id ? '' : record.id
 		},
-		detailMyAnswer(detail = {}) {
-			const answer = detail.myAnswerText || detail.myAnswer || detail.selectedText || ''
-			if (answer && answer !== '--') return answer
-			return detail.noUpload ? '暂不上传' : '--'
+		showTestRecordDetail(record, detail) {
+			const id = record.id || ''
+			const readOnlyQuery = this.readOnly ? `&readonly=1&studentId=${encodeURIComponent(this.studentId)}` : ''
+			uni.navigateTo({ url: `/pages/practice/practice?recordId=${encodeURIComponent(id)}&questionId=${encodeURIComponent(detail.id || '')}&courseId=${encodeURIComponent(this.courseId)}${readOnlyQuery}` })
 		},
 		detailStem(detail = {}) {
-			const parentStem = String(detail.parentStem || '').trim()
-			const stem = String(detail.stem || '').trim()
-			if (parentStem && stem) return `${parentStem}\n小题：${stem}`
-			return stem || (detail.stemImageUrl ? '图片题干' : '题目内容暂未返回')
+			const parentStem = detail.parentStem || detail.parentQuestion || ''
+			const stem = detail.stem || detail.question || detail.title || ''
+			return parentStem && stem ? `${parentStem}\n小题：${stem}` : (stem || parentStem)
 		},
-		showTestRecordDetail(detail = {}) {
-			return detail.questionType !== 'choice' && (
-				!!detail.studentAnswerImageUrl ||
-				!!detail.reviewResult ||
-				!!detail.noUpload ||
-				!!detail.skipped
-			)
+		detailMyAnswer(detail = {}) {
+			if (detail.skipped) return '暂不上传'
+			return detail.myAnswerText || detail.selectedText || detail.myAnswer || detail.selected || '--'
 		},
-		reviewResultText(detail = {}) {
-			if (detail.reviewResultText) return detail.reviewResultText
-			const result = String(detail.reviewResult || '').toLowerCase()
-			if (result === 'correct') return '对'
-			if (result === 'partial') return '半对'
-			if (result === 'wrong') return '错'
-			if (result === 'pending') return '待自评'
-			return ''
+		detailAnswerImages(detail = {}) {
+			const values = []
+				.concat(this.mediaList(detail.answerImages))
+				.concat(this.mediaList(detail.images))
+				.concat(this.mediaList(detail.imageUrls))
+				.concat(this.mediaList(detail.uploadImages))
+				.concat(this.mediaList(detail.selfReviewImages))
+				.concat(this.mediaList(detail.photoUrls))
+				.concat(this.mediaList(detail.photos))
+				.concat(this.mediaList(detail.answerImageUrl))
+				.concat(this.mediaList(detail.selfReviewImageUrl))
+			return values.map(this.mediaUrl).filter(url => url && isUsableMediaUrl(url))
 		},
-		reviewResultClass(detail = {}) {
-			const result = String(detail.reviewResult || '').toLowerCase()
-			return {
-				'ok': result === 'correct',
-				'partial': result === 'partial',
-				'bad': result === 'wrong',
-				'pending': result === 'pending'
-			}
+		previewDetailImage(detail) {
+			const urls = this.detailAnswerImages(detail)
+			if (!urls.length) return
+			uni.previewImage({ urls, current: urls[0] })
 		},
-		previewDetailImage(detail = {}) {
-			const url = this.mediaUrl(detail.studentAnswerImageUrl || '')
-			if (!url) {
-				uni.showToast({ title: '暂无作答图片', icon: 'none' })
-				return
-			}
-			uni.previewImage({ urls: [url], current: url })
-		},
-		mediaUrl(url = '') {
-			return resolveMediaUrl(url)
-		},
-		onQuestionImageError(item = {}) {
-			if (this.$set) this.$set(item, 'stemImageError', true)
-			else item.stemImageError = true
-		},
-		retryQuestionImage(item = {}) {
-			if (this.$set) this.$set(item, 'stemImageError', false)
-			else item.stemImageError = false
-			const url = item.stemImageUrl
-			item.stemImageUrl = ''
-			this.$nextTick(() => {
-				item.stemImageUrl = url
-			})
+		mediaUrl(url) {
+			const media = resolveMediaUrl(url)
+			return media && isUsableMediaUrl(media) ? media : ''
 		},
 		mediaList(value) {
-			if (Array.isArray(value)) return value.map(item => this.mediaUrl(String(item || '').trim())).filter(Boolean)
-			return String(value || '').split(/[,\n]/).map(item => this.mediaUrl(item.trim())).filter(Boolean)
-		},
-		optionImage(item = {}, index) {
-			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl)
-			return urls[index] || ''
+			if (Array.isArray(value)) return value
+			if (!value) return []
+			if (typeof value === 'string') {
+				try {
+					const parsed = JSON.parse(value)
+					return Array.isArray(parsed) ? parsed : [value]
+				} catch (err) {
+					return value.split(',').map(item => item.trim()).filter(Boolean)
+				}
+			}
+			return []
 		},
 		stemAudio(item = {}) {
-			return this.mediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '')
+			return this.mediaUrl(item.audioUrl || item.stemAudio || item.listenAudio || '')
+		},
+		onQuestionImageError(item) {
+			this.$set ? this.$set(item, 'stemImageError', true) : (item.stemImageError = true)
+		},
+		retryQuestionImage(item) {
+			item.stemImageError = false
 		},
 		previewMedia(url) {
-			if (!url) return
-			const current = this.mediaUrl(url)
-			uni.previewImage({ urls: [current], current })
-		},
-		optionText(item, index) {
-			const options = item.options || []
-			return options[index] !== undefined ? `${String.fromCharCode(65 + Number(index))}. ${options[index]}` : '--'
-		},
-		optionLetter(index) {
-			return String.fromCharCode(65 + Number(index))
+			const media = this.mediaUrl(url)
+			if (media && isUsableMediaUrl(media)) uni.previewImage({ urls: [media], current: media })
 		},
 		showOptions(item = {}) {
-			return Array.isArray(item.options) && item.options.length > 0
+			return this.mediaList(item.options).length > 0
 		},
-		formatTime(value) {
-			return value ? String(value).replace('T', ' ').slice(0, 16) : '--'
+		optionLetter(index) {
+			return String.fromCharCode(65 + index)
+		},
+		optionText(item = {}, value = '') {
+			const text = String(value || '')
+			const index = /^[A-D]$/i.test(text) ? text.toUpperCase().charCodeAt(0) - 65 : -1
+			const options = this.mediaList(item.options)
+			return index >= 0 && options[index] ? `${text.toUpperCase()}. ${options[index]}` : (text || '--')
+		},
+		optionImage(item = {}, index) {
+			const image = this.mediaList(item.optionImages)[index]
+			const media = image ? this.mediaUrl(image) : ''
+			return media && isUsableMediaUrl(media) ? media : ''
 		},
 		formatFullTime(value) {
-			return value ? String(value).replace('T', ' ').slice(0, 16) : '--'
+			if (!value) return '--'
+			const date = new Date(value)
+			if (Number.isNaN(date.getTime())) return String(value).replace('T', ' ').slice(0, 19)
+			const pad = n => String(n).padStart(2, '0')
+			return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 		},
 		goBack() {
-			safeNavigateBack('/pages/mycourse/mycourse')
+			safeNavigateBack('/pages/member/member')
 		}
 	}
 }
 </script>
 
 <style lang="scss">
-page { background:#f4f6f8; }
-.page { min-height:100vh; background:#f4f6f8; padding-bottom:44rpx; color:#1f2933; }
-.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #edf0f2; }
-.back { position:absolute; left:24rpx; font-size:48rpx; color:#1f2933; line-height:1; }
-.nav-title { font-size:31rpx; font-weight:800; }
-.study-band { padding:24rpx; background:#fff; }
-.band-row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:20rpx; padding:28rpx; border-radius:14rpx; background:#eef9f6; border:1rpx solid #cce9e1; }
-.version-stat-list { min-width:0; display:flex; flex-direction:column; gap:12rpx; }
-.version-stat-row {
-	display:grid;
-	grid-template-columns:128rpx minmax(0, 1fr);
-	align-items:center;
-	gap:14rpx;
-	padding:12rpx 14rpx;
-	border-radius:12rpx;
-	background:rgba(255,255,255,.64);
-	border:1rpx solid rgba(191,221,215,.72);
-}
-.version-stat-name {
-	color:#0f766e;
-	font-size:24rpx;
-	font-weight:900;
-	line-height:1.25;
-}
-.version-stat-copy { min-width:0; }
-.band-label { font-size:27rpx; font-weight:800; color:#143b35; line-height:1.5; }
-.band-sub { margin-top:8rpx; font-size:24rpx; color:#526b66; line-height:1.5; }
-.band-stats { flex-shrink:0; display:flex; align-items:center; gap:24rpx; }
-.band-total { color:#143b35; font-size:27rpx; font-weight:900; white-space:nowrap; }
-.band-score { min-width:116rpx; text-align:center; color:#0f766e; font-size:42rpx; font-weight:900; }
-.band-score text { display:block; margin-top:4rpx; font-size:21rpx; font-weight:700; }
-.action-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:28rpx 24rpx 24rpx; }
-.action-card {
-	min-height:138rpx;
-	padding:22rpx;
-	border-radius:14rpx;
-	background:#fff;
-	border:1rpx solid #e3e8ef;
-	display:flex;
-	align-items:flex-start;
-	gap:16rpx;
-	box-shadow:0 3rpx 10rpx rgba(16,24,40,.03);
-}
-.action-card.active { border-color:#8fb8ff; background:#f4f8ff; box-shadow:0 5rpx 16rpx rgba(37,99,235,.08); }
-.action-mark {
-	width:42rpx;
-	height:42rpx;
-	border-radius:10rpx;
-	background:#eef5ff;
-	color:#2563eb;
-	display:flex;
-	align-items:center;
-	justify-content:center;
-	font-size:22rpx;
-	font-weight:900;
-	flex-shrink:0;
-}
-.action-mark.records { background:#f1f5f9; color:#475569; }
-.action-mark.retry { background:#ecfdf5; color:#0f766e; }
-.action-mark.weak { background:#fff7ed; color:#c2410c; }
-.action-title { font-size:29rpx; font-weight:800; color:#1f2933; }
-.action-sub { margin-top:10rpx; font-size:23rpx; color:#667085; line-height:1.45; }
-.summary-strip {
-	display:grid;
-	grid-template-columns:1.15fr repeat(3, minmax(0, 1fr));
-	gap:12rpx;
-	margin:0 24rpx 22rpx;
-	padding:14rpx;
-	border-radius:14rpx;
-	background:#fff;
-	border:1rpx solid #e3e8ef;
-	box-shadow:0 3rpx 10rpx rgba(16,24,40,.03);
-}
-.summary-item {
-	min-width:0;
-	min-height:82rpx;
-	border-radius:12rpx;
-	background:#f8fafc;
-	border:1rpx solid #edf2f7;
-	display:flex;
-	flex-direction:column;
-	align-items:center;
-	justify-content:center;
-	color:#64748b;
-}
-.summary-item text {
-	font-size:21rpx;
-	font-weight:800;
-}
-.summary-item strong {
-	margin-top:4rpx;
-	color:#17212f;
-	font-size:34rpx;
-	line-height:1;
-	font-weight:900;
-}
-.summary-item small {
-	margin-top:4rpx;
-	font-size:18rpx;
-	color:#94a3b8;
-}
-.summary-item.total {
-	background:#eef7ff;
-	border-color:#bfdbfe;
-}
-.summary-item.weak {
-	background:#fff7ed;
-	border-color:#fed7aa;
-	cursor:pointer;
-}
-.summary-item.weak strong,
-.summary-item.weak text {
-	color:#c2410c;
-}
-.source-filter { display:flex; flex-wrap:wrap; gap:12rpx; padding:0 24rpx 20rpx; overflow:visible; align-items:center; }
-.total-chip {
-	flex:0 0 auto;
-	min-width:142rpx;
-	height:58rpx;
-	display:flex;
-	align-items:center;
-	justify-content:center;
-	gap:8rpx;
-	padding:0 16rpx;
-	border-radius:10rpx;
-	background:#eef7ff;
-	border:1rpx solid #bfdbfe;
-	color:#2563eb;
-	box-sizing:border-box;
-}
-.total-chip text { font-size:22rpx; font-weight:800; }
-.total-chip strong { font-size:28rpx; font-weight:900; color:#17212f; line-height:1; }
-.total-chip small { font-size:20rpx; color:#64748b; }
-.source-chip { flex:0 0 auto; height:58rpx; line-height:58rpx; padding:0 22rpx; border-radius:10rpx; background:#fff; color:#52606d; border:1rpx solid #d9e0e8; font-size:24rpx; }
-.source-chip.active { background:#2563eb; border-color:#2563eb; color:#fff; font-weight:800; }
-.status-panel, .record-summary, .retry-panel { margin:0 24rpx 20rpx; padding:18rpx; border-radius:14rpx; background:#fff; border:1rpx solid #e3e8ef; }
-.status-panel { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; }
-.status-panel.two { grid-template-columns:repeat(2, 1fr); }
-.status-item {
-	min-height:96rpx;
-	display:flex;
-	flex-direction:column;
-	align-items:center;
-	justify-content:center;
-	padding:10rpx;
-	border-radius:12rpx;
-	background:#f8fafc;
-	border:1rpx solid #edf2f7;
-	color:#64748b;
-	font-size:23rpx;
-	font-weight:800;
-}
-.status-item.active { background:#eef5ff; border-color:#2563eb; color:#1d4ed8; }
-.status-num { margin-top:6rpx; color:#1f2933; font-size:34rpx; font-weight:900; line-height:1; }
-.status-unit { margin-top:4rpx; color:#94a3b8; font-size:20rpx; }
-.weak-brief {
-	margin:0 24rpx 20rpx;
-	padding:24rpx;
-	border-radius:14rpx;
-	background:#fffaf4;
-	border:1rpx solid #fed7aa;
-	display:flex;
-	align-items:center;
-	justify-content:space-between;
-	gap:18rpx;
-}
-.weak-title { color:#9a3412; font-size:31rpx; font-weight:900; }
-.weak-sub { margin-top:8rpx; color:#8a5a37; font-size:24rpx; line-height:1.5; }
-.weak-total { color:#c2410c; font-size:42rpx; font-weight:900; text-align:center; flex-shrink:0; }
-.weak-total text { display:block; margin-top:2rpx; color:#9a3412; font-size:20rpx; }
-.empty { padding:140rpx 24rpx; text-align:center; color:#8a94a3; font-size:28rpx; }
-.question-card, .record-card { margin:0 24rpx 20rpx; padding:24rpx; background:#fff; border-radius:14rpx; border:1rpx solid #e3e8ef; box-shadow:0 3rpx 10rpx rgba(16,24,40,.03); }
-.source-title { font-size:24rpx; color:#667085; font-weight:800; }
-.tag-row { display:flex; flex-wrap:wrap; gap:10rpx; margin-top:10rpx; }
-.tag { padding:6rpx 12rpx; border-radius:6rpx; background:#eef5ff; color:#1d4ed8; font-size:22rpx; font-weight:700; }
-.tag.latest-tag { background:#fff1f2; color:#be123c; }
-.stem { margin-top:18rpx; font-size:29rpx; line-height:1.55; font-weight:800; color:#1f2933; }
-.question-image { width:100%; max-height:420rpx; margin:14rpx 0 4rpx; border-radius:12rpx; background:#eef2f7; }
-.question-image.compact { max-height:260rpx; margin:10rpx 0; }
-.image-fallback { min-height:220rpx; margin:14rpx 0 4rpx; border-radius:12rpx; background:#eef2f7; border:1rpx dashed #cbd5e1; color:#64748b; display:flex; align-items:center; justify-content:center; font-size:24rpx; }
-.image-fallback.compact { min-height:150rpx; margin:10rpx 0; }
-.option-list { margin-top:14rpx; padding:14rpx 16rpx; background:#f8fafc; border:1rpx solid #edf0f2; border-radius:8rpx; }
-.option-row { color:#475467; font-size:24rpx; line-height:1.65; }
-.option-row + .option-row { margin-top:12rpx; }
-.option-image { width:100%; max-height:300rpx; margin-top:8rpx; border-radius:10rpx; background:#eef2f7; }
-.answer { margin-top:12rpx; font-size:26rpx; line-height:1.45; }
-.answer.ok { color:#047857; }
-.answer.bad { color:#dc2626; }
-.analysis, .detail-analysis { margin-top:14rpx; color:#5f6b7a; font-size:25rpx; line-height:1.55; }
-.row-actions { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); align-items:center; gap:10rpx; margin-top:20rpx; }
-.state, .weak-status { min-width:0; height:60rpx; line-height:60rpx; text-align:center; border-radius:10rpx; background:#f1f5f9; color:#64748b; font-size:22rpx; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.state.done, .weak-status.done { background:#ecfdf5; color:#047857; }
-.mark-btn, .fav-btn { min-width:0; height:60rpx; line-height:60rpx; text-align:center; border-radius:10rpx; font-size:23rpx; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.mark-btn { background:#eef5ff; color:#1d4ed8; border:1rpx solid #bfdbfe; }
-.mark-btn.done { background:#edf1f5; color:#667085; border-color:#edf1f5; }
-.fav-btn { background:#0f766e; color:#fff; }
-.weak-actions { grid-template-columns:1fr 1fr; }
-.record-total { font-size:30rpx; font-weight:900; color:#1f2933; }
-.record-subjects { display:flex; flex-wrap:wrap; gap:16rpx; margin-top:12rpx; color:#667085; font-size:24rpx; }
-.record-time { font-size:23rpx; color:#8a94a3; }
-.record-main { display:flex; justify-content:space-between; gap:18rpx; margin-top:14rpx; }
-.record-title { flex:1; min-width:0; font-size:27rpx; line-height:1.5; font-weight:800; color:#1f2933; }
-.record-score { flex-shrink:0; color:#2563eb; font-size:26rpx; font-weight:900; }
-.detail-toggle { margin-top:18rpx; height:62rpx; line-height:62rpx; text-align:center; border-radius:8rpx; background:#eef5ff; color:#1d4ed8; font-size:25rpx; font-weight:800; }
-.detail-list { margin-top:18rpx; border-top:1rpx solid #edf0f2; }
-.detail-row { padding:18rpx 0; border-bottom:1rpx solid #edf0f2; color:#334155; font-size:25rpx; line-height:1.65; }
-.detail-count { font-weight:800; color:#1f2933; }
-.detail-stem { margin-top:10rpx; color:#1f2933; font-size:27rpx; font-weight:800; line-height:1.55; }
-.detail-answer { margin-top:8rpx; font-size:25rpx; line-height:1.45; }
-.detail-answer.ok { color:#047857; }
-.detail-answer.bad { color:#dc2626; }
-.test-record-strip {
-	margin-top:12rpx;
-	padding:12rpx;
-	border-radius:10rpx;
-	background:#f8fafc;
-	border:1rpx solid #e2e8f0;
-	display:flex;
-	align-items:center;
-	justify-content:space-between;
-	gap:12rpx;
-}
-.test-record-title {
-	flex-shrink:0;
-	color:#475569;
-	font-size:23rpx;
-	font-weight:900;
-}
-.test-record-actions {
-	min-width:0;
-	flex:1;
-	display:flex;
-	flex-wrap:wrap;
-	justify-content:flex-end;
-	gap:10rpx;
-}
-.record-pill {
-	height:44rpx;
-	line-height:44rpx;
-	padding:0 14rpx;
-	border-radius:8rpx;
-	background:#fff;
-	border:1rpx solid #cbd5e1;
-	color:#475569;
-	font-size:22rpx;
-	font-weight:800;
-}
-.record-pill.link { color:#2563eb; border-color:#93c5fd; background:#eff6ff; }
-.record-pill.ok { color:#047857; border-color:#86efac; background:#ecfdf5; }
-.record-pill.partial { color:#b45309; border-color:#fcd34d; background:#fffbeb; }
-.record-pill.bad { color:#dc2626; border-color:#fecaca; background:#fff1f2; }
-.record-pill.pending,
-.record-pill.muted { color:#64748b; border-color:#cbd5e1; background:#f1f5f9; }
-.answer-record-image {
-	display:block;
-	width:100%;
-	margin:12rpx 0 4rpx;
-	border-radius:12rpx;
-	background:#eef2f7;
-	border:1rpx solid #e2e8f0;
-}
-.panel-title { font-size:32rpx; font-weight:900; color:#1f2933; }
-.panel-sub, .notice, .retry-meta { margin-top:10rpx; color:#667085; font-size:25rpx; line-height:1.5; }
-.setting-title { margin-top:24rpx; font-size:26rpx; font-weight:900; color:#1f2933; }
-.count-row { display:flex; gap:16rpx; margin-top:14rpx; }
-.count-btn { flex:1; height:70rpx; line-height:70rpx; text-align:center; border-radius:8rpx; background:#f1f5f9; color:#334155; font-size:26rpx; font-weight:800; }
-.count-btn.active { background:#2563eb; color:#fff; }
-.start-btn { margin-top:22rpx; height:78rpx; line-height:78rpx; text-align:center; border-radius:8rpx; background:#0f766e; color:#fff; font-size:28rpx; font-weight:900; }
-@media screen and (max-width: 420px) {
-	.band-row { grid-template-columns:1fr; }
-	.band-stats { justify-content:space-between; }
-	.status-panel { grid-template-columns:1fr; }
-	.status-panel.two { grid-template-columns:1fr 1fr; }
-	.row-actions { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8rpx; }
-	.weak-actions { grid-template-columns:1fr 1fr; }
-}
-
-/* PC H5 polish */
-page { background:#eef3f7; }
 .page {
-	background:linear-gradient(180deg, #f9fbfd 0%, #eef3f7 360rpx, #eef3f7 100%);
-	padding-bottom:56rpx;
+	min-height: 100vh;
+	background: #f4f7fb;
+	color: #172033;
+	padding: 0 24rpx 40rpx;
+	box-sizing: border-box;
 }
 .nav {
-	position:sticky;
-	top:0;
-	z-index:20;
-	height:92rpx;
-	background:rgba(251,253,255,.96);
-	backdrop-filter:saturate(140%) blur(10px);
-	border-bottom:1rpx solid #e4eaf1;
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	height: 96rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #fff;
+	margin: 0 -24rpx 24rpx;
+	border-bottom: 1rpx solid #e7edf5;
 }
-.study-band {
-	padding:24rpx 24rpx 18rpx;
-	background:transparent;
+.back {
+	position: absolute;
+	left: 26rpx;
+	font-size: 48rpx;
+	width: 72rpx;
+	height: 72rpx;
+	line-height: 68rpx;
+	text-align: center;
 }
-.band-row {
-	grid-template-columns:minmax(0, 1fr) 176rpx;
-	align-items:stretch;
-	gap:16rpx;
-	padding:24rpx;
-	border-radius:20rpx;
-	background:linear-gradient(135deg, #e9f8f4 0%, #f7fbff 100%);
-	border:1rpx solid #bfddd7;
-	box-shadow:0 12rpx 34rpx rgba(15,118,110,.09);
+.nav-title {
+	font-size: 34rpx;
+	font-weight: 800;
 }
-.band-label {
-	max-width:100%;
-	font-size:27rpx;
-	font-weight:900;
-	line-height:1.45;
-	word-break:break-word;
-}
-.band-sub {
-	font-size:22rpx;
-	line-height:1.55;
-	word-break:break-word;
-}
-.band-stats {
-	min-width:0;
-	flex-direction:column;
-	align-items:stretch;
-	justify-content:space-between;
-	gap:12rpx;
-}
-.band-total {
-	padding:10rpx 12rpx;
-	border-radius:12rpx;
-	background:rgba(255,255,255,.72);
-	font-size:22rpx;
-	line-height:1.35;
-	text-align:center;
-	white-space:normal;
-}
-.band-score {
-	min-width:0;
-	padding:10rpx 8rpx 8rpx;
-	border-radius:14rpx;
-	background:rgba(255,255,255,.72);
-}
-.action-grid {
-	gap:16rpx;
-	padding:28rpx 24rpx 22rpx;
-}
-.action-card {
-	min-height:148rpx;
-	padding:24rpx 22rpx;
-	border-radius:18rpx;
-	border-color:#dfe7f0;
-	box-shadow:0 10rpx 26rpx rgba(31,41,51,.045);
-	transition:background-color .18s ease, border-color .18s ease, transform .18s ease;
-}
-.action-card.active {
-	border-color:#80aaf2;
-	background:#f3f7ff;
-	box-shadow:0 12rpx 28rpx rgba(37,99,235,.10);
-	transform:translateY(-1rpx);
-}
-.action-title {
-	font-weight:900;
-	color:#17212f;
-}
-.action-sub {
-	color:#66758a;
-	line-height:1.5;
-}
-.source-filter {
-	flex-wrap:wrap;
-	overflow:visible;
-}
-.source-chip {
-	flex:1 1 calc(33.333% - 12rpx);
-	min-width:0;
-	height:60rpx;
-	line-height:60rpx;
-	padding:0 14rpx;
-	border-radius:12rpx;
-	text-align:center;
-	box-sizing:border-box;
-	box-shadow:0 6rpx 16rpx rgba(31,41,51,.035);
-}
-.source-chip.active {
-	font-weight:900;
-	box-shadow:0 10rpx 22rpx rgba(37,99,235,.18);
-}
-.status-panel,
-.record-summary,
-.retry-panel,
+.course-summary,
+.panel,
 .question-card,
 .record-card {
-	border-radius:18rpx;
-	border-color:#dfe7f0;
-	box-shadow:0 10rpx 24rpx rgba(31,41,51,.04);
+	background: #fff;
+	border-radius: 18rpx;
+	border: 1rpx solid #e4ebf4;
+	box-shadow: 0 10rpx 30rpx rgba(20, 50, 90, .05);
 }
-.status-item {
-	min-height:108rpx;
-	border-radius:14rpx;
-	background:#f7f9fc;
+.course-summary {
+	padding: 24rpx;
+	margin-bottom: 22rpx;
+}
+.summary-line {
+	display: flex;
+	gap: 26rpx;
+	flex-wrap: wrap;
+	font-size: 28rpx;
+	font-weight: 700;
+	margin-bottom: 10rpx;
+}
+.action-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 18rpx;
+	margin-bottom: 18rpx;
+}
+.action-card {
+	min-height: 154rpx;
+	padding: 24rpx;
+	display: flex;
+	gap: 18rpx;
+	background: #fff;
+	border: 1rpx solid #e4ebf4;
+	border-radius: 18rpx;
+	box-sizing: border-box;
+}
+.action-card.active {
+	border-color: #2b7cff;
+	background: #eef6ff;
+}
+.action-mark {
+	flex: 0 0 44rpx;
+	height: 44rpx;
+	border-radius: 12rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #e8f1ff;
+	color: #2077ff;
+	font-weight: 800;
+}
+.records { color: #667085; background: #f2f4f7; }
+.retry { color: #009966; background: #e8fff5; }
+.weak { color: #c86a1d; background: #fff3e8; }
+.action-title {
+	font-size: 30rpx;
+	font-weight: 800;
+	line-height: 1.25;
+}
+.action-sub {
+	margin-top: 10rpx;
+	color: #667085;
+	font-size: 24rpx;
+	line-height: 1.45;
+}
+.summary-strip {
+	display: block;
+	background: #fff;
+	border-radius: 14rpx;
+	padding: 8rpx;
+	margin-bottom: 14rpx;
+}
+.summary-item {
+	min-height: 82rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border-radius: 10rpx;
+	background: #f7f9fc;
+	border: 1rpx solid transparent;
+}
+.summary-item.active {
+	border-color: #2b7cff;
+	background: #eef6ff;
+}
+.summary-item text {
+	color: #697386;
+	font-size: 21rpx;
+	font-weight: 700;
+}
+.summary-item strong {
+	font-size: 32rpx;
+	line-height: 1.1;
+}
+.summary-item small {
+	color: #697386;
+	font-size: 19rpx;
+}
+.source-filter {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14rpx;
+	margin-bottom: 18rpx;
+}
+.source-chip {
+	height: 68rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #fff;
+	border: 1rpx solid #e4ebf4;
+	border-radius: 12rpx;
+	font-weight: 700;
+}
+.source-chip.active {
+	background: #2578ff;
+	color: #fff;
+}
+.panel {
+	padding: 18rpx;
+	margin-bottom: 20rpx;
+}
+.panel-title,
+.source-title,
+.record-total {
+	font-size: 30rpx;
+	font-weight: 800;
+	margin-bottom: 14rpx;
 }
 .empty {
-	margin:0 24rpx 20rpx;
-	padding:92rpx 28rpx;
-	background:#fff;
-	border:1rpx dashed #cbd6e2;
-	border-radius:20rpx;
-	line-height:1.6;
+	padding: 36rpx 20rpx;
+	text-align: center;
+	color: #667085;
 }
-/* Desktop typography refinement */
-@media screen and (min-width: 431px) {
-	.study-band {
-		padding-top:22rpx;
-	}
-	.band-row {
-		grid-template-columns:minmax(0, 1fr) 152rpx;
-		min-height:168rpx;
-		padding:24rpx 26rpx;
-		gap:18rpx;
-	}
-	.version-stat-list {
-		gap:10rpx;
-	}
-	.version-stat-row {
-		grid-template-columns:118rpx minmax(0, 1fr);
-		gap:12rpx;
-		padding:10rpx 12rpx;
-	}
-	.version-stat-name {
-		font-size:22rpx;
-	}
-	.band-label {
-		font-size:26rpx;
-		line-height:1.32;
-		letter-spacing:0;
-	}
-	.band-sub {
-		margin-top:10rpx;
-		font-size:22rpx;
-		line-height:1.38;
-		color:#5d706d;
-	}
-	.band-stats {
-		gap:10rpx;
-	}
-	.band-total {
-		min-height:58rpx;
-		display:flex;
-		align-items:center;
-		justify-content:center;
-		padding:8rpx 10rpx;
-		font-size:20rpx;
-		font-weight:800;
-		line-height:1.25;
-		color:#173b36;
-		box-shadow:0 6rpx 18rpx rgba(15,118,110,.045);
-	}
-	.band-score {
-		min-height:72rpx;
-		display:flex;
-		flex-direction:column;
-		align-items:center;
-		justify-content:center;
-		padding:8rpx;
-		font-size:34rpx;
-		line-height:1;
-		box-shadow:0 8rpx 20rpx rgba(15,118,110,.055);
-	}
-	.band-score text {
-		margin-top:8rpx;
-		font-size:19rpx;
-		line-height:1.15;
-	}
-	.action-grid {
-		gap:14rpx;
-		padding-top:28rpx;
-	}
-	.action-card {
-		min-height:132rpx;
-		padding:22rpx 20rpx;
-		gap:14rpx;
-	}
-	.action-mark {
-		width:40rpx;
-		height:40rpx;
-		border-radius:10rpx;
-		font-size:21rpx;
-	}
-	.action-title {
-		font-size:28rpx;
-		line-height:1.25;
-	}
-	.action-sub {
-		margin-top:8rpx;
-		font-size:22rpx;
-		line-height:1.42;
-	}
-	.source-filter {
-		gap:10rpx;
-	}
-	.source-chip {
-		height:56rpx;
-		line-height:56rpx;
-		font-size:23rpx;
-	}
-	.status-panel {
-		margin-top:0;
-		padding:16rpx;
-	}
+.question-card {
+	padding: 22rpx;
+	margin-bottom: 18rpx;
 }
-@media screen and (max-width: 420px) {
-	.band-row {
-		grid-template-columns:1fr;
-	}
-	.version-stat-row {
-		grid-template-columns:108rpx minmax(0, 1fr);
-	}
-	.band-total {
-		text-align:left;
-	}
-	.source-chip {
-		flex-basis:calc(50% - 8rpx);
-	}
-	.summary-strip {
-		grid-template-columns:repeat(4, minmax(0, 1fr));
-		gap:8rpx;
-		padding:12rpx;
-	}
-	.summary-item {
-		min-height:78rpx;
-	}
-	.summary-item strong {
-		font-size:30rpx;
-	}
-	.status-panel {
-		grid-template-columns:repeat(3, minmax(0, 1fr));
-		gap:8rpx;
-		padding:14rpx;
-	}
-	.status-panel.two {
-		grid-template-columns:repeat(2, minmax(0, 1fr));
-	}
-	.status-item {
-		min-height:96rpx;
-		padding:10rpx 4rpx;
-	}
-	.status-num {
-		font-size:32rpx;
-	}
+.tag-row {
+	display: flex;
+	gap: 10rpx;
+	flex-wrap: wrap;
+	margin-bottom: 18rpx;
+}
+.tag {
+	padding: 8rpx 14rpx;
+	border-radius: 8rpx;
+	background: #eef5ff;
+	color: #1769e0;
+	font-size: 24rpx;
+	font-weight: 700;
+}
+.latest-tag {
+	color: #b42318;
+	background: #fff1f3;
+}
+.stem {
+	display: block;
+	font-size: 32rpx;
+	font-weight: 800;
+	line-height: 1.55;
+	margin-bottom: 18rpx;
+}
+.question-image,
+.answer-image {
+	width: 100%;
+	min-height: 260rpx;
+	max-height: 540rpx;
+	background: #eef2f7;
+	border-radius: 12rpx;
+	margin: 12rpx 0;
+}
+.image-fallback {
+	padding: 26rpx;
+	border-radius: 12rpx;
+	background: #fff7ed;
+	color: #c2410c;
+	font-weight: 700;
+}
+.option-list {
+	border: 1rpx solid #e4ebf4;
+	border-radius: 12rpx;
+	overflow: hidden;
+	margin-bottom: 16rpx;
+}
+.option-row {
+	padding: 18rpx;
+	border-bottom: 1rpx solid #edf2f7;
+}
+.option-row:last-child {
+	border-bottom: 0;
+}
+.option-image {
+	width: 100%;
+	height: 180rpx;
+	margin-top: 10rpx;
+	background: #f3f6fa;
+}
+.answer,
+.detail-answer {
+	display: block;
+	margin: 10rpx 0;
+	font-size: 28rpx;
+	font-weight: 700;
+}
+.ok { color: #00875a; }
+.bad { color: #d92d20; }
+.row-actions {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10rpx;
+	margin-top: 14rpx;
+}
+.row-actions view,
+.primary-btn,
+.detail-actions button {
+	height: 58rpx;
+	min-width: 0;
+	border-radius: 10rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 800;
+	font-size: 23rpx;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.state { background: #f2f4f7; }
+.state.done { background: #e8fff5; color: #00875a; }
+.mark-btn { background: #e8f1ff; color: #1769e0; }
+.mark-btn.done { background: #f2f4f7; color: #667085; }
+.fav-btn { background: #e7fff4; color: #00875a; }
+.record-courses {
+	display: flex;
+	gap: 12rpx;
+	flex-wrap: wrap;
+	color: #667085;
+	margin-bottom: 16rpx;
+}
+.record-card {
+	padding: 20rpx;
+	margin-bottom: 16rpx;
+}
+.record-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12rpx;
+}
+.record-time {
+	color: #667085;
+	font-size: 24rpx;
+}
+.record-name,
+.record-score {
+	font-size: 28rpx;
+	font-weight: 800;
+}
+.record-score {
+	color: #1769e0;
+	white-space: nowrap;
+}
+.detail-row {
+	padding-top: 20rpx;
+	border-top: 1rpx solid #edf2f7;
+	margin-top: 20rpx;
+}
+.detail-index {
+	font-weight: 800;
+	margin-bottom: 10rpx;
+}
+.detail-actions {
+	display: flex;
+	gap: 12rpx;
+	margin: 12rpx 0;
+}
+.retry-select {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12rpx;
+	margin-bottom: 18rpx;
+}
+.retry-select view {
+	height: 70rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 12rpx;
+	background: #f2f4f7;
+	font-weight: 800;
+}
+.retry-select view.active,
+.primary-btn {
+	background: #2578ff;
+	color: #fff;
+}
+.retry-meta {
+	color: #667085;
+	margin-bottom: 18rpx;
 }
 </style>

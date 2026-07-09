@@ -58,7 +58,7 @@
 </template>
 
 <script>
-	import { bindReferrer, register, saveSession, sendSmsCode } from '@/common/api.js'
+	import { bindReferrer, decodeRouteText, register, saveSession, sendSmsCode } from '@/common/api.js'
 
 	export default {
 		data() {
@@ -75,8 +75,8 @@
 			}
 		},
 		onLoad(opts = {}) {
-			this.invitePhone = opts.invitePhone ? decodeURIComponent(opts.invitePhone) : ''
-			this.inviteId = opts.inviteId ? decodeURIComponent(opts.inviteId) : ''
+			this.invitePhone = opts.invitePhone ? decodeRouteText(opts.invitePhone) : ''
+			this.inviteId = opts.inviteId ? decodeRouteText(opts.inviteId) : ''
 		},
 		methods: {
 			goBack() {

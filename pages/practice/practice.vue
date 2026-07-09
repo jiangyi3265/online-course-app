@@ -297,7 +297,7 @@
 </template>
 
 <script>
-import { getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage } from '@/common/api.js'
+import { decodeRouteText, getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, isUsableMediaUrl, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
@@ -374,14 +374,14 @@ export default {
 	},
 	onLoad(opts = {}) {
 		this.type = opts.type || 'practice';
-		this.title = decodeURIComponent(opts.title || opts.quizId || '真题讲练');
-		this.modeTitle = decodeURIComponent(opts.modeTitle || '');
-		this.practiceTitle = decodeURIComponent(opts.practiceTitle || '');
+		this.title = decodeRouteText(opts.title || opts.quizId || '真题讲练');
+		this.modeTitle = decodeRouteText(opts.modeTitle || '');
+		this.practiceTitle = decodeRouteText(opts.practiceTitle || '');
 		this.pointId = opts.pointId || '';
 		this.count = Number(opts.count || 5);
-		this.source = decodeURIComponent(opts.source || '全部');
-		this.courseId = decodeURIComponent(opts.courseId || 'gk-math-full');
-		this.questionIds = String(decodeURIComponent(opts.questionIds || '')).split(',').map(item => item.trim()).filter(Boolean);
+		this.source = decodeRouteText(opts.source || '全部');
+		this.courseId = decodeRouteText(opts.courseId || 'gk-math-full');
+		this.questionIds = String(decodeRouteText(opts.questionIds || '')).split(',').map(item => item.trim()).filter(Boolean);
 		this.loadData();
 	},
 	methods: {
@@ -436,7 +436,7 @@ export default {
 					title: this.title,
 					type: this.type,
 					answers: this.answers,
-					answerImages: this.answerImages,
+					answerImages: this.sanitizeMediaMap(this.answerImages),
 					noUploads: this.noUploads,
 					selfReviews: this.selfReviews,
 					questionIds: this.questions.map(item => item.id),
@@ -447,9 +447,23 @@ export default {
 				};
 				const result = this.type === 'quiz' ? await submitQuiz(payload) : await submitPractice(payload);
 				this.result = this.normalizeAttemptMedia(result);
+				if (this.type !== 'quiz') this.markLocalPracticeUnlocked();
 			} catch (err) {
 				uni.showToast({ title: err.message || '提交失败', icon: 'none' });
 			}
+		},
+		markLocalPracticeUnlocked() {
+			if (!this.courseId) return;
+			const title = String(this.practiceTitle || '').trim();
+			if (!title) return;
+			try {
+				const key = `lesson_unlock_cache_${this.courseId}`;
+				const saved = uni.getStorageSync(key) || {};
+				const videos = Array.isArray(saved.videos) ? saved.videos.map(item => String(item || '').trim()).filter(Boolean) : [];
+				const practices = Array.isArray(saved.practices) ? saved.practices.map(item => String(item || '').trim()).filter(Boolean) : [];
+				if (!practices.includes(title)) practices.push(title);
+				uni.setStorageSync(key, { ...saved, videos, practices, updatedAt: Date.now() });
+			} catch (e) {}
 		},
 		async syncFavoriteState() {
 			try {
@@ -491,13 +505,14 @@ export default {
 				sourceType: ['album', 'camera'],
 				success: async res => {
 					const path = (res.tempFilePaths && res.tempFilePaths[0]) || '';
-					if (path) {
+					const file = Array.isArray(res.tempFiles) ? res.tempFiles[0] : null;
+					if (path || file) {
 						this.setMapValue(this.uploadingImages, question.id, true);
-						this.setMapValue(this.answerImages, question.id, path);
 						this.setMapValue(this.noUploads, question.id, false);
 						try {
-							const url = await uploadAnswerImage(path);
-							if (url) this.setMapValue(this.answerImages, question.id, url);
+							const url = file ? await uploadAnswerImageFile(file) : await uploadAnswerImage(path);
+							if (!url) throw new Error('图片上传失败');
+							this.setMapValue(this.answerImages, question.id, this.stableMediaUrl(url));
 							this.openSelfReview(question);
 							uni.showToast({ title: '答案图片已上传', icon: 'success' });
 						} catch (err) {
@@ -568,16 +583,33 @@ export default {
 			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
 		},
 		mediaUrl(url) {
-			return resolveMediaUrl(url);
+			const media = resolveMediaUrl(url);
+			return media && isUsableMediaUrl(media) ? media : '';
+		},
+		isStableMediaUrl(url) {
+			const value = String(url || '').trim();
+			return isUsableMediaUrl(value) && /^(https?:\/\/|\/(profile|upload|uploads)\/)/i.test(value);
+		},
+		stableMediaUrl(url) {
+			const value = this.mediaUrl(url);
+			return this.isStableMediaUrl(value) ? value : '';
+		},
+		sanitizeMediaMap(map = {}) {
+			const result = {};
+			Object.keys(map || {}).forEach(key => {
+				const urls = this.mediaList(map[key]).map(item => this.stableMediaUrl(item)).filter(Boolean);
+				if (urls.length) result[key] = urls;
+			});
+			return result;
 		},
 		stemAudio(item = {}) {
 			return this.mediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio);
 		},
 		imageList(value) {
-			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(Boolean);
+			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(url => url && isUsableMediaUrl(url));
 		},
 		fileList(value) {
-			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(Boolean);
+			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(url => url && isUsableMediaUrl(url));
 		},
 		normalizeQuestionMedia(item = {}) {
 			return {
@@ -588,6 +620,8 @@ export default {
 				optionImageUrls: this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl),
 				subQuestions: this.normalizeSubQuestions(item),
 				answerImageUrl: this.imageList(item.answerImageUrl).join(','),
+				studentAnswerImageUrl: this.imageList(item.studentAnswerImageUrl || item.studentAnswerImages || item.answerImages)[0] || '',
+				studentAnswerImages: this.imageList(item.studentAnswerImages || item.studentAnswerImageUrl || item.answerImages),
 				answerFileUrl: this.fileList(item.answerFileUrl).join(','),
 				analysisImageUrl: this.imageList(item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl).join(','),
 				analysisFileUrl: this.fileList(item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl).join(','),
@@ -607,6 +641,8 @@ export default {
 					stemFileUrl: this.fileList(sub.stemFileUrl || sub.questionFileUrl || sub.stemFile || sub.fileUrl || sub.files || sub.questionFiles).join(','),
 					optionImageUrls: this.imageList(sub.optionImageUrls || sub.optionImages || sub.optionImageUrl),
 					answerImageUrl: this.imageList(sub.answerImageUrl).join(','),
+					studentAnswerImageUrl: this.imageList(sub.studentAnswerImageUrl || sub.studentAnswerImages || sub.answerImages)[0] || '',
+					studentAnswerImages: this.imageList(sub.studentAnswerImages || sub.studentAnswerImageUrl || sub.answerImages),
 					answerFileUrl: this.fileList(sub.answerFileUrl).join(','),
 					analysisImageUrl: this.imageList(sub.analysisImageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl).join(','),
 					analysisFileUrl: this.fileList(sub.analysisFileUrl || item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl).join(','),
@@ -631,7 +667,9 @@ export default {
 		previewMedia(url, urls = []) {
 			if (!url) return;
 			const current = this.mediaUrl(url);
-			const list = (urls && urls.length ? urls : [current]).map(item => this.mediaUrl(item)).filter(Boolean);
+			if (!current || !isUsableMediaUrl(current)) return;
+			const list = (urls && urls.length ? urls : [current]).map(item => this.mediaUrl(item)).filter(item => item && isUsableMediaUrl(item));
+			if (!list.length) return;
 			uni.previewImage({ urls: list, current });
 		},
 		openFile(url) {

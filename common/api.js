@@ -51,15 +51,59 @@ function getApiOrigin() {
 }
 
 function encodeMediaUrl(url = '') {
+	const text = String(url || '')
 	try {
-		return encodeURI(url).replace(/#/g, '%23')
+		return text
+			.replace(/%(?![0-9a-fA-F]{2})/g, '%25')
+			.replace(/[^\x00-\x7F]/g, char => encodeURIComponent(char))
+			.replace(/[\u0000-\u0020<>"'`{}|\\^]/g, char => encodeURIComponent(char))
+			.replace(/#/g, '%23')
 	} catch (err) {
-		return url
+		return text
 	}
 }
 
+function decodeMediaText(url = '') {
+	let text = String(url || '')
+	for (let i = 0; i < 2; i += 1) {
+		try {
+			const decoded = decodeURIComponent(text)
+			if (decoded === text) break
+			text = decoded
+		} catch (err) {
+			break
+		}
+	}
+	return text
+}
+
+export function decodeRouteText(value = '') {
+	let text = String(value || '')
+	for (let i = 0; i < 3; i += 1) {
+		try {
+			const decoded = decodeURIComponent(text)
+			if (decoded === text) break
+			text = decoded
+		} catch (err) {
+			break
+		}
+	}
+	return text
+}
+
+function normalizeRawMediaUrl(url = '') {
+	const text = decodeMediaText(String(url || '').trim().replace(/&amp;/g, '&').replace(/\\/g, '/'))
+	if (!text) return ''
+	return text
+}
+
+function backendMediaUrl(path = '', search = '', hash = '') {
+	const origin = getApiOrigin() || (isH5Runtime() ? window.location.origin : '')
+	return encodeMediaUrl(`${origin}${path}${search}${hash}`)
+}
+
 export function resolveMediaUrl(url = '') {
-	const value = String(url || '').trim().replace(/\\/g, '/')
+	const value = normalizeRawMediaUrl(url)
 	if (!value) return ''
 	if (/^(data:|blob:|file:)/i.test(value)) return value
 	if (/^\/\//.test(value)) {
@@ -78,6 +122,9 @@ export function resolveMediaUrl(url = '') {
 				if (!isLocalHost() && isLoopbackUrl(value)) {
 					return encodeMediaUrl(`${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`)
 				}
+				if (!isLocalHost() && isBackendMedia) {
+					return backendMediaUrl(mediaPath.replace(/^\/prod-api/i, ''), parsed.search, parsed.hash)
+				}
 				if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && (sameHost || isBackendMedia)) {
 					parsed.protocol = 'https:'
 				}
@@ -91,9 +138,15 @@ export function resolveMediaUrl(url = '') {
 	if (/^static\//i.test(clean)) return encodeMediaUrl(`/${clean}`)
 	if (/^(prod-api\/)?(profile|upload|uploads)\//i.test(clean)) {
 		const path = `/${clean.replace(/^prod-api\//i, '')}`
-		return encodeMediaUrl(`${getApiOrigin()}${path}`)
+		return backendMediaUrl(path)
 	}
 	return encodeMediaUrl(value)
+}
+
+export function isUsableMediaUrl(url = '') {
+	const value = String(url || '').trim()
+	if (!value) return false
+	return !/^(blob:|file:|wxfile:|data:|http:\/\/tmp|https?:\/\/tmp)/i.test(value)
 }
 
 function buildQuery(params = {}) {
@@ -134,7 +187,7 @@ function request(path, options = {}) {
 
 export function uploadAnswerImage(filePath) {
 	if (!filePath) return Promise.resolve('')
-	if (/^(https?:\/\/|\/profile\/)/i.test(filePath)) return Promise.resolve(filePath)
+	if (/^(https?:\/\/|\/(profile|upload|uploads)\/)/i.test(filePath)) return Promise.resolve(resolveMediaUrl(filePath))
 	const token = getToken()
 	return new Promise((resolve, reject) => {
 		uni.uploadFile({
@@ -153,8 +206,8 @@ export function uploadAnswerImage(filePath) {
 					}
 				}
 				const data = body.data || body
-				if (res.statusCode >= 200 && res.statusCode < 300 && (body.code === 200 || body.code === 0 || data.url)) {
-					resolve(resolveMediaUrl(data.url || data.fileName || ''))
+				if (res.statusCode >= 200 && res.statusCode < 300 && (body.code === 200 || body.code === 0 || data.url || data.fileName)) {
+					resolve(normalizeUploadedMediaUrl(data))
 					return
 				}
 				reject(new Error(body.msg || `图片上传失败：${res.statusCode}`))
@@ -184,13 +237,19 @@ export function uploadAnswerImageFile(file) {
 				body = await res.json()
 			} catch (e) {}
 			const data = body.data || body
-			if (res.ok && (body.code === 200 || body.code === 0 || data.url)) {
-				return resolveMediaUrl(data.url || data.fileName || '')
+			if (res.ok && (body.code === 200 || body.code === 0 || data.url || data.fileName)) {
+				return normalizeUploadedMediaUrl(data)
 			}
 			throw new Error(body.msg || `图片上传失败：${res.status}`)
 		})
 	}
 	return uploadAnswerImage(fallbackPath)
+}
+
+function normalizeUploadedMediaUrl(data = {}) {
+	if (typeof data === 'string') return resolveMediaUrl(data)
+	const url = data.fileName || data.url || data.newFileName || ''
+	return resolveMediaUrl(url)
 }
 
 export function getToken() {
@@ -279,8 +338,8 @@ export function getMyCourses() {
 	return request('/my/courses')
 }
 
-export function getMyDocs(kw = '', courseId = '') {
-	return request('/my/docs', { params: { kw, courseId } })
+export function getMyDocs(kw = '', courseId = '', userId = '') {
+	return request('/my/docs', { params: { kw, courseId, userId } })
 }
 
 export function getOfflinePaperReviews(courseId = '', userId = '') {
@@ -296,6 +355,17 @@ export function saveOfflinePaperReview(payload = {}) {
 
 export function getStudySummaryApi() {
 	return request('/study/summary')
+}
+
+export function getStudyCheckins(params = {}) {
+	return request('/study/checkins', { params })
+}
+
+export function saveStudyCheckin(payload = {}) {
+	return request('/study/checkins', {
+		method: 'POST',
+		data: payload
+	})
 }
 
 export function getStudyReport(courseId = '', userId = '') {
@@ -366,8 +436,8 @@ export function submitQuiz(payload) {
 	})
 }
 
-export function getWrongBook(source = '', courseId = '') {
-	return request('/wrongbook', { params: { source, courseId } })
+export function getWrongBook(source = '', courseId = '', userId = '') {
+	return request('/wrongbook', { params: { source, courseId, userId } })
 }
 
 export function markWrongMastered(id) {
@@ -377,20 +447,20 @@ export function markWrongMastered(id) {
 	})
 }
 
-export function getWrongBookSummary(courseId = 'gk-math-full') {
-	return request('/wrongbook/summary', { params: { courseId } })
+export function getWrongBookSummary(courseId = 'gk-math-full', userId = '') {
+	return request('/wrongbook/summary', { params: { courseId, userId } })
 }
 
-export function getWrongBookRecords(source = '', courseId = '') {
-	return request('/wrongbook/records', { params: { source, courseId } })
+export function getWrongBookRecords(source = '', courseId = '', userId = '') {
+	return request('/wrongbook/records', { params: { source, courseId, userId } })
 }
 
-export function getWeakWrongBook(source = '', courseId = '') {
-	return request('/wrongbook/weak', { params: { source, courseId } })
+export function getWeakWrongBook(source = '', courseId = '', userId = '') {
+	return request('/wrongbook/weak', { params: { source, courseId, userId } })
 }
 
-export function getWrongRetry(count = 5, source = '', courseId = '') {
-	return request('/wrongbook/retry', { params: { count, source, courseId } })
+export function getWrongRetry(count = 5, source = '', courseId = '', userId = '') {
+	return request('/wrongbook/retry', { params: { count, source, courseId, userId } })
 }
 
 export function getReinforce(courseId = 'gk-math-full') {

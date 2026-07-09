@@ -11,7 +11,7 @@
 </template>
 
 <script>
-import { resolveMediaUrl } from '@/common/api.js'
+import { resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 
 export default {
 	name: 'QuestionAudioPlayer',
@@ -26,16 +26,18 @@ export default {
 			audio: null,
 			playing: false,
 			currentTime: 0,
-			duration: 0
+			duration: 0,
+			playRetrying: false
 		}
 	},
 	computed: {
 		resolvedUrl() {
-			return resolveMediaUrl(this.src)
+			const resolved = resolveMediaUrl(this.src)
+			return isUsableMediaUrl(resolved) ? resolved : ''
 		},
 		timeText() {
 			const current = this.formatTime(this.currentTime)
-			const total = this.duration ? this.formatTime(this.duration) : '--:--'
+			const total = this.safeSeconds(this.duration) ? this.formatTime(this.duration) : '--:--'
 			return `${current} / ${total}`
 		}
 	},
@@ -55,7 +57,41 @@ export default {
 	},
 	methods: {
 		createAudio() {
-			if (!this.resolvedUrl || this.audio || !uni.createInnerAudioContext) return
+			if (!this.resolvedUrl || this.audio) return
+			// #ifdef H5
+			if (typeof Audio !== 'undefined') {
+				const audio = new Audio()
+				audio.preload = 'metadata'
+				audio.src = this.resolvedUrl
+				audio.addEventListener('play', () => { this.playing = true })
+				audio.addEventListener('pause', () => { this.playing = false })
+				audio.addEventListener('ended', () => {
+					this.playing = false
+					this.currentTime = 0
+				})
+				audio.addEventListener('timeupdate', () => {
+					this.currentTime = this.safeSeconds(audio.currentTime)
+					this.captureDuration(audio.duration)
+				})
+				audio.addEventListener('loadedmetadata', () => {
+					this.captureDuration(audio.duration)
+				})
+				audio.addEventListener('durationchange', () => {
+					this.captureDuration(audio.duration)
+				})
+				audio.addEventListener('canplay', () => {
+					this.captureDuration(audio.duration)
+				})
+				audio.addEventListener('error', () => {
+					this.playing = false
+					uni.showToast({ title: '音频加载失败', icon: 'none' })
+				})
+				audio.load()
+				this.audio = audio
+				return
+			}
+			// #endif
+			if (!uni.createInnerAudioContext) return
 			const audio = uni.createInnerAudioContext()
 			audio.src = this.resolvedUrl
 			audio.onPlay(() => {
@@ -72,12 +108,12 @@ export default {
 				this.currentTime = 0
 			})
 			audio.onTimeUpdate(() => {
-				this.currentTime = Number(audio.currentTime || 0)
-				if (audio.duration) this.duration = Number(audio.duration || 0)
+				this.currentTime = this.safeSeconds(audio.currentTime)
+				this.captureDuration(audio.duration)
 			})
 			audio.onCanplay(() => {
 				setTimeout(() => {
-					if (audio && audio.duration) this.duration = Number(audio.duration || 0)
+					if (audio) this.captureDuration(audio.duration)
 				}, 120)
 			})
 			audio.onError(() => {
@@ -92,8 +128,35 @@ export default {
 			if (this.playing) {
 				this.audio.pause()
 			} else {
-				this.audio.play()
+				this.playAudio()
 			}
+		},
+		playAudio() {
+			if (!this.audio || !this.audio.play) return
+			try {
+				const result = this.audio.play()
+				if (result && typeof result.catch === 'function') {
+					result.catch(() => this.retryPlayOnce())
+				}
+			} catch (err) {
+				this.retryPlayOnce()
+			}
+		},
+		retryPlayOnce() {
+			if (this.playRetrying) {
+				uni.showToast({ title: '音频暂时无法播放', icon: 'none' })
+				return
+			}
+			this.playRetrying = true
+			this.resetAudio()
+			setTimeout(() => {
+				try {
+					if (this.audio && this.audio.play) this.audio.play()
+				} catch (err) {
+					uni.showToast({ title: '音频暂时无法播放', icon: 'none' })
+				}
+				setTimeout(() => { this.playRetrying = false }, 300)
+			}, 80)
 		},
 		resetAudio() {
 			this.destroyAudio()
@@ -103,16 +166,25 @@ export default {
 		},
 		destroyAudio() {
 			if (!this.audio) return
-			this.audio.stop()
-			this.audio.destroy()
+			if (this.audio.stop) this.audio.stop()
+			if (this.audio.pause) this.audio.pause()
+			if (this.audio.destroy) this.audio.destroy()
 			this.audio = null
 			this.playing = false
 		},
 		formatTime(value = 0) {
-			const seconds = Math.max(0, Math.floor(Number(value) || 0))
+			const seconds = Math.max(0, Math.floor(this.safeSeconds(value)))
 			const minute = Math.floor(seconds / 60)
 			const second = seconds % 60
 			return `${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`
+		},
+		safeSeconds(value = 0) {
+			const number = Number(value)
+			return Number.isFinite(number) && number > 0 ? number : 0
+		},
+		captureDuration(value = 0) {
+			const duration = this.safeSeconds(value)
+			if (duration > 0) this.duration = duration
 		}
 	}
 }
