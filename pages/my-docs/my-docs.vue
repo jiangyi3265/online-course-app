@@ -835,8 +835,8 @@ page { background:#f5f7fa; }
 .doc-title { color:#1f2933; font-size:28rpx; font-weight:900; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .doc-meta, .doc-time { margin-top:8rpx; color:#697386; font-size:24rpx; }
 .doc-time { color:#6a5aa8; }
-.doc-actions { display:flex; align-items:center; gap:18rpx; margin-left:18rpx; flex-shrink:0; }
-.favorite, .download, .doc-open { min-height:52rpx; padding:0 14rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#eef6ff; color:#2563eb; font-size:24rpx; white-space:nowrap; cursor:pointer; }
+.doc-actions { width:132rpx; display:flex; flex-direction:column; align-items:stretch; gap:10rpx; margin-left:22rpx; flex-shrink:0; }
+.favorite, .download, .doc-open { min-height:52rpx; padding:0 12rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#eef6ff; color:#2563eb; font-size:24rpx; white-space:nowrap; cursor:pointer; }
 .favorite { background:#fff7ed; color:#ea580c; }
 .favorite.active { background:#fde7d6; color:#c2410c; font-weight:900; }
 .doc-open { color:#0f766e; background:#ecfdf5; }
@@ -924,7 +924,7 @@ page { background:#f5f7fa; }
 @media screen and (max-width: 420px) {
 	.doc-card, .paper-main { align-items:flex-start; }
 	.doc-title-line { flex-direction:column; gap:8rpx; }
-	.doc-actions { flex-direction:column; gap:10rpx; margin-left:12rpx; }
+	.doc-actions { width:124rpx; margin-left:12rpx; }
 	.score-line { grid-template-columns:1fr; }
 }
 .empty { display:flex; flex-direction:column; align-items:center; padding-top:200rpx; }
