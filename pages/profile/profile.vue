@@ -25,17 +25,18 @@
 			</view>
 		</view>
 
-		<view class="save-btn" @click="save">保存</view>
+		<view class="save-btn" :class="{disabled:avatarUploading}" @click="save">{{avatarUploading ? '头像上传中' : '保存'}}</view>
 	</view>
 </template>
 
 <script>
-import { getProfile, saveSession, updateProfile, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
+import { getProfile, saveSession, updateProfile, uploadAnswerImage, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
 export default {
 	data() {
 		return {
+			avatarUploading: false,
 			form: {
 				avatar: '',
 				name: '',
@@ -86,8 +87,32 @@ export default {
 		chooseAvatar() {
 			uni.chooseImage({
 				count: 1,
-				success: res => { this.form.avatar = res.tempFilePaths[0] }
+				success: async res => {
+					this.form.avatar = res.tempFilePaths[0]
+					try {
+						await this.persistAvatarIfNeeded()
+						uni.showToast({ title: '头像已上传', icon: 'success' })
+					} catch (err) {
+						uni.showToast({ title: err.message || '头像上传失败', icon: 'none' })
+					}
+				}
 			})
+		},
+		async persistAvatarIfNeeded() {
+			const avatar = String(this.form.avatar || '').trim()
+			if (!avatar || !/^(blob:|file:|wxfile:|data:|https?:\/\/tmp)/i.test(avatar)) return avatar
+			if (this.avatarUploading) throw new Error('头像正在上传')
+			this.avatarUploading = true
+			uni.showLoading({ title: '上传头像' })
+			try {
+				const uploaded = await uploadAnswerImage(avatar)
+				if (!isUsableMediaUrl(uploaded)) throw new Error('头像上传地址无效')
+				this.form.avatar = uploaded
+				return uploaded
+			} finally {
+				this.avatarUploading = false
+				uni.hideLoading()
+			}
 		},
 		uploadFace() {
 			this.form.faceUploaded = true
@@ -97,7 +122,9 @@ export default {
 			this.form.wechatBound = !this.form.wechatBound
 		},
 		async save() {
+			if (this.avatarUploading) return
 			try {
+				await this.persistAvatarIfNeeded()
 				const payload = { ...this.form }
 				if (!payload.password) delete payload.password
 				const user = await updateProfile(payload)
@@ -128,4 +155,5 @@ page { background:#f7f8fa; }
 .avatar.empty { color:#7aa6d6; font-size:34rpx; }
 .arrow { margin-left:14rpx; color:#c8cdd4; font-size:38rpx; }
 .save-btn { margin:36rpx 30rpx 0; height:86rpx; line-height:86rpx; text-align:center; border-radius:43rpx; background:#1677ff; color:#fff; font-size:30rpx; font-weight:800; }
+.save-btn.disabled { opacity:.6; pointer-events:none; }
 </style>

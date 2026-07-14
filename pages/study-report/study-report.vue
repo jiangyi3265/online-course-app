@@ -554,8 +554,22 @@ export default {
 
 <style lang="scss">
 page { background:#f5f7fa; }
-.page { min-height:100vh; background:#f5f7fa; padding-bottom:40rpx; }
-.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
+.page { min-height:100vh; background:#f5f7fa; padding-top:90rpx; padding-bottom:40rpx; box-sizing:border-box; }
+.nav {
+	position:fixed;
+	top:0;
+	left:50%;
+	transform:translateX(-50%);
+	z-index:120;
+	width:100%;
+	max-width:var(--wk-app-width, 100vw);
+	height:90rpx;
+	background:#fff;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	border-bottom:1rpx solid #eef0f3;
+}
 .back {
 	position:absolute;
 	left:0;

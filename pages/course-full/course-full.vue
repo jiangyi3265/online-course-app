@@ -27,7 +27,7 @@
 			<view class="version-stats" v-if="versionSummaries.length">
 				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
 					<text class="version-stat-name">{{item.label}}</text>
-					<text v-if="item.total">共{{item.total}}节</text>
+					<text>共{{item.total || 0}}节</text>
 					<text>课程时长：{{item.duration}}</text>
 				</view>
 			</view>
@@ -336,6 +336,7 @@ export default {
 			}
 			return text;
 		},
+		collapseCheckinPanel() {},
 		async loadLessonLocks() {
 			try {
 				const data = await getLessonLocks(this.courseId);
@@ -716,6 +717,12 @@ export default {
 			const hasDirectVideo = this.hasVideoContent(source, source) && Number(source.type || 1) !== 2;
 			const hasDirectPractice = Number(source.type) === 2 && this.hasPracticeQuestions(source);
 			if (!visibleChildren.length && !hasDirectVideo && !hasDirectPractice) return null;
+			if (!visibleChildren.length && (hasDirectVideo || hasDirectPractice)) {
+				visibleChildren.push({
+					...source,
+					type: hasDirectPractice ? 2 : Number(source.type || 1)
+				});
+			}
 			return {
 				...source,
 				title: this.meaningfulLessonTitle(source.title) || (visibleChildren.length ? `章节内容${lessonIndex + 1}` : source.title),
@@ -728,7 +735,7 @@ export default {
 		isVisibleChild(child = {}, lesson = {}, versionIndex = 0) {
 			if (!this.isVisible(child) || !this.isVisible(lesson)) return false;
 			if (Number(child.type) === 2) {
-				return !!this.practiceBankName(child, lesson) && this.hasPracticeQuestions(child, lesson);
+				return this.hasPracticeQuestions(child, lesson);
 			}
 			return this.hasVideoContent(child, lesson) && (!!this.meaningfulLessonTitle(lesson.title) || !!this.meaningfulLessonTitle(child.name) || versionIndex !== 2);
 		},
@@ -880,7 +887,7 @@ page { background:#f5f7fa; }
 	transform:translateX(-50%);
 	z-index:120;
 	width:100%;
-	max-width:750rpx;
+	max-width:var(--wk-app-width, 100vw);
 	height:90rpx;
 	background:#fff;
 	display:flex; align-items:center; justify-content:center;
@@ -919,7 +926,7 @@ page { background:#f5f7fa; }
 }
 
 .info-block { background:#fff; padding: 24rpx 30rpx; }
-.info-top { display:flex; justify-content:flex-start; align-items:center; gap:16rpx; flex-wrap:wrap; }
+.info-top { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:16rpx; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
 .info-meta { font-size:24rpx; color:#888; margin-top:14rpx; }
 .course-intro {
@@ -955,9 +962,9 @@ page { background:#f5f7fa; }
 }
 .version-stat {
 	display:grid;
-	grid-template-columns:auto 1fr;
+	grid-template-columns:104rpx 76rpx minmax(0, 1fr);
 	align-items:center;
-	gap:8rpx 14rpx;
+	gap:8rpx;
 	color:#64748b;
 	font-size:21rpx;
 	line-height:1.35;
@@ -968,22 +975,31 @@ page { background:#f5f7fa; }
 	white-space:nowrap;
 }
 .progress-row {
-	display:flex; align-items:center;
+	display:grid;
+	grid-template-columns:auto 150rpx auto minmax(0, 1fr);
+	align-items:center;
 	margin-top: 18rpx;
-	flex-wrap:wrap;
-	gap:8rpx 0;
+	gap:10rpx;
 }
 .p-label { font-size:23rpx; color:#666; }
 .bar {
 	width:150rpx;
-	max-width:28vw;
+	max-width:none;
 	height:12rpx;
 	background:#e6e8ec; border-radius:7rpx;
-	margin: 0 14rpx; overflow:hidden;
+	margin:0; overflow:hidden;
 }
 .bar-inner { height:100%; background:#3aa3f5; }
-.p-num { font-size:23rpx; color:#666; margin-right:18rpx; }
+.p-num { font-size:23rpx; color:#666; }
 .p-extra { font-size:22rpx; color:#888; }
+
+@media screen and (max-width: 360px) {
+	.info-block { padding-left:22rpx; padding-right:22rpx; }
+	.version-stat { grid-template-columns:96rpx 70rpx minmax(0, 1fr); font-size:20rpx; }
+	.progress-row { grid-template-columns:auto 116rpx auto minmax(0, 1fr); gap:8rpx; }
+	.bar { width:116rpx; }
+	.p-label, .p-num, .p-extra { font-size:20rpx; }
+}
 
 .funcs { background:#fff; display:flex; padding: 26rpx 24rpx 34rpx; border-top:1rpx solid #f1f3f6; gap:18rpx; }
 .func {

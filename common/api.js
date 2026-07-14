@@ -117,7 +117,7 @@ export function resolveMediaUrl(url = '') {
 				const apiOrigin = getApiOrigin()
 				const apiHost = apiOrigin ? new URL(apiOrigin, window.location.origin).host : ''
 				const mediaPath = parsed.pathname || ''
-				const isBackendMedia = /^\/(prod-api\/)?(profile|upload|uploads)\//i.test(mediaPath)
+				const isBackendMedia = /^\/(prod-api\/)?(avatar|profile|upload|uploads)\//i.test(mediaPath)
 				const sameHost = parsed.host === window.location.host || parsed.hostname === window.location.hostname || parsed.host === apiHost
 				if (!isLocalHost() && isLoopbackUrl(value)) {
 					return encodeMediaUrl(`${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`)
@@ -136,7 +136,7 @@ export function resolveMediaUrl(url = '') {
 	}
 	const clean = value.replace(/^\/+/, '')
 	if (/^static\//i.test(clean)) return encodeMediaUrl(`/${clean}`)
-	if (/^(prod-api\/)?(profile|upload|uploads)\//i.test(clean)) {
+	if (/^(prod-api\/)?(avatar|profile|upload|uploads)\//i.test(clean)) {
 		const path = `/${clean.replace(/^prod-api\//i, '')}`
 		return backendMediaUrl(path)
 	}
@@ -187,7 +187,7 @@ function request(path, options = {}) {
 
 export function uploadAnswerImage(filePath) {
 	if (!filePath) return Promise.resolve('')
-	if (/^(https?:\/\/|\/(profile|upload|uploads)\/)/i.test(filePath)) return Promise.resolve(resolveMediaUrl(filePath))
+	if (/^(https?:\/\/|\/(avatar|profile|upload|uploads)\/)/i.test(filePath)) return Promise.resolve(resolveMediaUrl(filePath))
 	const token = getToken()
 	return new Promise((resolve, reject) => {
 		uni.uploadFile({

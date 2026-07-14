@@ -15,7 +15,7 @@
 
 		<view class="readonly-banner" v-if="readOnly">
 			<view class="readonly-banner-title">只读权限</view>
-			<view class="readonly-banner-text">可查看学习时长、打卡记录和各科报告，不能编辑打卡、错题、文档或学生资料。</view>
+			<view class="readonly-banner-text">可查看学习时长、打卡记录和各科报告。</view>
 		</view>
 
 		<view class="time-summary">
@@ -74,7 +74,7 @@
 			<view class="panel-note">科目根据已激活课程显示；未激活课程不显示。</view>
 			<view class="course-report-grid" v-if="courseReports.length">
 				<view class="course-report" v-for="course in courseReports" :key="course.id">
-					<view class="course-name" @click="goReport(course)">{{course.title}}</view>
+					<view class="course-name">{{course.title}}</view>
 					<view class="course-actions">
 						<view class="outline-btn" @click="goReport(course)">学习报告</view>
 						<view class="outline-btn" @click="goWrongBook(course)">查看【错题与巩固】</view>
@@ -366,7 +366,7 @@ page { background:#f5f7fa; }
 .panel-note { margin-top:8rpx; color:#697386; font-size:23rpx; line-height:1.45; }
 .course-report-grid { display:grid; grid-template-columns:1fr; gap:14rpx; margin-top:20rpx; }
 .course-report { display:flex; align-items:center; justify-content:space-between; gap:18rpx; padding:18rpx; border:1rpx solid #e8edf3; border-radius:8rpx; background:#fbfcfe; }
-.course-name { flex:0 0 150rpx; min-height:58rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#fff1f2; color:#b42335; font-size:27rpx; font-weight:900; cursor:pointer; }
+.course-name { flex:0 0 150rpx; min-height:58rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; background:#fff1f2; color:#b42335; font-size:27rpx; font-weight:900; cursor:default; }
 .course-actions { flex:1; display:flex; flex-wrap:wrap; gap:12rpx; justify-content:flex-end; }
 .outline-btn { min-height:58rpx; padding:0 18rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; border:1rpx solid #d7e3f2; color:#1f2933; font-size:25rpx; font-weight:800; background:#fff; box-sizing:border-box; cursor:pointer; }
 .readonly-note { flex-shrink:0; color:#8a929c; font-size:24rpx; font-weight:800; }
