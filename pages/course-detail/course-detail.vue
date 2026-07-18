@@ -4,6 +4,7 @@
 		<view class="nav">
 			<view class="back" @click="goBack">‹</view>
 			<view class="nav-title">{{displayCourseName}}</view>
+			<view class="nav-spacer"></view>
 		</view>
 		<!-- 未登录提示弹窗 -->
 		<view class="mask" v-if="showLogin">
@@ -15,6 +16,14 @@
 					<view class="m-divider"></view>
 					<view class="m-btn ok" @click="goLogin">登录</view>
 				</view>
+			</view>
+		</view>
+		<view class="auth-mask" v-if="showPermission" @click.self="closePermission">
+			<view class="permission-modal">
+				<view class="permission-icon">锁</view>
+				<view class="permission-title">未获得授权</view>
+				<view class="permission-body">试听课程尚未获得“{{permissionFeature}}”授权，请联系老师或校区开通。</view>
+				<view class="permission-confirm" @click="closePermission">我知道了</view>
 			</view>
 		</view>
 
@@ -41,8 +50,8 @@
 			<view class="version-stats" v-if="versionSummaries.length">
 				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
 					<text class="version-stat-name">{{item.label}}</text>
-					<text v-if="item.total">共{{item.total}}节</text>
-					<text>课程时长：{{item.duration}}</text>
+					<text class="version-stat-count" v-if="item.total">共{{item.total}}节</text>
+					<text class="version-stat-duration">课程时长：{{item.duration}}</text>
 				</view>
 			</view>
 			<view class="progress-row">
@@ -55,15 +64,18 @@
 
 		<!-- 三个功能 -->
 		<view class="funcs">
-			<view class="func" @click="goDocs">
+			<view class="func locked" @click="goDocs">
+				<text class="func-lock">未授权</text>
 				<view class="f-ico blue">文</view>
 				<text class="f-text">我的文档</text>
 			</view>
-			<view class="func" @click="goPlan">
+			<view class="func locked" @click="goPlan">
+				<text class="func-lock">未授权</text>
 				<view class="f-ico pink">卡</view>
 				<text class="f-text">学习打卡</text>
 			</view>
-			<view class="func" @click="goReport">
+			<view class="func locked" @click="goReport">
+				<text class="func-lock">未授权</text>
 				<view class="f-ico green">报</view>
 				<text class="f-text">学习报告</text>
 			</view>
@@ -97,8 +109,8 @@
 								</view>
 							</view>
 								<view class="ch-actions">
-									<view class="btn-go" @click.stop="goLesson(c, s)">{{s.type===2 ? '去练习' : '去学习'}}</view>
-								<view class="btn-ai" @click.stop="goAi(c.title)">AI问答</view>
+									<view class="btn-go locked" @click.stop="goLesson(c, s)">{{s.type===2 ? '去练习' : '去学习'}}</view>
+								<view class="btn-ai locked" @click.stop="goAi(c.title)">AI问答</view>
 							</view>
 						</view>
 					</block>
@@ -174,6 +186,8 @@ export default {
 			],
 			quizzes: [],
 			showLogin: false,
+			showPermission: false,
+			permissionFeature: '该功能',
 			cover: '',
 			coverRatio: 0,
 			courseId: 'gk-math-trial'
@@ -184,7 +198,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFit';
+			return 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -278,6 +292,7 @@ export default {
 			this.setVersion(0);
 			this.quizzes = course.quizzes || [];
 		},
+		collapseCheckinPanel() {},
 		goBack() { safeNavigateBack('/pages/index/index'); },
 		goLogin() { this.showLogin=false; uni.navigateTo({ url:'/pages/login/login' }); },
 		setCover(value) {
@@ -388,39 +403,30 @@ export default {
 		},
 		goDocs() {
 			this.collapseCheckinPanel();
-			this.requireFullCourseFeature();
+			this.requireFullCourseFeature('我的文档');
 		},
 		goPlan() {
 			this.collapseCheckinPanel();
-			this.requireFullCourseFeature();
+			this.requireFullCourseFeature('学习打卡');
 		},
 		goReport() {
 			this.collapseCheckinPanel();
-			this.requireFullCourseFeature();
+			this.requireFullCourseFeature('学习报告');
 		},
 		goAi(context) {
-			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` });
+			this.requestPermission('AI问答');
 		},
 		goQuiz(q) {
-			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(q.name)}&title=${encodeURIComponent(q.name)}` });
+			this.requestPermission('章节测评');
 		},
 		goWrongBook() {
-			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` });
+			this.requestPermission('错题与巩固');
 		},
 		goReinforce() {
-			this.collapseCheckinPanel();
-			uni.navigateTo({ url:`/pages/reinforce/reinforce?courseId=${encodeURIComponent(this.courseId)}` });
+			this.requestPermission('知识巩固');
 		},
 		goLesson(chapter, item) {
-			this.collapseCheckinPanel();
-			if (item.type === 2) {
-				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(chapter.title)}` });
-				return;
-			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(chapter.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title)}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}` });
+			this.requestPermission(item && item.type === 2 ? '练习功能' : '课程学习');
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '2026-05-26';
@@ -442,12 +448,19 @@ export default {
 			if (this.versionIndex === 1) return item.type === 2 ? '真题讲练' : '技巧绝招';
 			return item.name;
 		},
-		requireFullCourseFeature() {
-			uni.showToast({ title:'请开通正式课程使用完整功能', icon:'none' });
+		requireFullCourseFeature(feature = '该功能') {
+			this.showPermissionDenied(feature);
 		},
-		requestPermission() {
+		requestPermission(feature = '该功能') {
+			this.showPermissionDenied(feature);
+		},
+		showPermissionDenied(feature = '该功能') {
 			this.collapseCheckinPanel();
-			uni.showModal({ title:'权限未开通', content:'权限未开通，请联系授权。', showCancel:false });
+			this.permissionFeature = feature || '该功能';
+			this.showPermission = true;
+		},
+		closePermission() {
+			this.showPermission = false;
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); }
 	}
@@ -466,24 +479,31 @@ page { background:#f5f7fa; }
 .nav {
 	position:fixed;
 	top:0;
-	left:50%;
-	transform:translateX(-50%);
+	left:0;
+	right:0;
 	z-index:120;
 	width:100%;
-	max-width:750rpx;
 	height:90rpx;
-	background:#fff;
-	display:flex; align-items:center; justify-content:center;
-	border-bottom:1rpx solid #eef0f3;
+	box-sizing:border-box;
+	background:rgba(255,255,255,.97);
+	display:grid;
+	grid-template-columns:96rpx minmax(0,1fr) 96rpx;
+	align-items:center;
+	border-bottom:1rpx solid #e8edf3;
+	box-shadow:0 6rpx 20rpx rgba(30,58,92,.06);
+	backdrop-filter:blur(14rpx);
 }
 .back {
-	position:absolute; left:0; top:0; bottom:0;
-	width:110rpx;
+	width:96rpx;
+	height:100%;
 	display:flex; align-items:center; justify-content:center;
-	font-size:66rpx; color:#222; font-weight:300;
+	font-size:50rpx; color:#222; font-weight:400;
 	cursor:pointer;
+	transition:background-color .2s ease, transform .2s ease;
 }
-.nav-title { font-size:30rpx; color:#222; font-weight:600; }
+.back:active { background:#f1f5f9; transform:scale(.96); }
+.nav-title { min-width:0; text-align:center; font-size:30rpx; color:#111827; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nav-spacer { width:96rpx; height:100%; }
 
 /* 封面 */
 .cover {
@@ -522,7 +542,7 @@ page { background:#f5f7fa; }
 /* 信息块 */
 .info-block {
 	background:#fff;
-	padding: 24rpx 30rpx;
+	padding:28rpx 30rpx 30rpx;
 }
 .info-top { display:flex; justify-content:flex-start; align-items:center; gap:16rpx; flex-wrap:wrap; }
 .info-title { font-size:32rpx; font-weight:800; color:#222; }
@@ -549,23 +569,31 @@ page { background:#f5f7fa; }
 .update-date { color:#c2410c; font-weight:900; }
 .version-stats {
 	display:grid;
-	gap:8rpx;
-	margin-top:14rpx;
+	grid-template-columns:repeat(2, minmax(0, 1fr));
+	gap:12rpx;
+	margin-top:18rpx;
 }
 .version-stat {
-	display:grid;
-	grid-template-columns:auto 1fr;
-	align-items:center;
-	gap:8rpx 14rpx;
+	min-width:0;
+	display:flex;
+	flex-direction:column;
+	align-items:flex-start;
+	gap:6rpx;
+	padding:16rpx 18rpx;
+	border-radius:14rpx;
+	background:#f7f9fc;
+	border:1rpx solid #e8eef5;
 	color:#64748b;
-	font-size:21rpx;
-	line-height:1.35;
+	font-size:20rpx;
+	line-height:1.4;
 }
 .version-stat-name {
 	color:#0f172a;
 	font-weight:800;
 	white-space:nowrap;
 }
+.version-stat-count { color:#475569; font-weight:700; }
+.version-stat-duration { color:#64748b; white-space:normal; }
 
 .progress-row {
 	display:flex; align-items:center;
@@ -600,13 +628,17 @@ page { background:#f5f7fa; }
 .func {
 	flex:1;
 	min-height:146rpx;
+	position:relative;
 	display:flex; flex-direction:column; align-items:center;
 	justify-content:center;
 	border-radius:14rpx;
 	background:#fbfcfe;
 	border:1rpx solid #edf1f5;
 	cursor:pointer;
+	transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
+.func:active { transform:scale(.98); border-color:#cbdcf2; }
+.func-lock { position:absolute; top:10rpx; right:10rpx; padding:3rpx 8rpx; border-radius:7rpx; background:#f1f5f9; color:#7c8798; font-size:16rpx; line-height:1.2; }
 .f-ico {
 	width:90rpx; height:90rpx; border-radius:18rpx;
 	display:flex; align-items:center; justify-content:center;
@@ -686,7 +718,7 @@ page { background:#f5f7fa; }
 .ch-name { font-size:26rpx; color:#222; font-weight:600; }
 .ch-progress { font-size:22rpx; color:#999; margin-top:4rpx; }
 
-.ch-actions { display:flex; }
+.ch-actions { display:flex; align-items:center; gap:10rpx; flex-shrink:0; }
 .mask { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:200; }
 .modal { width:560rpx; background:#fff; border-radius:14rpx; overflow:hidden; }
 .m-title { text-align:center; padding:36rpx 0 16rpx; font-size:34rpx; color:#000; }
@@ -696,16 +728,68 @@ page { background:#f5f7fa; }
 .m-btn.cancel { color:#000; }
 .m-btn.ok { color:#007aff; }
 .m-divider { width:1rpx; background:#ececec; }
+.auth-mask {
+	position:fixed;
+	inset:0;
+	z-index:220;
+	dis:flex;
+	align-items:center;
+	justify-content:center;
+	padding:34rpx;
+	background:rgba(15,23,42,.48);
+	backdrop-filter:blur(8rpx);
+}
+.permission-modal {
+	width:100%;
+	max-width:560rpx;
+	padding:34rpx 32rpx 28rpx;
+	border-radius:24rpx;
+	background:#fff;
+	box-shadow:0 28rpx 70rpx rgba(15,23,42,.24);
+	text-align:center;
+}
+.permission-icon {
+	width:72rpx;
+	height:72rpx;
+	margin:0 auto 18rpx;
+	border-radius:20rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	background:#fff4e8;
+	color:#c45f13;
+	font-size:26rpx;
+	font-weight:900;
+}
+.permission-title { color:#111827; font-size:34rpx; font-weight:900; letter-spacing:-1rpx; }
+.permission-body { margin-top:16rpx; color:#667085; font-size:25rpx; line-height:1.65; }
+.permission-confirm {
+	height:76rpx;
+	margin-top:28rpx;
+	border-radius:14rpx;
+	dis:flex;
+	align-items:center;
+	justify-content:center;
+	background:#1677ff;
+	color:#fff;
+	font-size:27rpx;
+	font-weight:900;
+	cursor:pointer;
+	transition:transform .2s ease, background-color .2s ease;
+}
+.permission-confirm:active { transform:scale(.98); background:#0f67df; }
 
 .btn-go, .btn-ai {
 	font-size:24rpx;
 	color:#fff;
-	padding: 10rpx 26rpx;
+	padding:10rpx 20rpx;
 	border-radius:30rpx;
-	margin-left:14rpx;
+	margin-left:0;
+	transition:transform .2s ease, filter .2s ease;
 }
 .btn-go { background:#1890e1; box-shadow:0 4rpx 8rpx rgba(24,144,225,0.3); cursor:pointer; }
 .btn-ai { background:#22ac38; box-shadow:0 4rpx 8rpx rgba(34,172,56,0.3); cursor:pointer; }
+.btn-go:active, .btn-ai:active { transform:scale(.96); filter:brightness(.96); }
 
 .tabs {
 	background:#fff;
@@ -819,48 +903,50 @@ page { background:#f5f7fa; }
 .minor-btn.locked {
 	background:#eef2f7;
 	color:#596272;
+	cursor:pointer;
 }
 
 /* Desktop course cover polish */
 .cover {
-	margin:0;
-	border-radius:0;
+	margin:18rpx 20rpx 0;
+	border-radius:22rpx 22rpx 0 0;
 	border:1rpx solid #e2e8f0;
-	border-left:0;
-	border-right:0;
 	border-bottom:0;
-	box-shadow:0 10rpx 24rpx rgba(31,41,51,.045);
 	background:#f8fafc;
 }
-.cover-banner,
-.cover-poster {
-	height:264rpx;
-}
+.cover-banner { height:auto; aspect-ratio:1476 / 472; }
+.cover-poster { height:auto; aspect-ratio:4 / 3; }
 .cover-img {
-	object-fit:contain;
+	object-fit:cover;
 	background:#f8fafc;
 }
 .cover-img :deep(div) {
-	background-size:contain !important;
+	background-size:cover !important;
 	background-repeat:no-repeat !important;
 	background-position:center center !important;
 }
 .info-block {
-	margin:0;
-	border-left:0;
-	border-right:0;
+	margin:0 20rpx 18rpx;
+	border:1rpx solid #e2e8f0;
+	border-top:0;
+	border-radius:0 0 22rpx 22rpx;
+	box-shadow:0 14rpx 34rpx rgba(30,58,92,.08);
 }
 @media screen and (max-width: 420px) {
 	.cover {
-		margin:0;
-		border-radius:0;
-	}
-	.cover-banner,
-	.cover-poster {
-		height:226rpx;
+		margin:14rpx 16rpx 0;
+		border-radius:20rpx 20rpx 0 0;
 	}
 	.info-block {
-		margin:0;
+		margin:0 16rpx 16rpx;
+		border-radius:0 0 20rpx 20rpx;
 	}
+	.version-stats { grid-template-columns:1fr; }
+	.func-lock { display:none; }
+	.ch-actions { gap:8rpx; }
+	.btn-go, .btn-ai { padding:10rpx 16rpx; }
+}
+@media screen and (min-width: 768px) {
+	.nav { left:50%; right:auto; width:var(--wk-app-width, 430px); max-width:100vw; transform:translateX(-50%); }
 }
 </style>

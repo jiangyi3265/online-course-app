@@ -37,16 +37,19 @@
 				</view>
 				<math-rich-text class="stem" :text="item.stem" />
 				<question-audio-player :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" />
+				<image v-for="(url, imageIndex) in questionImages(item)" :key="`${item.id}-stem-${imageIndex}`" class="question-image" :src="url" mode="aspectFit" @click="previewMedia(url, questionImages(item))" />
 				<block v-if="questionType(item) === 'reading'">
 					<view class="reading-sub-card" v-for="(sub, subIndex) in subQuestions(item)" :key="sub.id || subIndex">
 						<view class="reading-sub-head">小题 {{subIndex + 1}}</view>
 						<math-rich-text class="reading-sub-stem" :text="sub.stem" />
+						<question-audio-player :src="stemAudio(sub)" />
+						<image v-for="(url, imageIndex) in questionImages(sub)" :key="`${sub.id || subIndex}-stem-${imageIndex}`" class="question-image" :src="url" mode="aspectFit" @click="previewMedia(url, questionImages(sub))" />
 						<view class="option" v-for="(opt, idx) in sub.options || []" :key="idx">
 							<text class="radio">{{optionLetter(idx)}}.</text>
 							<view class="option-body">
 								<math-rich-text v-if="opt" :text="opt" />
 								<text v-else class="image-option-label">图片选项</text>
+								<image v-if="optionImage(sub, idx)" class="option-image" :src="optionImage(sub, idx)" mode="aspectFit" @click.stop="previewMedia(optionImage(sub, idx), optionImages(sub))" />
 							</view>
 						</view>
 					</view>
@@ -77,7 +80,7 @@
 </template>
 
 <script>
-import { answerFavoriteQuestion, getFavorites, resolveMediaUrl, isUsableMediaUrl, toggleFavorite } from '@/common/api.js'
+import { answerFavoriteQuestion, getFavorites, resolveMediaDownloadUrl, resolveMediaList, resolveMediaUrl, isUsableMediaUrl, toggleFavorite } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
@@ -126,14 +129,25 @@ export default {
 		},
 		openDoc(item) {
 			const fileUrl = this.mediaUrl(item.fileUrl || '');
-			if (fileUrl && fileUrl !== '#' && typeof window !== 'undefined') {
-				window.open(fileUrl, '_blank');
-				return;
-			}
-			uni.showToast({ title:item.title || '文档', icon:'none' });
+			if (fileUrl && fileUrl !== '#' && this.openBrowserFile(fileUrl, item.title, false)) return;
+			uni.showToast({ title:'文件地址无效，请联系管理员', icon:'none' });
 		},
 		downloadDoc(item) {
-			this.openDoc(item);
+			const fileUrl = resolveMediaDownloadUrl(item.fileUrl || '');
+			if (fileUrl && fileUrl !== '#' && this.openBrowserFile(fileUrl, item.title, true)) return;
+			uni.showToast({ title:'文件地址无效，请联系管理员', icon:'none' });
+		},
+		openBrowserFile(url, filename = '', download = false) {
+			if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+			const link = document.createElement('a');
+			link.href = url;
+			link.rel = 'noopener noreferrer';
+			if (download) link.download = String(filename || '课程文件').replace(/[\\/:*?"<>|]/g, '_');
+			else link.target = '_blank';
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			return true;
 		},
 		formatDate(value = '') {
 			const text = String(value || '').replace('T', ' ');
@@ -158,12 +172,16 @@ export default {
 			return String.fromCharCode(65 + Number(index));
 		},
 		mediaList(value) {
-			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
-			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+			return resolveMediaList(value);
+		},
+		questionImages(item = {}) {
+			return this.mediaList([item.stemImageUrls, item.stemImageUrl, item.questionImageUrl, item.stemImage, item.imageUrl, item.imageUrls, item.images]);
+		},
+		optionImages(item = {}) {
+			return this.mediaList([item.optionImageUrls, item.optionImages, item.optionImageUrl]);
 		},
 		optionImage(item = {}, index) {
-			const urls = this.mediaList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
-			return this.mediaUrl(urls[index] || '');
+			return this.optionImages(item)[index] || '';
 		},
 		mediaUrl(url = '') {
 			const resolved = resolveMediaUrl(url);
@@ -172,10 +190,11 @@ export default {
 		stemAudio(item = {}) {
 			return this.mediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio || '');
 		},
-		previewMedia(url) {
+		previewMedia(url, urls = []) {
 			const current = this.mediaUrl(url);
 			if (!current) return;
-			uni.previewImage({ urls: [current], current });
+			const list = this.mediaList(urls && urls.length ? urls : [current]);
+			uni.previewImage({ urls: list.length ? list : [current], current });
 		},
 		favoriteTargetId(item = {}) {
 			return String(item.targetId || item.questionId || item.docId || item.paperId || item.id || item.favoriteId || '').trim();

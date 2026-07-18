@@ -45,9 +45,9 @@
 								<view class="doc-time">上传时间：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
 						</view>
 						<view class="doc-actions">
-								<view class="favorite" :class="{active:isFavorite(doc), disabled:readOnly}" @click="toggleDocFavorite(doc)">{{isFavorite(doc) ? '已收藏' : '收藏'}}</view>
-								<view class="download" @click="downloadDoc(doc)">文件下载</view>
-								<view class="doc-open" @click="openDoc(doc)">打开</view>
+								<view class="favorite" :class="{active:isFavorite(doc), disabled:readOnly}" @click.stop="toggleDocFavorite(doc)">{{isFavorite(doc) ? '已收藏' : '收藏'}}</view>
+								<view class="download" @click.stop="downloadDoc(doc)">文件下载</view>
+								<view class="doc-open" @click.stop="openDoc(doc)">文件打开</view>
 						</view>
 					</view>
 						<view class="section-empty" v-if="!lectureDocs.length">暂无资料</view>
@@ -82,9 +82,9 @@
 								<view class="doc-time">更新日期：{{formatDateTime(doc.uploadTime || doc.createdAt || doc.updatedAt)}}</view>
 							</view>
 							<view class="doc-actions">
-								<view class="favorite" :class="{active:isFavorite(doc), disabled:readOnly}" @click="toggleDocFavorite(doc)">{{isFavorite(doc) ? '已收藏' : '收藏'}}</view>
-								<view class="download" @click="downloadDoc(doc)">文件下载</view>
-								<view class="doc-open" @click="openDoc(doc)">打开</view>
+								<view class="favorite" :class="{active:isFavorite(doc), disabled:readOnly}" @click.stop="toggleDocFavorite(doc)">{{isFavorite(doc) ? '已收藏' : '收藏'}}</view>
+								<view class="download" @click.stop="downloadDoc(doc)">文件下载</view>
+								<view class="doc-open" @click.stop="openDoc(doc)">文件打开</view>
 							</view>
 						</view>
 
@@ -111,7 +111,7 @@
 								</view>
 								<view class="paper-image-empty" v-if="!paperImages(doc).length && !doc.paperImageError">请先上传试卷照片，再填写自评分数。</view>
 								<view class="paper-image-tip" v-if="doc.paperImageError">图片预览已失效，请重新上传。</view>
-								<view class="paper-image-reupload" v-if="doc.paperImageError && !readOnly" @click="choosePaperImages(doc)">
+								<view class="paper-image-reupload" v-if="doc.paperImageError && !doc.reviewSubmitted && !readOnly" @click.stop="choosePaperImages(doc)">
 									<view class="reupload-title">图片无法显示</view>
 									<view class="reupload-sub">点击重新上传试卷照片，分数记录保持不变。</view>
 								</view>
@@ -162,7 +162,7 @@
 </template>
 
 <script>
-import { getFavorites, getMyDocs, getOfflinePaperReviews, isLoggedIn, resolveMediaUrl, saveOfflinePaperReview, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
+import { getFavorites, getMyDocs, getOfflinePaperReviews, isLoggedIn, isUsableMediaUrl, resolveMediaDownloadUrl, resolveMediaList, resolveMediaUrl, saveOfflinePaperReview, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
 const REVIEW_KEY = 'offlineExamReviews';
@@ -270,7 +270,7 @@ export default {
 					map[key] = {
 						...item,
 						courseId,
-						images: (item.images || []).map(url => resolveMediaUrl(url)).filter(url => this.isUsablePaperImage(url)),
+						images: resolveMediaList([item.images, item.imageUrls, item.photos]),
 						imageCount: Number(item.imageCount || (item.images || []).length || 0)
 					};
 				}
@@ -405,19 +405,29 @@ export default {
 		search() { this.loadDocs(); },
 		openDoc(doc) {
 			const url = resolveMediaUrl(doc.fileUrl || '');
-			if (url && url !== '#' && typeof window !== 'undefined') {
-				window.open(url, '_blank');
+			if (url && url !== '#' && this.openBrowserFile(url, doc.title, false)) {
 				return;
 			}
-			uni.showToast({ title: doc.title, icon:'none' });
+			uni.showToast({ title:'文件地址无效，请联系管理员', icon:'none' });
 		},
 		downloadDoc(doc) {
-			const url = resolveMediaUrl(doc.fileUrl || '');
-			if (url && url !== '#' && typeof window !== 'undefined') {
-				window.open(url, '_blank');
+			const url = resolveMediaDownloadUrl(doc.fileUrl || '');
+			if (url && url !== '#' && this.openBrowserFile(url, doc.title, true)) {
 				return;
 			}
-			uni.showToast({ title:'文件下载已准备', icon:'none' });
+			uni.showToast({ title:'文件地址无效，请联系管理员', icon:'none' });
+		},
+		openBrowserFile(url, filename = '', download = false) {
+			if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+			const link = document.createElement('a');
+			link.href = url;
+			link.rel = 'noopener noreferrer';
+			if (download) link.download = String(filename || '课程文件').replace(/[\\/:*?"<>|]/g, '_');
+			else link.target = '_blank';
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			return true;
 		},
 		decorateDoc(doc = {}) {
 			const decorated = { ...doc, reviewExpanded:false };
@@ -428,8 +438,8 @@ export default {
 					decorated.totalScore = this.reviewScoreValue(review, 'totalScore', submitted);
 					decorated.score = this.reviewScoreValue(review, 'score', submitted);
 					decorated.wrongCount = this.reviewScoreValue(review, 'wrongCount', submitted);
-					decorated.images = (review.images || []).map(item => resolveMediaUrl(item)).filter(url => this.isUsablePaperImage(url));
-					decorated.imageCount = Number(review.imageCount || (review.images || []).length || 0);
+					decorated.images = resolveMediaList([review.images, review.imageUrls, review.photos]);
+					decorated.imageCount = Number(review.imageCount || decorated.images.length || 0);
 					decorated.reviewSubmitted = submitted;
 					decorated.paperImageError = decorated.imageCount > 0 && !this.paperImages(decorated).length;
 				} else {
@@ -465,39 +475,25 @@ export default {
 			return Number(((doc.images || []).length) || doc.imageCount || 0);
 		},
 		paperImages(doc = {}) {
-			return (doc.images || [])
-				.map(item => resolveMediaUrl(item))
-				.filter(url => this.isUsablePaperImage(url));
+			return resolveMediaList([doc.images, doc.imageUrls, doc.photos]);
 		},
 		isUsablePaperImage(url = '') {
-			const value = String(url || '').trim();
-			if (!value) return false;
-			if (/^(blob:|file:|wxfile:|http:\/\/tmp\/|data:)/i.test(value)) return false;
-			return true;
+			return isUsableMediaUrl(resolveMediaUrl(url));
 		},
 			reviewActionText(doc = {}) {
-				if (doc.paperImageError || (this.paperImageCount(doc) > 0 && !this.paperImages(doc).length)) return '图片失效，重新上传';
-				if (this.paperImages(doc).length > 0) return '图片已上传【点击查看】';
-				return doc.reviewSubmitted ? '查看分数' : '上传试卷照片';
+				const images = this.paperImages(doc);
+				if (doc.reviewExpanded) return '收起';
+				if (doc.reviewSubmitted) return '查看分数';
+				if (doc.paperImageError || (this.paperImageCount(doc) > 0 && !images.length)) return '图片失效，点击展开';
+				if (images.length > 0) return '图片已上传【点击查看】';
+				return '上传试卷照片';
 		},
 		handlePaperReviewAction(doc = {}) {
-			if (this.readOnly) {
-				doc.reviewExpanded = !doc.reviewExpanded;
-				return;
-			}
-			if (!this.paperImages(doc).length && !doc.reviewSubmitted) {
-				this.choosePaperImages(doc);
-				return;
-			}
-			if (doc.paperImageError || (this.paperImageCount(doc) > 0 && !this.paperImages(doc).length)) {
-				this.choosePaperImages(doc);
-				return;
-			}
 			doc.reviewExpanded = !doc.reviewExpanded;
 		},
 		showPaperUploadAction(doc = {}) {
-			if (this.readOnly) return false;
-			return !doc.reviewSubmitted || doc.paperImageError || this.paperImageCount(doc) === 0;
+			if (this.readOnly || doc.reviewSubmitted) return false;
+			return true;
 		},
 			paperUploadActionText(doc = {}) {
 				if (doc.paperImageError || (this.paperImageCount(doc) > 0 && !this.paperImages(doc).length)) return '重新上传试卷照片';

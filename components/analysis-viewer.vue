@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import { resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
+import { normalizeMediaList, resolveMediaList, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 import MathRichText from '@/components/math-rich-text.vue'
 
 export default {
@@ -77,15 +77,25 @@ export default {
 		},
 		resolvedImageUrls() {
 			const item = this.item || {};
-			return this.mediaList(this.imageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl || item.imageUrl)
-				.map(url => this.mediaUrl(url))
-				.filter(Boolean);
+			return resolveMediaList([
+				this.imageUrl,
+				item.analysisImageUrls,
+				item.analysisImageUrl,
+				item.imageAnalysisUrl,
+				item.explainImageUrl,
+				item.answerImageUrls,
+				item.answerImageUrl,
+				item.imageUrl
+			]);
 		},
 		resolvedFileUrls() {
 			const item = this.item || {};
-			return this.mediaList(item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl)
-				.map(url => this.mediaUrl(url))
-				.filter(Boolean);
+			return resolveMediaList([
+				item.analysisFileUrl,
+				item.explainFileUrl,
+				item.analysisDocUrl,
+				item.answerFileUrl
+			]);
 		},
 		hasContent() {
 			return !!(this.text || this.resolvedImageUrls.length || this.resolvedFileUrls.length);
@@ -93,8 +103,7 @@ export default {
 	},
 	methods: {
 		mediaList(value) {
-			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
-			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+			return normalizeMediaList(value);
 		},
 		mediaUrl(url = '') {
 			const resolved = resolveMediaUrl(url);

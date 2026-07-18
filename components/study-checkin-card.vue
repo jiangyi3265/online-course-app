@@ -80,6 +80,16 @@
 							</text>
 						</view>
 						<view class="record-text">{{ item.content }}</view>
+						<view class="record-images" v-if="recordImages(item).length">
+							<image
+								v-for="(url, imageIndex) in recordImages(item)"
+								:key="`${item.id || item.date}-image-${imageIndex}`"
+								class="record-image"
+								:src="url"
+								mode="aspectFill"
+								@click="previewImages(recordImages(item), imageIndex)"
+							/>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -88,7 +98,7 @@
 </template>
 
 <script>
-import { getStudyCheckins, isUsableMediaUrl, resolveMediaUrl, saveStudyCheckin, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
+import { getStudyCheckins, isUsableMediaUrl, resolveMediaList, resolveMediaUrl, saveStudyCheckin, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 
 const CHECKIN_KEY = 'studyCheckins';
 const EDIT_LIMIT_MS = 12 * 60 * 60 * 1000;
@@ -222,9 +232,7 @@ export default {
 			this.images.splice(index, 1);
 		},
 		recordImages(item = {}) {
-			const raw = item.images || item.imageUrls || item.photos || item.photoUrls || item.imageUrl || '';
-			const list = Array.isArray(raw) ? raw : String(raw || '').split(/[,\n]/);
-			return list.map(url => resolveMediaUrl(String(url || '').trim())).filter(url => url && isUsableMediaUrl(url));
+			return resolveMediaList([item.images, item.imageUrls, item.photos, item.photoUrls, item.imageUrl]);
 		},
 		previewRecordImages(item = {}) {
 			this.previewImages(this.recordImages(item), 0);
@@ -454,6 +462,8 @@ export default {
 .record-top { display:flex; align-items:center; justify-content:space-between; gap:14rpx; }
 .record-date { color:#1f2933; font-size:26rpx; font-weight:900; }
 .record-text { margin-top:10rpx; color:#697386; font-size:24rpx; line-height:1.5; white-space:pre-wrap; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
+.record-images { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10rpx; margin-top:14rpx; }
+.record-image { width:100%; height:112rpx; border-radius:10rpx; background:#eef2f7; border:1rpx solid #e1e8f0; box-sizing:border-box; cursor:pointer; }
 .record-count { flex-shrink:0; padding:6rpx 12rpx; border-radius:999rpx; background:#ecfdf5; border:1rpx solid transparent; color:#0f766e; font-size:22rpx; font-weight:900; }
 .record-count.clickable { cursor:pointer; border-color:#bbf0dc; box-shadow:0 6rpx 14rpx rgba(15,118,110,.12); }
 .record-count.clickable:active { opacity:.78; }

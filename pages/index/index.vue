@@ -4,7 +4,7 @@
 		<view class="banner">
 			<swiper class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
 				<swiper-item v-for="item in homeBanners" :key="item.id || item.imageUrl">
-					<image class="banner-img" :src="item.imageUrl" mode="aspectFit" @click="openBanner(item)" @error.stop="onBannerError(item)" />
+					<image class="banner-img" :src="item.imageUrl" mode="aspectFill" @click="openBanner(item)" @error.stop="onBannerError(item)" />
 				</swiper-item>
 			</swiper>
 		</view>
@@ -34,13 +34,12 @@
 		<view class="grid">
 			<view class="card" v-for="(it,i) in list" :key="i" @click="goDetail(it)">
 				<view class="cover">
-					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFit" @error.stop="onCourseCoverError(it)" />
+					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFill" @error.stop="onCourseCoverError(it)" />
 					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
 					<text class="course-tag">视频+考练</text>
 				</view>
 				<view class="info">
 					<view class="title">《{{it.full}}》试听课</view>
-					<view class="sub">《{{it.full}}》试听课</view>
 					<view class="learn">{{it.learn}}人学习</view>
 					<view class="access-row">
 						<text class="access-chip">{{accessLabel(it)}}</text>
@@ -59,7 +58,7 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { GAOKAO_MATH_TRIAL, stripCourseYear } from '@/common/course-data.js'
-import { getCourses, getFrontendSettings, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
+import { getCourses, getFrontendSettings, resolveMediaList } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() {
@@ -105,9 +104,14 @@ export default {
 		async loadFrontendSettings() {
 			try {
 				const settings = await getFrontendSettings();
-				const banners = Array.isArray(settings.homeBanners) ? settings.homeBanners.filter(item => item && item.imageUrl) : [];
+				const banners = this.bannerItems(settings && settings.homeBanners);
 				const usableBanners = banners
-					.map(item => ({ ...item, imageUrl: this.safeMediaUrl(item.imageUrl), imageError: false }))
+					.map((item, index) => ({
+						...item,
+						id: item.id || `banner-${index}`,
+						imageUrl: this.firstMediaUrl([item.imageUrl, item.url, item.image, item.src, item.cover]),
+						imageError: false
+					}))
 					.filter(item => item.imageUrl);
 				if (usableBanners.length) this.homeBanners = usableBanners;
 				else this.homeBanners = [{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }];
@@ -123,7 +127,7 @@ export default {
 					id: item.id,
 					full: stripCourseYear(item.full),
 					learn: item.studyCount || item.learn || 0,
-					cover: this.safeMediaUrl(item.cover),
+					cover: this.firstMediaUrl([item.cover, item.coverUrl, item.imageUrl, item.image, item.thumbnail]),
 					coverError: false,
 					subject: item.subject,
 					kind: item.kind,
@@ -146,9 +150,19 @@ export default {
 			item.imageUrl = '/static/home-banner.png';
 			item.imageError = true;
 		},
-		safeMediaUrl(url = '', fallback = '') {
-			const resolved = resolveMediaUrl(url);
-			return isUsableMediaUrl(resolved) ? resolved : fallback;
+		firstMediaUrl(values = [], fallback = '') {
+			return resolveMediaList(values)[0] || fallback;
+		},
+		bannerItems(value) {
+			if (Array.isArray(value)) return value.map(item => typeof item === 'string' ? { imageUrl: item } : item).filter(Boolean);
+			if (!value) return [];
+			if (typeof value === 'object') return [value];
+			try {
+				const parsed = JSON.parse(String(value));
+				return this.bannerItems(parsed);
+			} catch (err) {
+				return [{ imageUrl: value }];
+			}
 		},
 		onCatIconError(item = {}) {
 			if (this.$set) this.$set(item, 'iconError', true);
@@ -207,9 +221,9 @@ page { background:#f7f8fa; color-scheme:light; }
 .page { padding-bottom:130rpx; background:#f7f8fa; min-height:100vh; color:#111827; }
 
 .banner { padding: 20rpx 24rpx 8rpx; }
-.banner-swiper { width:100%; height:210rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
-.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:contain; background:#eef2f7; }
-.banner-img :deep(div) { background-size:contain !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.banner-swiper { width:100%; height:220rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
+.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:cover; background:#eef2f7; }
+.banner-img :deep(div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
 
 .cats { display:flex; justify-content:space-around; padding:24rpx 0 14rpx; background:#f7f8fa; }
 .cat { min-width:0; min-height:142rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
@@ -233,14 +247,13 @@ page { background:#f7f8fa; color-scheme:light; }
 
 .grid { display:flex; flex-wrap:wrap; justify-content:space-between; padding:20rpx; }
 .card { width:48.5%; background:#fff; border-radius:16rpx; margin-bottom:24rpx; overflow:hidden; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
-.cover { width:100%; height:200rpx; overflow:hidden; position:relative; }
-.cover-img { width:100%; height:100%; display:block; object-fit:contain; background:#f8fafc; }
-.cover-img :deep(div) { background-size:contain !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.cover { width:100%; height:auto; aspect-ratio:4 / 3; overflow:hidden; position:relative; }
+.cover-img { width:100%; height:100%; display:block; object-fit:cover; background:#f8fafc; }
+.cover-img :deep(div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
 .cover-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#edf5ff,#f8fbff); color:#1677ff; font-size:32rpx; font-weight:900; letter-spacing:2rpx; }
 .course-tag { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.5); color:#fff; font-size:22rpx; padding:8rpx 14rpx; border-top-right-radius:8rpx; }
 .info { padding:16rpx 18rpx 22rpx; }
 .title { font-size:26rpx; color:rgba(0,0,0,0.9); font-weight:700; }
-.sub { font-size:24rpx; color:#666; margin-top:6rpx; }
 .learn { display:inline-block; font-size:22rpx; color:#0d7cfe; background:#eaf0ff; padding:4rpx 14rpx; border-radius:6rpx; margin-top:14rpx; }
 .access-row { margin-top:14rpx; display:flex; align-items:center; flex-wrap:wrap; gap:10rpx; }
 .access-chip { color:#0d7cfe; background:#eaf4ff; font-weight:700; font-size:24rpx; padding:6rpx 14rpx; border-radius:8rpx; }

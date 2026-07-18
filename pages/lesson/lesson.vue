@@ -5,6 +5,7 @@
 			<view class="back" @click="goBack">‹</view>
 			<view class="nav-title">{{title}}</view>
 		</view>
+		<view class="nav-spacer"></view>
 
 		<!-- 视频区 -->
 		<view class="lesson-player">
@@ -190,6 +191,7 @@ export default {
 			currentSeconds: 0,
 			durationSeconds: 0,
 			percent: 0,
+			cumulativePercent: 0,
 			videoError: false,
 			videoErrorTimer: null,
 			videoLoadAttempts: 0,
@@ -198,6 +200,15 @@ export default {
 			videoPlaying: false,
 			progressSaved: false,
 			lastSavedAt: 0,
+			progressSessionId: '',
+			progressSaveSequence: 0,
+			pendingWatchSeconds: 0,
+			lastObservedVideoTime: null,
+			lastProgressObservedAt: 0,
+			progressSaveInFlight: false,
+			progressSaveQueued: false,
+			progressSaveQueuedEnded: false,
+			progressBatch: null,
 			videoContext: null,
 			playbackRate: 1,
 			playbackRates: [1.5, 1, 0.75],
@@ -227,6 +238,7 @@ export default {
 		}
 	},
 	async onLoad(opts) {
+		this.progressSessionId = this.createProgressSessionId();
 		if (opts && opts.title) this.title = this.decodeRouteText(opts.title);
 		this.lessonId = opts && opts.lessonId ? this.decodeRouteText(opts.lessonId) : this.title;
 		if (opts && opts.courseId) this.courseId = this.decodeRouteText(opts.courseId);
@@ -266,6 +278,7 @@ export default {
 		this.setNativeVideoControls(false);
 		this.unbindNativeVideoGuards();
 		this.exitWebFullscreen(false);
+		this.persistProgress(false);
 	},
 	computed: {
 		watermarkText() {
@@ -295,6 +308,9 @@ export default {
 		}
 	},
 	methods: {
+		createProgressSessionId() {
+			return `lesson-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+		},
 		decodeRouteText(value = '') {
 			let text = String(value || '');
 			for (let index = 0; index < 3; index += 1) {
@@ -354,7 +370,8 @@ export default {
 				if (data.progress) {
 					this.initialTime = this.safeSeconds(data.progress.currentTime);
 					this.currentSeconds = this.initialTime;
-					this.percent = Number(data.progress.percent) || 0;
+					this.percent = Math.max(0, Math.min(100, Number(data.progress.percent) || 0));
+					this.cumulativePercent = Math.max(0, Number(data.progress.cumulativePercent) || this.percent);
 					this.curTime = this.formatTime(this.currentSeconds);
 				}
 			} catch (err) {
@@ -454,7 +471,9 @@ export default {
 		async loadRatingState() {
 			try {
 				const data = await getLessonRatingApi(this.lessonId || this.title);
-				this.myRating = Number(data.rating && data.rating.rating) || 0;
+				const ratingValue = data && typeof data.rating === 'object' ? data.rating.rating : (data && data.rating);
+				const rating = Number(ratingValue);
+				this.myRating = rating >= 1 && rating <= 5 ? rating : 0;
 			} catch (err) {
 				console.warn('评分接口不可用', err);
 			}
@@ -691,12 +710,16 @@ export default {
 		},
 		onPlay() {
 			this.videoPlaying = true;
+			const video = this.nativeVideoElement();
+			this.lastObservedVideoTime = this.safeSeconds(video && video.currentTime);
+			this.lastProgressObservedAt = Date.now();
 			this.scheduleControlsHide();
 		},
 		onPause() {
 			this.videoPlaying = false;
 			this.showControls();
 			this.clearControlsHideTimer();
+			this.persistProgress(false);
 		},
 		onVideoTap() {
 			if (this.controlsWereHiddenOnTouch || !this.controlsVisible) {
@@ -806,11 +829,15 @@ export default {
 			this.currentSeconds = safeSeconds;
 			this.curTime = this.formatTime(safeSeconds);
 			this.percent = Math.min(100, Math.round(safeRatio * 100));
+			this.lastObservedVideoTime = safeSeconds;
+			this.lastProgressObservedAt = Date.now();
 			this.progressSaved = false;
 		},
 		onTimeUpdate(e) {
 			const detail = e.detail || {};
-			this.currentSeconds = this.safeSeconds(detail.currentTime);
+			const nextSeconds = this.safeSeconds(detail.currentTime);
+			this.accumulateWatchProgress(nextSeconds);
+			this.currentSeconds = nextSeconds;
 			const duration = this.safeSeconds(detail.duration);
 			if (duration > 0) this.durationSeconds = duration;
 			this.curTime = this.formatTime(this.currentSeconds);
@@ -820,11 +847,26 @@ export default {
 			if (Date.now() - this.lastSavedAt > 8000) this.persistProgress(false);
 		},
 		onEnded() {
+			this.accumulateWatchProgress(this.durationSeconds || this.currentSeconds);
+			this.currentSeconds = this.durationSeconds || this.currentSeconds;
 			this.percent = 100;
 			this.videoPlaying = false;
 			this.showControls();
 			this.clearControlsHideTimer();
 			this.persistProgress(true);
+		},
+		accumulateWatchProgress(nextSeconds) {
+			const next = this.safeSeconds(nextSeconds);
+			const previous = Number(this.lastObservedVideoTime);
+			const now = Date.now();
+			if (this.videoPlaying && Number.isFinite(previous) && next >= previous) {
+				const delta = next - previous;
+				const wallSeconds = this.lastProgressObservedAt > 0 ? Math.max(0, (now - this.lastProgressObservedAt) / 1000) : 0;
+				const allowedDelta = Math.max(2, wallSeconds * Math.max(1, Number(this.playbackRate) || 1) + 1.5);
+				if (delta > 0) this.pendingWatchSeconds += Math.min(delta, allowedDelta);
+			}
+			this.lastObservedVideoTime = next;
+			this.lastProgressObservedAt = now;
 		},
 		onVideoError() {
 			this.videoPlaying = false;
@@ -978,9 +1020,28 @@ export default {
 		},
 		async persistProgress(ended) {
 			if (!isLoggedIn() || !this.videoUrl) return;
+			if (!ended && this.safeSeconds(this.currentSeconds) < 3 && this.pendingWatchSeconds <= 0) return;
+			if (this.progressSaveInFlight) {
+				this.progressSaveQueued = true;
+				this.progressSaveQueuedEnded = this.progressSaveQueuedEnded || !!ended;
+				return;
+			}
+			if (!this.progressBatch) {
+				const watchDelta = Math.max(0, Math.round(this.pendingWatchSeconds * 1000) / 1000);
+				this.progressSaveSequence += 1;
+				this.progressBatch = {
+					id: `${this.progressSessionId}:${this.progressSaveSequence}`,
+					watchDelta,
+					ended: !!ended
+				};
+			} else if (ended) {
+				this.progressBatch.ended = true;
+			}
+			const batch = this.progressBatch;
+			this.progressSaveInFlight = true;
 			this.lastSavedAt = Date.now();
 			try {
-				await saveLessonProgress(this.lessonId || this.title, {
+				const saved = await saveLessonProgress(this.lessonId || this.title, {
 					lessonTitle: this.title,
 					sourceLessonTitle: this.lessonId || this.title,
 					courseId: this.courseId,
@@ -988,12 +1049,27 @@ export default {
 					currentTime: this.currentSeconds,
 					duration: this.durationSeconds,
 					percent: this.percent,
-					ended
+					ended: batch.ended,
+					watchDelta: batch.watchDelta,
+					progressSessionId: this.progressSessionId,
+					progressEventId: batch.id
 				});
+				this.pendingWatchSeconds = Math.max(0, this.pendingWatchSeconds - batch.watchDelta);
+				this.cumulativePercent = Math.max(this.cumulativePercent, Number(saved && saved.cumulativePercent) || 0);
+				this.progressBatch = null;
 				this.progressSaved = true;
-				if (ended || Number(this.percent) >= 95) this.markLocalLessonUnlocked('videos');
+				if (batch.ended || Number(saved && saved.bestPercent) >= 95 || Number(this.percent) >= 95) this.markLocalLessonUnlocked('videos');
 			} catch (err) {
 				console.warn('学习进度保存失败', err);
+			} finally {
+				this.progressSaveInFlight = false;
+				const queued = this.progressSaveQueued;
+				const queuedEnded = this.progressSaveQueuedEnded;
+				this.progressSaveQueued = false;
+				this.progressSaveQueuedEnded = false;
+				if (queued && (queuedEnded || this.pendingWatchSeconds > 0)) {
+					setTimeout(() => this.persistProgress(queuedEnded), 0);
+				}
 			}
 		},
 		formatTime(seconds = 0) {
@@ -1072,11 +1148,20 @@ page { background:#fff; }
 .page { min-height:100vh; background:#fff; padding-bottom:150rpx; color-scheme:light; }
 
 .nav {
-	position:relative;
+	position:fixed;
+	top:0;
+	left:50%;
+	z-index:1000;
+	width:100%;
+	max-width:var(--wk-app-width, 430px);
+	box-sizing:border-box;
+	transform:translateX(-50%);
 	height:90rpx;
 	display:flex; align-items:center; justify-content:center;
 	border-bottom:1rpx solid #eef0f3;
+	background:#fff;
 }
+.nav-spacer { height:90rpx; }
 .back { position:absolute; left:24rpx; font-size:46rpx; font-weight:300; color:#222; cursor:pointer; }
 .nav-title {
 	max-width:560rpx;
@@ -1623,7 +1708,8 @@ page { background:#fff; }
 	cursor:pointer;
 }
 .star-item.active { color:#f5b42a; }
-.star-item.disabled { opacity:.65; cursor:default; }
+.star-item.disabled { cursor:default; }
+.star-item.active.disabled { opacity:1; }
 .star-icon {
 	font-size:44rpx;
 	line-height:48rpx;

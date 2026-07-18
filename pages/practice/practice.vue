@@ -43,13 +43,30 @@
 					<view class="reading-sub-card" v-for="(sub, subIndex) in subQuestions(q)" :key="sub.id">
 						<view class="reading-sub-head">小题 {{i + 1}}.{{subIndex + 1}}</view>
 						<math-rich-text class="reading-sub-stem" :text="sub.stem" />
+						<question-audio-player :src="stemAudio(sub)" />
+						<view v-if="imageList(sub.stemImageUrl).length" class="image-stack">
+							<image
+								v-for="(url, imageIndex) in imageList(sub.stemImageUrl)"
+								:key="`${sub.id}-stem-${imageIndex}`"
+								class="question-image"
+								:src="url"
+								mode="widthFix"
+								@click="previewMedia(url, imageList(sub.stemImageUrl))"
+							/>
+						</view>
+						<view v-if="fileList(sub.stemFileUrl).length" class="doc-stack">
+							<view v-for="(url, fileIndex) in fileList(sub.stemFileUrl)" :key="`${sub.id}-stem-file-${fileIndex}`" class="doc-card" @click="openFile(url)">
+								<text class="doc-type">{{fileExt(url)}}</text>
+								<text class="doc-name">题干资料 {{fileIndex + 1}}</text>
+							</view>
+						</view>
 						<block v-if="questionType(sub) === 'choice'">
 							<view class="option" v-for="(opt, idx) in sub.options" :key="idx" :class="{active: answers[sub.id] === idx}" @click="answers[sub.id] = idx">
 								<text class="radio">{{answers[sub.id] === idx ? '●' : '○'}}</text>
 								<view class="option-body">
 									<math-rich-text v-if="opt" :text="opt" />
 									<text v-else class="image-option-label">图片选项</text>
-									<image v-if="optionImage(sub, idx)" class="option-image" :src="optionImage(sub, idx)" mode="widthFix" @click.stop="previewMedia(optionImage(sub, idx), imageList(sub.optionImageUrls || sub.optionImages || sub.optionImageUrl))" />
+									<image v-if="optionImage(sub, idx)" class="option-image" :src="optionImage(sub, idx)" mode="widthFix" @click.stop="previewMedia(optionImage(sub, idx), imageList([sub.optionImageUrls, sub.optionImages, sub.optionImageUrl]))" />
 								</view>
 							</view>
 						</block>
@@ -133,7 +150,7 @@
 					<view class="option-body">
 						<math-rich-text v-if="opt" :text="opt" />
 						<text v-else class="image-option-label">图片选项</text>
-						<image v-if="optionImage(q, idx)" class="option-image" :src="optionImage(q, idx)" mode="widthFix" @click.stop="previewMedia(optionImage(q, idx), imageList(q.optionImageUrls || q.optionImages || q.optionImageUrl))" />
+						<image v-if="optionImage(q, idx)" class="option-image" :src="optionImage(q, idx)" mode="widthFix" @click.stop="previewMedia(optionImage(q, idx), imageList([q.optionImageUrls, q.optionImages, q.optionImageUrl]))" />
 					</view>
 				</view>
 			</block>
@@ -297,7 +314,7 @@
 </template>
 
 <script>
-import { decodeRouteText, getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, isUsableMediaUrl, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
+import { decodeRouteText, getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, isUsableMediaUrl, normalizeMediaList, resolveMediaList, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
 import MathRichText from '@/components/math-rich-text.vue'
@@ -579,8 +596,7 @@ export default {
 			}
 		},
 		mediaList(value) {
-			if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
-			return String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+			return normalizeMediaList(value);
 		},
 		mediaUrl(url) {
 			const media = resolveMediaUrl(url);
@@ -588,7 +604,7 @@ export default {
 		},
 		isStableMediaUrl(url) {
 			const value = String(url || '').trim();
-			return isUsableMediaUrl(value) && /^(https?:\/\/|\/(profile|upload|uploads)\/)/i.test(value);
+			return isUsableMediaUrl(value) && /^(https?:\/\/|\/course\/app\/media\?|\/(?:profile|upload|uploads)\/)/i.test(value);
 		},
 		stableMediaUrl(url) {
 			const value = this.mediaUrl(url);
@@ -606,25 +622,27 @@ export default {
 			return this.mediaUrl(item.stemAudioUrl || item.questionAudioUrl || item.audioUrl || item.stemAudio);
 		},
 		imageList(value) {
-			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(url => url && isUsableMediaUrl(url));
+			return resolveMediaList(value);
 		},
 		fileList(value) {
-			return this.mediaList(value).map(url => this.mediaUrl(url)).filter(url => url && isUsableMediaUrl(url));
+			return resolveMediaList(value);
 		},
 		normalizeQuestionMedia(item = {}) {
 			return {
 				...item,
-				stemImageUrl: this.imageList(item.stemImageUrl || item.questionImageUrl || item.stemImage || item.imageUrl || item.imageUrls || item.images || item.questionImages).join(','),
+				stemImageUrl: this.imageList([item.stemImageUrls, item.stemImageUrl, item.questionImageUrl, item.stemImage, item.imageUrl, item.imageUrls, item.images, item.questionImages]).join(','),
 				stemAudioUrl: this.stemAudio(item),
-				stemFileUrl: this.fileList(item.stemFileUrl || item.questionFileUrl || item.stemFile || item.fileUrl || item.files || item.questionFiles).join(','),
-				optionImageUrls: this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl),
+				stemFileUrl: this.fileList([item.stemFileUrl, item.questionFileUrl, item.stemFile, item.fileUrl, item.files, item.questionFiles]).join(','),
+				optionImageUrls: this.imageList([item.optionImageUrls, item.optionImages, item.optionImageUrl]),
 				subQuestions: this.normalizeSubQuestions(item),
-				answerImageUrl: this.imageList(item.answerImageUrl).join(','),
-				studentAnswerImageUrl: this.imageList(item.studentAnswerImageUrl || item.studentAnswerImages || item.answerImages)[0] || '',
-				studentAnswerImages: this.imageList(item.studentAnswerImages || item.studentAnswerImageUrl || item.answerImages),
-				answerFileUrl: this.fileList(item.answerFileUrl).join(','),
-				analysisImageUrl: this.imageList(item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl).join(','),
-				analysisFileUrl: this.fileList(item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl).join(','),
+				answerImageUrl: this.imageList([item.answerImageUrl, item.answerImageUrls]).join(','),
+				answerImageUrls: this.imageList([item.answerImageUrl, item.answerImageUrls]),
+				studentAnswerImageUrl: this.imageList([item.studentAnswerImageUrl, item.studentAnswerImages, item.answerImages])[0] || '',
+				studentAnswerImages: this.imageList([item.studentAnswerImages, item.studentAnswerImageUrl, item.answerImages]),
+				answerFileUrl: this.fileList([item.answerFileUrl, item.answerDocUrl, item.answerDocumentUrl]).join(','),
+				analysisImageUrl: this.imageList([item.analysisImageUrls, item.analysisImageUrl, item.imageAnalysisUrl, item.explainImageUrl]).join(','),
+				analysisImageUrls: this.imageList([item.analysisImageUrls, item.analysisImageUrl, item.imageAnalysisUrl, item.explainImageUrl]),
+				analysisFileUrl: this.fileList([item.analysisFileUrl, item.explainFileUrl, item.analysisDocUrl]).join(','),
 				videoAnalysisUrl: this.mediaUrl(item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl)
 			};
 		},
@@ -637,15 +655,18 @@ export default {
 					id,
 					parentQuestionId: parentId,
 					questionType: this.questionType(sub),
-					stemImageUrl: this.imageList(sub.stemImageUrl || sub.questionImageUrl || sub.stemImage || sub.imageUrl || sub.imageUrls || sub.images || sub.questionImages).join(','),
-					stemFileUrl: this.fileList(sub.stemFileUrl || sub.questionFileUrl || sub.stemFile || sub.fileUrl || sub.files || sub.questionFiles).join(','),
-					optionImageUrls: this.imageList(sub.optionImageUrls || sub.optionImages || sub.optionImageUrl),
-					answerImageUrl: this.imageList(sub.answerImageUrl).join(','),
-					studentAnswerImageUrl: this.imageList(sub.studentAnswerImageUrl || sub.studentAnswerImages || sub.answerImages)[0] || '',
-					studentAnswerImages: this.imageList(sub.studentAnswerImages || sub.studentAnswerImageUrl || sub.answerImages),
-					answerFileUrl: this.fileList(sub.answerFileUrl).join(','),
-					analysisImageUrl: this.imageList(sub.analysisImageUrl || item.analysisImageUrl || item.imageAnalysisUrl || item.explainImageUrl).join(','),
-					analysisFileUrl: this.fileList(sub.analysisFileUrl || item.analysisFileUrl || item.explainFileUrl || item.analysisDocUrl).join(','),
+					stemImageUrl: this.imageList([sub.stemImageUrls, sub.stemImageUrl, sub.questionImageUrl, sub.stemImage, sub.imageUrl, sub.imageUrls, sub.images, sub.questionImages]).join(','),
+					stemAudioUrl: this.stemAudio(sub),
+					stemFileUrl: this.fileList([sub.stemFileUrl, sub.questionFileUrl, sub.stemFile, sub.fileUrl, sub.files, sub.questionFiles]).join(','),
+					optionImageUrls: this.imageList([sub.optionImageUrls, sub.optionImages, sub.optionImageUrl]),
+					answerImageUrl: this.imageList([sub.answerImageUrl, sub.answerImageUrls]).join(','),
+					answerImageUrls: this.imageList([sub.answerImageUrl, sub.answerImageUrls]),
+					studentAnswerImageUrl: this.imageList([sub.studentAnswerImageUrl, sub.studentAnswerImages, sub.answerImages])[0] || '',
+					studentAnswerImages: this.imageList([sub.studentAnswerImages, sub.studentAnswerImageUrl, sub.answerImages]),
+					answerFileUrl: this.fileList([sub.answerFileUrl, sub.answerDocUrl, sub.answerDocumentUrl]).join(','),
+					analysisImageUrl: this.imageList([sub.analysisImageUrls, sub.analysisImageUrl, item.analysisImageUrls, item.analysisImageUrl, item.imageAnalysisUrl, item.explainImageUrl]).join(','),
+					analysisImageUrls: this.imageList([sub.analysisImageUrls, sub.analysisImageUrl, item.analysisImageUrls, item.analysisImageUrl, item.imageAnalysisUrl, item.explainImageUrl]),
+					analysisFileUrl: this.fileList([sub.analysisFileUrl, item.analysisFileUrl, item.explainFileUrl, item.analysisDocUrl]).join(','),
 					videoAnalysisUrl: this.mediaUrl(sub.videoAnalysisUrl || item.videoAnalysisUrl || item.analysisVideoUrl || item.explainVideoUrl)
 				};
 			});
@@ -661,7 +682,7 @@ export default {
 			return Array.isArray(question.subQuestions) ? question.subQuestions : [];
 		},
 		optionImage(item = {}, index) {
-			const urls = this.imageList(item.optionImageUrls || item.optionImages || item.optionImageUrl);
+			const urls = this.imageList([item.optionImageUrls, item.optionImages, item.optionImageUrl]);
 			return urls[index] || '';
 		},
 		previewMedia(url, urls = []) {

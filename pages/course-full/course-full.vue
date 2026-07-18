@@ -23,7 +23,7 @@
 					<text class="update-date">{{displayUpdateDate}}</text>
 				</view>
 			</view>
-			<view class="course-intro" v-if="courseIntro">{{courseIntro}}</view>
+			<view class="course-intro" v-if="visibleCourseIntro">{{visibleCourseIntro}}</view>
 			<view class="version-stats" v-if="versionSummaries.length">
 				<view class="version-stat" v-for="item in versionSummaries" :key="item.label">
 					<text class="version-stat-name">{{item.label}}</text>
@@ -239,6 +239,7 @@ export default {
 			localUnlockedPractices: [],
 			wechatId: 'DYR7314',
 			courseId: 'gk-math-full',
+			courseLoaded: false,
 			reinforceList: [],
 			reinforceLoaded: false,
 			knowledgeChapters: [],
@@ -252,7 +253,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFit';
+			return 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -261,6 +262,14 @@ export default {
 		},
 		displayCourseName() {
 			return cleanCourseDisplayName(this.courseName, this.title);
+		},
+		visibleCourseIntro() {
+			const intro = String(this.courseIntro || '').trim();
+			if (!intro) return '';
+			const normalize = value => stripCourseYear(String(value || ''))
+				.replace(/[《》【】\[\]（）()\s]/g, '')
+				.toLowerCase();
+			return normalize(intro) === normalize(this.displayCourseName) ? '' : intro;
 		},
 		displayUpdateDate() {
 			return this.formatCourseDate(this.updatedAt);
@@ -321,6 +330,7 @@ export default {
 		// 每次进入/返回都刷新解锁状态（看完上一节后下一节自动解锁）
 		this.loadLocalLessonUnlocks();
 		this.loadLessonLocks();
+		if (this.courseLoaded && this.courseId) this.loadCourse(this.courseId);
 	},
 	methods: {
 		decodeRouteText(value = '') {
@@ -386,6 +396,7 @@ export default {
 			}
 		},
 		applyRemoteCourse(course) {
+			const activeVersion = this.courseLoaded ? this.versionIndex : 0;
 			this.courseId = course.id || this.courseId;
 			this.reinforceLoaded = false;
 			this.reinforceList = [];
@@ -406,7 +417,8 @@ export default {
 			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = Array.isArray(course.quizzes) ? course.quizzes : [];
 			this.applyCourseAccess(course);
-			this.setVersion(0);
+			this.setVersion(Math.min(activeVersion, Math.max(0, this.versions.length - 1)));
+			this.courseLoaded = true;
 			this.loadLessonLocks();
 		},
 		applyCourseAccess(course = {}) {
@@ -461,6 +473,7 @@ export default {
 			else lesson.open = !lesson.open;
 		},
 		applyMathCourse() {
+			const activeVersion = this.courseLoaded ? this.versionIndex : 0;
 			const course = getGaokaoMathCourse('full');
 			this.courseId = 'gk-math-full';
 			this.reinforceLoaded = false;
@@ -483,7 +496,8 @@ export default {
 			this.quizzes = course.quizzes;
 			this.locked = false;
 			this.showFooter = false;
-			this.setVersion(0);
+			this.setVersion(Math.min(activeVersion, Math.max(0, this.versions.length - 1)));
+			this.courseLoaded = true;
 			this.loadLessonLocks();
 		},
 		setVersion(i) {
@@ -634,6 +648,8 @@ export default {
 		},
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
+			const cumulative = Number(item.cumulativePercent ?? item.studyPercent);
+			if (Number.isFinite(cumulative)) return `${Math.max(0, Math.round(cumulative))}%`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
 		versionLabel(version, index) {
@@ -1335,16 +1351,14 @@ page { background:#f5f7fa; }
 	box-shadow:0 10rpx 24rpx rgba(31,41,51,.045);
 	background:#f8fafc;
 }
-.cover-banner,
-.cover-poster {
-	height:264rpx;
-}
+.cover-banner { height:auto; aspect-ratio:1476 / 472; }
+.cover-poster { height:auto; aspect-ratio:4 / 3; }
 .cover-img {
-	object-fit:contain;
+	object-fit:cover;
 	background:#f8fafc;
 }
 .cover-img :deep(div) {
-	background-size:contain !important;
+	background-size:cover !important;
 	background-repeat:no-repeat !important;
 	background-position:center center !important;
 }
@@ -1357,10 +1371,6 @@ page { background:#f5f7fa; }
 	.cover {
 		margin:0;
 		border-radius:0;
-	}
-	.cover-banner,
-	.cover-poster {
-		height:226rpx;
 	}
 	.info-block {
 		margin:0;

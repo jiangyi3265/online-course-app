@@ -49,24 +49,24 @@
 				<strong>{{summaryTotal}}</strong>
 				<small>道错题</small>
 			</view>
-			<view v-if="false" class="summary-item" :class="{active: mode === 'review' && statusFilter === 'pending'}" @click="setReviewStatus('pending')">
+			<view class="summary-item" :class="{active: mode === 'review' && statusFilter === 'pending'}" @click="setReviewStatus('pending')">
 				<text>待温习</text>
 				<strong>{{pendingWrongCount}}</strong>
 				<small>道</small>
 			</view>
-			<view v-if="false" class="summary-item" :class="{active: mode === 'review' && statusFilter === 'mastered'}" @click="setReviewStatus('mastered')">
+			<view class="summary-item" :class="{active: mode === 'review' && statusFilter === 'mastered'}" @click="setReviewStatus('mastered')">
 				<text>已掌握</text>
 				<strong>{{masteredWrongCount}}</strong>
 				<small>道</small>
 			</view>
-			<view v-if="false" class="summary-item weak" :class="{active: mode === 'weak'}" @click="jumpToWeakQuestions">
+			<view class="summary-item weak-summary" :class="{active: mode === 'weak'}" @click="setMode('weak')">
 				<text>短板</text>
 				<strong>{{weakWrongCount}}</strong>
 				<small>道</small>
 			</view>
 		</view>
 
-		<view class="source-filter" v-if="mode !== 'records'">
+		<view class="source-filter">
 			<view class="source-chip" v-for="item in sources" :key="item" :class="{active: source === item}" @click="setSource(item)">{{item}}</view>
 		</view>
 
@@ -81,7 +81,7 @@
 				</view>
 				<math-rich-text class="stem" :text="item.stem || item.question || item.title" />
 				<question-audio-player v-if="stemAudio(item)" :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
+				<image v-for="(url, imageIndex) in questionImages(item)" :key="`${item.id}-stem-${imageIndex}`" v-show="!item.stemImageError" class="question-image" :src="url" mode="aspectFit" @click="previewMedia(url, questionImages(item))" @error.stop="onQuestionImageError(item)" />
 				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点此重试</view>
 				<view class="option-list" v-if="showOptions(item)">
 					<view class="option-row" v-for="(option, optionIndex) in item.options" :key="optionIndex">
@@ -90,6 +90,7 @@
 					</view>
 				</view>
 				<math-rich-text class="answer ok" :text="'正确答案：' + (item.answerText || optionText(item, item.answer || item.correctAnswer))" />
+				<image v-for="(url, imageIndex) in referenceAnswerImages(item)" :key="`${item.id}-answer-${imageIndex}`" class="answer-image" :src="url" mode="aspectFit" @click="previewMedia(url, referenceAnswerImages(item))" />
 				<math-rich-text class="answer bad" :text="'我的答案：' + (item.selectedText || optionText(item, item.selected || item.myAnswer))" />
 				<analysis-viewer :item="item" :text="item.analysis || item.explain" />
 				<view class="row-actions">
@@ -118,9 +119,8 @@
 					<view class="detail-row" v-for="(detail, index) in mediaList(record.questions || record.details)" :key="detail.id || index">
 						<view class="detail-index">题目数：{{index + 1}}</view>
 						<math-rich-text class="detail-stem" :text="detailStem(detail)" />
-						<view class="detail-actions">
-							<button size="mini" @click="showTestRecordDetail(record, detail)">查看测试记录</button>
-							<button size="mini" v-if="detailAnswerImages(detail).length" @click="previewDetailImage(detail)">查看图片</button>
+						<view class="detail-actions" v-if="detailAnswerImages(detail).length">
+							<button size="mini" @click="previewDetailImage(detail)">查看图片</button>
 						</view>
 						<image v-if="detailAnswerImages(detail)[0]" class="answer-image" :src="detailAnswerImages(detail)[0]" mode="aspectFit" @click="previewDetailImage(detail)" />
 						<math-rich-text class="detail-answer ok" :text="'正确答案：' + (detail.correctAnswerText || detail.correctAnswer || '--')" />
@@ -152,9 +152,10 @@
 				</view>
 				<math-rich-text class="stem" :text="item.stem || item.question || item.title" />
 				<question-audio-player v-if="stemAudio(item)" :src="stemAudio(item)" />
-				<image v-if="item.stemImageUrl && !item.stemImageError" class="question-image" :src="mediaUrl(item.stemImageUrl)" mode="aspectFit" @click="previewMedia(item.stemImageUrl)" @error.stop="onQuestionImageError(item)" />
+				<image v-for="(url, imageIndex) in questionImages(item)" :key="`${item.id}-weak-stem-${imageIndex}`" v-show="!item.stemImageError" class="question-image" :src="url" mode="aspectFit" @click="previewMedia(url, questionImages(item))" @error.stop="onQuestionImageError(item)" />
 				<view v-if="item.stemImageError" class="image-fallback" @click="retryQuestionImage(item)">图片加载失败，点此重试</view>
 				<math-rich-text class="answer ok" :text="'正确答案：' + (item.answerText || optionText(item, item.answer || item.correctAnswer))" />
+				<image v-for="(url, imageIndex) in referenceAnswerImages(item)" :key="`${item.id}-weak-answer-${imageIndex}`" class="answer-image" :src="url" mode="aspectFit" @click="previewMedia(url, referenceAnswerImages(item))" />
 				<analysis-viewer :item="item" :text="item.analysis || item.explain" />
 			</view>
 		</view>
@@ -170,7 +171,9 @@ import {
 	getWrongBookSummary,
 	getWrongRetry,
 	isUsableMediaUrl,
+	normalizeMediaList,
 	markWrongMastered,
+	resolveMediaList,
 	resolveMediaUrl,
 	toggleFavorite
 } from '@/common/api.js'
@@ -349,8 +352,20 @@ export default {
 				uni.showToast({ title: '只读查看，不能修改收藏', icon: 'none' })
 				return
 			}
+			const targetId = String(item.questionId || item.targetId || item.rawQuestionId || item.id || '').trim()
+			if (!targetId) {
+				uni.showToast({ title: '题目编号缺失，暂时无法收藏', icon: 'none' })
+				return
+			}
 			try {
-				await toggleFavorite({ type: 'question', id: item.id, courseId: this.courseId })
+				await toggleFavorite({
+					type: 'question',
+					targetId,
+					action: 'add',
+					title: item.stem || item.question || item.title || '',
+					courseId: item.courseId || this.courseId
+				})
+				item.favorited = true
 				uni.showToast({ title: '已加入收藏', icon: 'success' })
 			} catch (err) {
 				uni.showToast({ title: err.message || '收藏失败', icon: 'none' })
@@ -358,11 +373,6 @@ export default {
 		},
 		toggleRecord(record) {
 			this.activeRecordId = this.activeRecordId === record.id ? '' : record.id
-		},
-		showTestRecordDetail(record, detail) {
-			const id = record.id || ''
-			const readOnlyQuery = this.readOnly ? `&readonly=1&studentId=${encodeURIComponent(this.studentId)}` : ''
-			uni.navigateTo({ url: `/pages/practice/practice?recordId=${encodeURIComponent(id)}&questionId=${encodeURIComponent(detail.id || '')}&courseId=${encodeURIComponent(this.courseId)}${readOnlyQuery}` })
 		},
 		detailStem(detail = {}) {
 			const parentStem = detail.parentStem || detail.parentQuestion || ''
@@ -374,17 +384,18 @@ export default {
 			return detail.myAnswerText || detail.selectedText || detail.myAnswer || detail.selected || '--'
 		},
 		detailAnswerImages(detail = {}) {
-			const values = []
-				.concat(this.mediaList(detail.answerImages))
-				.concat(this.mediaList(detail.images))
-				.concat(this.mediaList(detail.imageUrls))
-				.concat(this.mediaList(detail.uploadImages))
-				.concat(this.mediaList(detail.selfReviewImages))
-				.concat(this.mediaList(detail.photoUrls))
-				.concat(this.mediaList(detail.photos))
-				.concat(this.mediaList(detail.answerImageUrl))
-				.concat(this.mediaList(detail.selfReviewImageUrl))
-			return values.map(this.mediaUrl).filter(url => url && isUsableMediaUrl(url))
+			return resolveMediaList([
+				detail.studentAnswerImages,
+				detail.studentAnswerImageUrl,
+				detail.answerImages,
+				detail.images,
+				detail.imageUrls,
+				detail.uploadImages,
+				detail.selfReviewImages,
+				detail.photoUrls,
+				detail.photos,
+				detail.selfReviewImageUrl
+			])
 		},
 		previewDetailImage(detail) {
 			const urls = this.detailAnswerImages(detail)
@@ -396,17 +407,7 @@ export default {
 			return media && isUsableMediaUrl(media) ? media : ''
 		},
 		mediaList(value) {
-			if (Array.isArray(value)) return value
-			if (!value) return []
-			if (typeof value === 'string') {
-				try {
-					const parsed = JSON.parse(value)
-					return Array.isArray(parsed) ? parsed : [value]
-				} catch (err) {
-					return value.split(',').map(item => item.trim()).filter(Boolean)
-				}
-			}
-			return []
+			return normalizeMediaList(value)
 		},
 		stemAudio(item = {}) {
 			return this.mediaUrl(item.audioUrl || item.stemAudio || item.listenAudio || '')
@@ -417,9 +418,16 @@ export default {
 		retryQuestionImage(item) {
 			item.stemImageError = false
 		},
-		previewMedia(url) {
+		questionImages(item = {}) {
+			return resolveMediaList([item.stemImageUrl, item.questionImageUrl, item.stemImage, item.imageUrl, item.imageUrls, item.images])
+		},
+		referenceAnswerImages(item = {}) {
+			return resolveMediaList([item.answerImageUrl, item.answerImageUrls, item.correctAnswerImageUrl, item.correctAnswerImages])
+		},
+		previewMedia(url, urls = []) {
 			const media = this.mediaUrl(url)
-			if (media && isUsableMediaUrl(media)) uni.previewImage({ urls: [media], current: media })
+			const list = resolveMediaList(urls && urls.length ? urls : [media])
+			if (media && isUsableMediaUrl(media) && list.length) uni.previewImage({ urls: list, current: media })
 		},
 		showOptions(item = {}) {
 			return this.mediaList(item.options).length > 0
@@ -434,7 +442,7 @@ export default {
 			return index >= 0 && options[index] ? `${text.toUpperCase()}. ${options[index]}` : (text || '--')
 		},
 		optionImage(item = {}, index) {
-			const image = this.mediaList(item.optionImages)[index]
+			const image = this.mediaList([item.optionImageUrls, item.optionImages, item.optionImageUrl])[index]
 			const media = image ? this.mediaUrl(image) : ''
 			return media && isUsableMediaUrl(media) ? media : ''
 		},
@@ -552,38 +560,65 @@ export default {
 	line-height: 1.45;
 }
 .summary-strip {
-	display: block;
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 8rpx;
 	background: #fff;
-	border-radius: 14rpx;
-	padding: 8rpx;
+	border-radius: 18rpx;
+	padding: 10rpx;
 	margin-bottom: 14rpx;
 }
 .summary-item {
-	min-height: 82rpx;
+	min-width: 0;
+	min-height: 86rpx;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	border-radius: 10rpx;
+	border-radius: 12rpx;
 	background: #f7f9fc;
 	border: 1rpx solid transparent;
+	overflow: hidden;
 }
 .summary-item.active {
 	border-color: #2b7cff;
 	background: #eef6ff;
 }
+.summary-item.total {
+	background: #eef7ff;
+	border-color: #c9e3fb;
+}
+.summary-item.weak-summary {
+	background: #fff7ed;
+	border-color: #f4d8b8;
+}
+.summary-item.weak-summary text,
+.summary-item.weak-summary strong {
+	color: #c45f13;
+}
+.summary-item.weak-summary.active {
+	background: #fff2e2;
+	border-color: #dc7a2f;
+}
 .summary-item text {
 	color: #697386;
-	font-size: 21rpx;
+	font-size: 20rpx;
 	font-weight: 700;
+	max-width: 100%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .summary-item strong {
 	font-size: 32rpx;
-	line-height: 1.1;
+	line-height: 1.05;
+	margin-top: 4rpx;
 }
 .summary-item small {
 	color: #697386;
-	font-size: 19rpx;
+	font-size: 18rpx;
+	margin-top: 2rpx;
+	white-space: nowrap;
 }
 .source-filter {
 	display: grid;

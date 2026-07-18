@@ -18,7 +18,7 @@
 			<view class="member-content">
 				<view class="user-card">
 					<view class="avatar" @click="goProfile">
-						<image v-if="avatarUrl" class="avatar-img" :src="avatarUrl" mode="aspectFill" @error="avatarLoadError=true" />
+						<image v-if="avatarUrl" class="avatar-img" :src="avatarUrl" mode="aspectFill" @error="onAvatarError" />
 						<text v-else class="avatar-letter">{{avatarInitial}}</text>
 					</view>
 					<view class="u-info">
@@ -80,6 +80,7 @@ export default {
 			showModal: false,
 			showInvite: false,
 			avatarLoadError: false,
+			avatarCandidateIndex: 0,
 			userInfo: {},
 			funcs: [
 				{ icon:'referrer', symbol:'荐', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
@@ -109,10 +110,35 @@ export default {
 		inviteQrUrl() {
 			return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(this.inviteLoginUrl)}`;
 		},
+		avatarCandidates() {
+			const raw = String(this.userInfo.avatar || this.userInfo.avatarUrl || '').trim();
+			if (!raw) return [];
+			const candidates = [];
+			const add = value => {
+				const url = String(value || '').trim();
+				if (!url || !isUsableMediaUrl(url) || candidates.includes(url)) return;
+				candidates.push(url);
+			};
+			add(resolveMediaUrl(raw));
+			let stablePath = raw;
+			const proxyMatch = raw.match(/\/course\/app\/media\?[^#]*\bpath=([^&#]+)/i);
+			if (proxyMatch && proxyMatch[1]) {
+				try {
+					stablePath = decodeURIComponent(proxyMatch[1]);
+				} catch (err) {
+					stablePath = proxyMatch[1];
+				}
+			}
+			const absolutePath = stablePath.match(/^https?:\/\/[^/]+(\/(?:prod-api\/)?(?:profile|avatar|upload|uploads)\/[^?#]+)/i);
+			if (absolutePath && absolutePath[1]) stablePath = absolutePath[1];
+			if (/^\/(?:prod-api\/)?(?:profile|avatar|upload|uploads)\//i.test(stablePath)) {
+				add(stablePath.replace(/^\/prod-api/i, ''));
+			}
+			return candidates.map(url => this.avatarVersionedUrl(url));
+		},
 		avatarUrl() {
 			if (this.avatarLoadError) return '';
-			const media = resolveMediaUrl(this.userInfo.avatar || this.userInfo.avatarUrl || '');
-			return media && isUsableMediaUrl(media) ? media : '';
+			return this.avatarCandidates[this.avatarCandidateIndex] || '';
 		},
 		avatarInitial() {
 			const name = String(this.userInfo.name || this.userInfo.nickName || '用户').trim();
@@ -122,11 +148,12 @@ export default {
 	async onShow() {
 		this.logined = isLoggedIn();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
+		this.resetAvatarState();
 		if (this.logined) {
 			try {
 				const profile = await getProfile();
 				this.userInfo = { ...this.userInfo, ...(profile || {}) };
-				this.avatarLoadError = false;
+				this.resetAvatarState();
 				uni.setStorageSync('userInfo', this.userInfo);
 			} catch (err) {
 				console.warn('个人资料刷新失败', err);
@@ -138,6 +165,23 @@ export default {
 		if (!this.logined) this.showModal = true;
 	},
 	methods: {
+		avatarVersionedUrl(url) {
+			const version = String(this.userInfo.updatedAt || this.userInfo.avatarUpdatedAt || '').trim();
+			const isBackendAvatar = /\/course\/app\/media\?|^\/(?:profile|avatar|upload|uploads)\//i.test(url);
+			if (!version || !isBackendAvatar || /^(data:|blob:|file:)/i.test(url)) return url;
+			return `${url}${url.includes('?') ? '&' : '?'}avatarV=${encodeURIComponent(version)}`;
+		},
+		resetAvatarState() {
+			this.avatarLoadError = false;
+			this.avatarCandidateIndex = 0;
+		},
+		onAvatarError() {
+			if (this.avatarCandidateIndex + 1 < this.avatarCandidates.length) {
+				this.avatarCandidateIndex += 1;
+				return;
+			}
+			this.avatarLoadError = true;
+		},
 		syncAgencyFunc() {
 			const route = '/pages/my-agency/my-agency';
 			const index = this.funcs.findIndex(item => item.route === route);

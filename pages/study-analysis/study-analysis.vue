@@ -45,25 +45,33 @@
 		</view>
 
 		<view class="checkin-panel" v-if="showCheckinRecords">
-			<view class="panel-title">打卡记录</view>
-			<view class="empty" v-if="!checkinRecords.length">暂无打卡记录</view>
-			<view class="checkin-row" v-for="item in checkinRecords" :key="item.id">
-				<view class="checkin-meta">
-					<view class="checkin-date">{{formatDate(item.updatedAt || item.createdAt || item.date)}}</view>
-					<view class="checkin-course">全科共享</view>
-					<view class="checkin-image-count" v-if="recordImages(item).length">{{recordImages(item).length}}张图片</view>
+			<view class="checkin-panel-head">
+				<view>
+					<view class="panel-title">打卡记录</view>
+					<view class="checkin-panel-sub">所有科目共享，每天保留最新一次打卡</view>
 				</view>
-				<view class="checkin-main">
-					<view class="checkin-content">{{item.content || '已打卡'}}</view>
-					<view class="checkin-images" v-if="recordImages(item).length">
-						<image
-							v-for="(url, index) in recordImages(item)"
-							:key="url + index"
-							class="checkin-thumb"
-							:src="mediaUrl(url)"
-							mode="aspectFill"
-							@click="previewCheckinImages(item, index)"
-						/>
+				<view class="checkin-total">{{checkinRecords.length}}条</view>
+			</view>
+			<view class="empty" v-if="!checkinRecords.length">暂无打卡记录</view>
+			<view class="checkin-list" v-else>
+				<view class="checkin-row" v-for="item in checkinRecords" :key="item.id || item.date">
+					<view class="checkin-dot"></view>
+					<view class="checkin-main">
+						<view class="checkin-top">
+							<view class="checkin-date">{{formatDate(item.updatedAt || item.createdAt || item.date)}}</view>
+							<view class="checkin-image-count" :class="{clickable: recordImages(item).length}" @click="previewCheckinImages(item, 0)">{{recordImages(item).length}}张图片</view>
+						</view>
+						<view class="checkin-content">{{item.content || '已打卡'}}</view>
+						<view class="checkin-images" v-if="recordImages(item).length">
+							<image
+								v-for="(url, index) in recordImages(item)"
+								:key="url + index"
+								class="checkin-thumb"
+								:src="url"
+								mode="aspectFill"
+								@click="previewCheckinImages(item, index)"
+							/>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -106,7 +114,7 @@
 
 <script>
 import { getStudySummary } from '@/common/study-summary.js'
-import { decodeRouteText, getStudyCheckins, getStudyReport, getStudySummaryApi, getMyCourses, getMyStudents, isLoggedIn, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
+import { decodeRouteText, getStudyCheckins, getStudyReport, getStudySummaryApi, getMyCourses, getMyStudents, isLoggedIn, resolveMediaList } from '@/common/api.js'
 import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 
@@ -284,16 +292,7 @@ export default {
 			return Object.values(byKey).sort((a, b) => this.checkinTime(b) - this.checkinTime(a));
 		},
 		recordImages(item = {}) {
-			const raw = item.images || item.imageUrls || item.photos || item.photoUrls || item.attachments || item.urls || item.imageUrl || '';
-			const list = Array.isArray(raw) ? raw : String(raw || '').split(/[,\n]/);
-			return list
-				.map(url => resolveMediaUrl(String(url || '').trim()))
-				.filter(url => url && isUsableMediaUrl(url))
-				.slice(0, 9);
-		},
-		mediaUrl(url = '') {
-			const resolved = resolveMediaUrl(url);
-			return isUsableMediaUrl(resolved) ? resolved : '';
+			return resolveMediaList([item.images, item.imageUrls, item.photos, item.photoUrls, item.attachments, item.urls, item.imageUrl]).slice(0, 9);
 		},
 		previewCheckinImages(item = {}, index = 0) {
 			const urls = this.recordImages(item);
@@ -370,14 +369,21 @@ page { background:#f5f7fa; }
 .course-actions { flex:1; display:flex; flex-wrap:wrap; gap:12rpx; justify-content:flex-end; }
 .outline-btn { min-height:58rpx; padding:0 18rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; border:1rpx solid #d7e3f2; color:#1f2933; font-size:25rpx; font-weight:800; background:#fff; box-sizing:border-box; cursor:pointer; }
 .readonly-note { flex-shrink:0; color:#8a929c; font-size:24rpx; font-weight:800; }
-.checkin-row { display:flex; justify-content:space-between; gap:18rpx; padding:18rpx 0; border-top:1rpx solid #eef0f3; }
-.checkin-date { color:#222; font-size:26rpx; font-weight:800; }
-.checkin-course { margin-top:6rpx; color:#697386; font-size:22rpx; }
-.checkin-image-count { display:inline-flex; margin-top:8rpx; padding:4rpx 12rpx; border-radius:999rpx; background:#ecfdf5; color:#0f766e; font-size:21rpx; font-weight:800; }
-.checkin-main { min-width:0; }
-.checkin-content { flex:1; color:#596272; font-size:24rpx; line-height:1.45; text-align:right; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-.checkin-images { display:grid; grid-template-columns:repeat(4, 1fr); gap:10rpx; margin-top:14rpx; }
-.checkin-thumb { width:100%; height:96rpx; border-radius:10rpx; background:#eef2f7; border:1rpx solid #e2e8f0; }
+.checkin-panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; }
+.checkin-panel-sub { margin-top:8rpx; color:#8a94a3; font-size:23rpx; line-height:1.4; }
+.checkin-total { flex-shrink:0; min-width:74rpx; height:48rpx; line-height:48rpx; text-align:center; border-radius:999rpx; background:#eef6ff; color:#2563eb; font-size:23rpx; font-weight:900; }
+.checkin-list { margin-top:18rpx; }
+.checkin-row { display:flex; gap:16rpx; padding:18rpx 0; border-top:1rpx solid #eef2f7; }
+.checkin-row:first-child { border-top:0; padding-top:4rpx; }
+.checkin-dot { width:18rpx; height:18rpx; margin-top:12rpx; border-radius:50%; background:#3aa3f5; box-shadow:0 0 0 8rpx #eaf4ff; flex-shrink:0; }
+.checkin-main { flex:1; min-width:0; }
+.checkin-top { display:flex; align-items:center; justify-content:space-between; gap:14rpx; }
+.checkin-date { color:#1f2933; font-size:26rpx; font-weight:900; }
+.checkin-image-count { flex-shrink:0; padding:6rpx 12rpx; border-radius:999rpx; background:#ecfdf5; border:1rpx solid transparent; color:#0f766e; font-size:22rpx; font-weight:900; }
+.checkin-image-count.clickable { cursor:pointer; border-color:#bbf0dc; box-shadow:0 6rpx 14rpx rgba(15,118,110,.12); }
+.checkin-content { margin-top:10rpx; color:#697386; font-size:24rpx; line-height:1.5; white-space:pre-wrap; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; text-align:left; }
+.checkin-images { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10rpx; margin-top:14rpx; }
+.checkin-thumb { width:100%; height:112rpx; border-radius:10rpx; background:#eef2f7; border:1rpx solid #e1e8f0; box-sizing:border-box; cursor:pointer; }
 .english-title { color:#222; font-size:28rpx; font-weight:900; }
 .english-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14rpx; margin-top:18rpx; }
 .english-item { padding:18rpx; border-radius:8rpx; background:#f8fafc; }
@@ -646,35 +652,9 @@ page { background:#eef3f7; }
 .checkin-panel {
 	padding:28rpx;
 }
-.checkin-panel .panel-title {
-	margin-bottom:14rpx;
-}
-.checkin-row {
-	display:grid;
-	grid-template-columns:180rpx minmax(0, 1fr);
-	gap:20rpx;
-	padding:20rpx;
-	margin-top:14rpx;
-	border:1rpx solid #e6edf5;
-	border-radius:16rpx;
-	background:#f9fbfd;
-}
-.checkin-row:first-of-type {
-	border-top:1rpx solid #e6edf5;
-}
 .checkin-content {
-	display:block;
-	-webkit-line-clamp:unset;
-	overflow:visible;
 	text-align:left;
 	word-break:break-word;
-}
-.checkin-images {
-	grid-template-columns:repeat(5, minmax(0, 1fr));
-}
-.checkin-thumb {
-	height:108rpx;
-	cursor:pointer;
 }
 .report-panel {
 	padding:28rpx;
@@ -724,12 +704,6 @@ page { background:#eef3f7; }
 	align-items:center;
 }
 @media screen and (max-width: 520px) {
-	.checkin-row {
-		grid-template-columns:1fr;
-	}
-	.checkin-images {
-		grid-template-columns:repeat(3, minmax(0, 1fr));
-	}
 	.course-report {
 		grid-template-columns:1fr;
 	}

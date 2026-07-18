@@ -1,6 +1,10 @@
 <template>
 	<view class="page">
-		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">我的校区</view></view>
+		<view class="nav">
+			<view class="back" @click="goBack">‹</view>
+			<view class="nav-title">我的校区</view>
+			<view class="nav-spacer"></view>
+		</view>
 
 		<view class="hero">
 			<view>
@@ -163,10 +167,12 @@ export default {
 
 <style lang="scss">
 page { background:#f6f8fb; }
-.page { min-height:100vh; background:#f6f8fb; padding-bottom:42rpx; box-sizing:border-box; }
-.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
-.back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
-.nav-title { font-size:30rpx; font-weight:900; color:#111827; }
+.page { min-height:100vh; background:#f6f8fb; padding:90rpx 0 42rpx; box-sizing:border-box; }
+.nav { position:fixed; top:0; left:0; right:0; z-index:120; width:100%; height:90rpx; box-sizing:border-box; background:rgba(255,255,255,.97); display:grid; grid-template-columns:96rpx minmax(0,1fr) 96rpx; align-items:center; border-bottom:1rpx solid #e8edf3; box-shadow:0 6rpx 20rpx rgba(30,58,92,.06); backdrop-filter:blur(14rpx); }
+.back { width:96rpx; height:100%; display:flex; align-items:center; justify-content:center; font-size:46rpx; color:#222; cursor:pointer; transition:background-color .2s ease, transform .2s ease; }
+.back:active { background:#f1f5f9; transform:scale(.96); }
+.nav-title { min-width:0; text-align:center; font-size:30rpx; font-weight:900; color:#111827; }
+.nav-spacer { width:96rpx; height:100%; }
 .hero { margin:18rpx 20rpx; padding:22rpx 24rpx; border-radius:16rpx; background:#fff; border:1rpx solid #e3ebf5; display:flex; align-items:center; justify-content:space-between; gap:18rpx; box-shadow:0 8rpx 22rpx rgba(16,24,40,.04); }
 .hero-title { color:#111827; font-size:34rpx; font-weight:900; line-height:1.25; }
 .hero-sub { margin-top:8rpx; color:#667085; font-size:24rpx; }
@@ -203,5 +209,8 @@ page { background:#f6f8fb; }
 	.stat-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 	.panel-head { align-items:flex-start; }
 	.head-actions { flex-direction:column; align-items:flex-end; gap:8rpx; }
+}
+@media screen and (min-width: 768px) {
+	.nav { left:50%; right:auto; width:var(--wk-app-width, 430px); max-width:100vw; transform:translateX(-50%); }
 }
 </style>

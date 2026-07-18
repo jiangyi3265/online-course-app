@@ -98,8 +98,13 @@ function normalizeRawMediaUrl(url = '') {
 }
 
 function backendMediaUrl(path = '', search = '', hash = '') {
+	const normalizedPath = String(path || '').replace(/^\/prod-api/i, '')
+	const mediaPath = `${normalizedPath}${search || ''}`
+	if (!/\.(m3u8|mpd|mp4|webm|mov|m4v|mp3|wav|aac|m4a|ogg)(?:$|[?#])/i.test(mediaPath)) {
+		return encodeMediaUrl(`${getBaseUrl(false)}/media?path=${encodeURIComponent(mediaPath)}`)
+	}
 	const origin = getApiOrigin() || (isH5Runtime() ? window.location.origin : '')
-	return encodeMediaUrl(`${origin}${path}${search}${hash}`)
+	return encodeMediaUrl(`${origin}${normalizedPath}${search}${hash}`)
 }
 
 export function resolveMediaUrl(url = '') {
@@ -119,11 +124,11 @@ export function resolveMediaUrl(url = '') {
 				const mediaPath = parsed.pathname || ''
 				const isBackendMedia = /^\/(prod-api\/)?(avatar|profile|upload|uploads)\//i.test(mediaPath)
 				const sameHost = parsed.host === window.location.host || parsed.hostname === window.location.hostname || parsed.host === apiHost
+				if (isBackendMedia) {
+					return backendMediaUrl(mediaPath, parsed.search, parsed.hash)
+				}
 				if (!isLocalHost() && isLoopbackUrl(value)) {
 					return encodeMediaUrl(`${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`)
-				}
-				if (!isLocalHost() && isBackendMedia) {
-					return backendMediaUrl(mediaPath.replace(/^\/prod-api/i, ''), parsed.search, parsed.hash)
 				}
 				if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && (sameHost || isBackendMedia)) {
 					parsed.protocol = 'https:'
@@ -146,7 +151,40 @@ export function resolveMediaUrl(url = '') {
 export function isUsableMediaUrl(url = '') {
 	const value = String(url || '').trim()
 	if (!value) return false
-	return !/^(blob:|file:|wxfile:|data:|http:\/\/tmp|https?:\/\/tmp)/i.test(value)
+	return !/^(blob:|file:|wxfile:|content:|capacitor:|data:|https?:\/\/(?:tmp|localhost\.local)|https?:\/\/[^/]+\/tmp(?:\/|$))/i.test(value)
+}
+
+export function normalizeMediaList(value) {
+	if (value === undefined || value === null || value === '') return []
+	if (Array.isArray(value)) {
+		return value.flatMap(item => normalizeMediaList(item)).filter(Boolean)
+	}
+	if (typeof value === 'object') {
+		return normalizeMediaList(value.url || value.fileName || value.path || value.src || value.value || '')
+	}
+	const text = String(value || '').trim()
+	if (!text) return []
+	if ((text.startsWith('[') && text.endsWith(']')) || (text.startsWith('{') && text.endsWith('}'))) {
+		try {
+			return normalizeMediaList(JSON.parse(text))
+		} catch (err) {}
+	}
+	return text.split(/[,\n]/).map(item => item.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
+}
+
+export function resolveMediaList(value) {
+	return Array.from(new Set(normalizeMediaList(value)
+		.map(item => resolveMediaUrl(item))
+		.filter(item => item && isUsableMediaUrl(item))))
+}
+
+export function resolveMediaDownloadUrl(url = '') {
+	const resolved = resolveMediaUrl(url)
+	if (!resolved) return ''
+	if (/\/course\/app\/media\?/i.test(resolved)) {
+		return `${resolved}${resolved.includes('?') ? '&' : '?'}download=1`
+	}
+	return resolved
 }
 
 function buildQuery(params = {}) {

@@ -216,6 +216,7 @@ export default {
 		sortedLearningRecords() {
 			return this.learningRecords
 				.map((item, index) => this.normalizeLearningRecord(item, index))
+				.filter(item => item.durationSeconds >= 3)
 				.sort((a, b) => b.timeValue - a.timeValue);
 		},
 		filteredLearningRecords() {
@@ -347,14 +348,27 @@ export default {
 			const rawTime = item.recordTime || item.learnTime || item.watchTime || item.updatedAt || item.createdAt || item.time || item.date || '';
 			const date = this.toValidDate(rawTime);
 			const title = item.lessonTitle || item.videoTitle || item.videoName || item.chapterTitle || item.chapterName || item.title || item.name || '课程视频';
+			const durationValue = item.durationSeconds ?? item.watchDurationSeconds ?? item.studySeconds ?? item.seconds ?? item.duration ?? item.watchDuration ?? item.learnDuration ?? item.studyTime ?? item.timeLong;
+			const durationSeconds = this.durationSecondsValue(durationValue);
 			return {
 				key: item.id || item.recordId || `${title}-${rawTime}-${index}`,
 				title,
 				timeValue: date ? date.getTime() : 0,
 				timeText: this.formatDateTime(date, rawTime),
 				dateText: this.formatDate(date, rawTime),
-				durationText: this.formatDuration(item.duration || item.watchDuration || item.learnDuration || item.seconds || item.studySeconds || item.studyTime || item.timeLong)
+				durationSeconds,
+				durationText: this.formatDuration(durationSeconds)
 			};
+		},
+		durationSecondsValue(value) {
+			if (value === undefined || value === null || value === '') return 0;
+			if (typeof value === 'number') return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+			const text = String(value).trim();
+			if (/^\d+(?:\.\d+)?$/.test(text)) return Math.max(0, Math.round(Number(text)));
+			const hours = Number((text.match(/(\d+(?:\.\d+)?)\s*小时/) || [])[1] || 0);
+			const minutes = Number((text.match(/(\d+(?:\.\d+)?)\s*分(?:钟)?/) || [])[1] || 0);
+			const seconds = Number((text.match(/(\d+(?:\.\d+)?)\s*秒/) || [])[1] || 0);
+			return Math.max(0, Math.round(hours * 3600 + minutes * 60 + seconds));
 		},
 		toValidDate(value) {
 			if (!value) return null;

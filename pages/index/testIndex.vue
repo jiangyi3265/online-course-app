@@ -127,10 +127,16 @@ export default {
 			return it.isTry ? '直接体验' : '验证后学习';
 		},
 		courseIntro(it = {}) {
+			const title = stripCourseYear(`《${it.full || ''}》${it.suffix || ''}`)
+				.replace(/[《》\s]/g, '')
+				.replace(/试…/g, '试听课');
+			const isDuplicate = value => stripCourseYear(value || '')
+				.replace(/[《》\s]/g, '')
+				.replace(/试…/g, '试听课') === title;
 			const intro = stripCourseYear(it.intro || '');
 			const sub = stripCourseYear(it.sub || '');
-			if (intro && intro !== `《${stripCourseYear(it.full || '')}》`) return intro;
-			return sub;
+			if (intro && !isDuplicate(intro)) return intro;
+			return sub && !isDuplicate(sub) ? sub : '';
 		},
 		markCoverError(item = {}) {
 			this.$set ? this.$set(item, 'coverError', true) : (item.coverError = true);

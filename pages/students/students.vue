@@ -31,8 +31,25 @@
 				</view>
 				<view class="refresh" @click="loadData">{{loading ? '加载中' : '刷新'}}</view>
 			</view>
-			<view class="empty" v-if="!students.length">{{loadError || '暂无学生记录'}}</view>
-			<view class="student-card" v-for="item in students" :key="item.id + item.name">
+			<view class="study-filter" v-if="students.length">
+				<view class="filter-head">
+					<text class="filter-title">学习情况筛选</text>
+					<text class="filter-count">{{filteredStudents.length}} / {{students.length}} 人</text>
+				</view>
+				<scroll-view scroll-x class="filter-scroll" :show-scrollbar="false">
+					<view class="filter-options">
+						<view
+							class="filter-chip"
+							v-for="option in studyFilterOptions"
+							:key="option.value"
+							:class="{active: studyFilter === option.value}"
+							@click="studyFilter = option.value"
+						>{{option.label}}</view>
+					</view>
+				</scroll-view>
+			</view>
+			<view class="empty" v-if="!filteredStudents.length">{{emptyText}}</view>
+			<view class="student-card" v-for="item in filteredStudents" :key="item.id + item.name">
 				<view class="student-top">
 					<view class="student-main">
 						<view class="student-avatar">{{studentInitial(item)}}</view>
@@ -48,6 +65,7 @@
 					<view class="meta-item"><text>地区</text><strong>{{item.region || '--'}}</strong></view>
 					<view class="meta-item meta-permission"><text>权限</text><strong>{{item.permissionText || '只读查看学情'}}</strong></view>
 					<view class="meta-item meta-date"><text>绑定时间</text><strong>{{formatDate(item.bindingCreatedAt || item.createdAt)}}</strong></view>
+					<view class="meta-item meta-study" :class="studyStatusClass(item)"><text>最近学习</text><strong>{{formatStudyTime(item)}}</strong></view>
 				</view>
 				<view class="metric-row">
 					<view class="metric"><text>{{learningValue(item, 'courseCount')}}</text><small>开通课程</small></view>
@@ -72,9 +90,25 @@ export default {
 	data() {
 		return {
 			students: [],
+			studyFilter: 'all',
+			studyFilterOptions: [
+				{ value:'all', label:'全部' },
+				{ value:'inactive3', label:'3天未学' },
+				{ value:'inactive7', label:'7天未学' },
+				{ value:'today', label:'今日参与学习' }
+			],
 			loading: false,
 			loadError: '',
 			form: { phone: '', password: '', smsCode: '' }
+		}
+	},
+	computed: {
+		filteredStudents() {
+			return this.students.filter(item => this.matchesStudyFilter(item));
+		},
+		emptyText() {
+			if (this.loadError) return this.loadError;
+			return this.students.length ? '当前筛选条件下暂无学生' : '暂无学生记录';
 		}
 	},
 	onShow() {
@@ -171,6 +205,37 @@ export default {
 			if (value === undefined || value === null || value === '') return key === 'averageScore' ? '0' : '0';
 			return String(value);
 		},
+		lastStudyAt(item = {}) {
+			return item.lastStudyAt || item.latestStudyAt || (item.learning && (item.learning.lastStudyAt || item.learning.latestStudyAt)) || '';
+		},
+		studyDayDiff(item = {}) {
+			const value = this.lastStudyAt(item);
+			if (!value) return Number.POSITIVE_INFINITY;
+			const match = String(value).match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+			if (!match) return Number.POSITIVE_INFINITY;
+			const studyDay = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+			const now = new Date();
+			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			return Math.floor((today.getTime() - studyDay.getTime()) / 86400000);
+		},
+		matchesStudyFilter(item = {}) {
+			const days = this.studyDayDiff(item);
+			if (this.studyFilter === 'today') return days === 0;
+			if (this.studyFilter === 'inactive3') return days >= 3;
+			if (this.studyFilter === 'inactive7') return days >= 7;
+			return true;
+		},
+		formatStudyTime(item = {}) {
+			const value = this.lastStudyAt(item);
+			return value ? this.formatDate(value) : '暂无学习记录';
+		},
+		studyStatusClass(item = {}) {
+			const days = this.studyDayDiff(item);
+			return {
+				'is-today': days === 0,
+				'is-inactive': days >= 7
+			};
+		},
 		formatDate(value) {
 			if (!value) return '--';
 			const raw = String(value);
@@ -226,6 +291,14 @@ page { background:#f6f8fb; }
 .panel-title { font-size:30rpx; font-weight:900; color:#1f2933; margin-bottom:18rpx; }
 .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; margin-bottom:18rpx; }
 .panel-head .panel-title { margin-bottom:6rpx; }
+.study-filter { margin:4rpx 0 18rpx; padding:18rpx; border-radius:14rpx; background:#f6f9fd; border:1rpx solid #e4ebf4; }
+.filter-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
+.filter-title { color:#344054; font-size:24rpx; font-weight:800; }
+.filter-count { color:#8793a3; font-size:21rpx; }
+.filter-scroll { width:100%; margin-top:14rpx; white-space:nowrap; }
+.filter-options { display:inline-flex; align-items:center; gap:10rpx; min-width:100%; }
+.filter-chip { flex-shrink:0; min-height:54rpx; display:flex; align-items:center; justify-content:center; padding:0 18rpx; border-radius:999rpx; border:1rpx solid #d8e2ee; background:#fff; color:#536174; font-size:23rpx; font-weight:700; box-sizing:border-box; cursor:pointer; }
+.filter-chip.active { border-color:#1769ff; background:#1769ff; color:#fff; box-shadow:0 6rpx 14rpx rgba(23,105,255,.16); }
 .panel-sub { color:#667085; font-size:23rpx; line-height:1.45; }
 .panel-sub.standalone { margin-top:-8rpx; margin-bottom:18rpx; }
 .refresh { flex-shrink:0; min-width:86rpx; height:52rpx; line-height:52rpx; text-align:center; border-radius:10rpx; background:#eef6ff; color:#1677ff; font-size:24rpx; font-weight:800; }
@@ -248,7 +321,11 @@ page { background:#f6f8fb; }
 .source-tag { flex-shrink:0; padding:8rpx 14rpx; border-radius:999rpx; background:#ecfdf3; color:#0f9f6e; font-size:22rpx; font-weight:800; }
 .source-tag.referrer { background:#eef6ff; color:#1677ff; }
 .source-tag.auth { background:#f4f3ff; color:#635bff; }
-.student-meta { display:grid; grid-template-columns:1fr 1fr; gap:8rpx 16rpx; margin-top:18rpx; color:#596272; font-size:25rpx; line-height:1.5; }
+.student-meta { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:8rpx 16rpx; margin-top:18rpx; color:#596272; font-size:25rpx; line-height:1.5; }
+.meta-item { grid-column:span 2; }
+.meta-date, .meta-study { grid-column:span 3; }
+.meta-study.is-today strong { color:#0f9f6e; }
+.meta-study.is-inactive strong { color:#c56a11; }
 .metric-row { display:grid; grid-template-columns:repeat(3, 1fr); gap:12rpx; margin-top:18rpx; }
 .metric { min-height:76rpx; padding:12rpx 8rpx; border-radius:10rpx; background:#f8fafc; border:1rpx solid #edf1f6; text-align:center; box-sizing:border-box; }
 .metric text { display:block; color:#1f2933; font-size:28rpx; font-weight:900; line-height:1.2; }
@@ -371,7 +448,7 @@ page { background:#eef3f7; }
 	border-radius:999rpx;
 }
 .student-meta {
-	grid-template-columns:repeat(3, minmax(0, 1fr));
+	grid-template-columns:repeat(6, minmax(0, 1fr));
 	gap:12rpx;
 	margin-top:20rpx;
 	padding:18rpx;
@@ -380,6 +457,7 @@ page { background:#eef3f7; }
 	color:#405066;
 }
 .meta-item {
+	grid-column:span 2;
 	min-height:64rpx;
 	padding:12rpx 14rpx;
 	border-radius:12rpx;
@@ -402,15 +480,16 @@ page { background:#eef3f7; }
 	line-height:1.35;
 	word-break:break-word;
 }
-.meta-date {
-	display:block;
-	grid-column:1 / -1;
-}
+.meta-date,
+.meta-study { display:block; grid-column:span 3; }
 .meta-date text,
-.meta-date strong {
+.meta-date strong,
+.meta-study text,
+.meta-study strong {
 	margin-top:6rpx;
 }
-.meta-date strong {
+.meta-date strong,
+.meta-study strong {
 	text-align:left;
 	white-space:nowrap;
 	overflow:hidden;
@@ -477,7 +556,7 @@ page { background:#eef3f7; }
 		margin-top:0;
 	}
 	.student-meta {
-		grid-template-columns:repeat(3, minmax(0, 1fr));
+		grid-template-columns:repeat(6, minmax(0, 1fr));
 		gap:8rpx;
 		padding:12rpx;
 	}
@@ -512,10 +591,16 @@ page { background:#eef3f7; }
 	.meta-date {
 		display:block;
 	}
-	.meta-date strong {
+	.meta-date strong,
+	.meta-study strong {
 		margin-top:6rpx;
 		text-align:left;
 		white-space:normal;
+	}
+	.filter-chip {
+		min-height:50rpx;
+		padding:0 16rpx;
+		font-size:22rpx;
 	}
 	.action-row {
 		display:grid;

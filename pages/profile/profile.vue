@@ -90,8 +90,11 @@ export default {
 				success: async res => {
 					this.form.avatar = res.tempFilePaths[0]
 					try {
-						await this.persistAvatarIfNeeded()
-						uni.showToast({ title: '头像已上传', icon: 'success' })
+						const avatar = await this.persistAvatarIfNeeded()
+						const user = await updateProfile({ avatar })
+						this.form = { ...this.form, ...(user || {}), password: '' }
+						saveSession({ user })
+						uni.showToast({ title: '头像已同步', icon: 'success' })
 					} catch (err) {
 						uni.showToast({ title: err.message || '头像上传失败', icon: 'none' })
 					}
