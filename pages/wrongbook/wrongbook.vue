@@ -110,7 +110,7 @@
 					<view class="record-score">得分 {{record.score || 0}}/{{record.totalScore || 100}} 分</view>
 				</view>
 				<view class="record-detail" v-if="activeRecordId === record.id">
-					<view class="detail-row" v-for="(detail, index) in mediaList(record.questions || record.details)" :key="detail.id || index">
+					<view class="detail-row" v-for="(detail, index) in dataList(record.questions || record.details)" :key="detail.id || index">
 						<view class="detail-index">第 {{index + 1}} 题 · <text :class="detail.correct ? 'detail-correct' : 'detail-wrong'">{{detail.correct ? '正确' : '错误'}}</text></view>
 						<math-rich-text class="detail-stem" :text="detailStem(detail)" />
 						<view class="detail-actions" v-if="detailAnswerImages(detail).length">
@@ -200,10 +200,10 @@ export default {
 	},
 	computed: {
 		recordList() {
-			return this.mediaList(this.records.records || this.records.list)
+			return this.dataList(this.records.records || this.records.list)
 		},
 		retryPreview() {
-			return this.mediaList(this.retryPaper.questions).slice(0, 3)
+			return this.dataList(this.retryPaper.questions).slice(0, 3)
 		},
 		summaryTotal() {
 			return Number(this.summary.total || this.summary.totalWrong || this.wrongList.length || 0)
@@ -316,7 +316,7 @@ export default {
 			return items.filter(item => this.sameCourse(item))
 		},
 		scopeCourseRecords(data = {}) {
-			const records = this.mediaList(data.records || data.list).filter(item => this.sameCourse(item))
+			const records = this.dataList(data.records || data.list).filter(item => this.sameCourse(item))
 			return { ...data, records, total: data.total || records.length }
 		},
 		sameCourse(item = {}) {
@@ -405,6 +405,17 @@ export default {
 		},
 		mediaList(value) {
 			return normalizeMediaList(value)
+		},
+		dataList(value) {
+			if (Array.isArray(value)) return value.filter(Boolean)
+			if (!value) return []
+			if (typeof value === 'object') return [value]
+			if (typeof value === 'string' && value.trim().startsWith('[')) {
+				try {
+					return this.dataList(JSON.parse(value))
+				} catch (err) {}
+			}
+			return []
 		},
 		stemAudio(item = {}) {
 			return this.mediaUrl(item.audioUrl || item.stemAudio || item.listenAudio || '')
