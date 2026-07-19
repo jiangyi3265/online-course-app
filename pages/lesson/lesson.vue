@@ -13,7 +13,7 @@
 				<video
 					id="lessonVideo"
 					class="video-player"
-					:src="videoUrl"
+					:src="videoElementSrc"
 					:poster="poster"
 					:initial-time="initialTime"
 					:controls="false"
@@ -55,8 +55,13 @@
 				</view>
 				<view class="video-error" v-if="videoError">
 					<view class="video-error-title">视频暂时无法加载</view>
-					<view class="video-error-sub">请检查网络，或稍后重新进入本讲。</view>
+					<view class="video-error-sub">{{videoErrorMessage}}</view>
 					<view class="video-error-action" @click.stop="retryVideo">重新加载</view>
+				</view>
+				<view class="video-preparing" v-if="videoPreparing && !lessonLocked">
+					<view class="video-preparing-spinner"></view>
+					<view class="video-preparing-title">正在生成安全播放资源</view>
+					<view class="video-preparing-sub">首次转换需要一点时间，完成后会自动开始加载。</view>
 				</view>
 				<view class="lesson-lock" v-if="lessonLocked">
 					<view class="lesson-lock-ico">🔒</view>
@@ -65,7 +70,7 @@
 				</view>
 				<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
 				<!-- 控件与视频融合：覆盖在视频底部；播放时 3 秒无操作自动隐藏 -->
-				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked">
+				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked && !videoPreparing">
 					<view
 						class="player-progress-track"
 						aria-label="视频播放进度（不可拖动）"
@@ -168,6 +173,7 @@
 
 <script>
 import { getCourse, getLessonRatingApi, getLessonVideo, isLoggedIn, resolveMediaUrl, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
+import Hls from 'hls.js'
 export default {
 	data() {
 		return {
@@ -187,8 +193,14 @@ export default {
 			percent: 0,
 			cumulativePercent: 0,
 			videoError: false,
+			videoErrorMessage: '请检查网络，或稍后重新进入本讲。',
 			videoErrorTimer: null,
 			videoLoadAttempts: 0,
+			videoPreparing: false,
+			videoPrepareTimer: null,
+			videoPrepareAttempts: 0,
+			usesHlsJs: false,
+			hlsPlayer: null,
 			lessonLocked: false,
 			lockReason: '',
 			videoPlaying: false,
@@ -250,6 +262,7 @@ export default {
 		this.detectDesktopH5();
 		this.bindFullscreenListener();
 		this.videoContext = uni.createVideoContext('lessonVideo', this);
+		this.configureHlsPlayback();
 		this.applyPlaybackRate();
 		this.applyVolume();
 		this.lockNativeVideoPlayback();
@@ -258,6 +271,8 @@ export default {
 		this.clearSpeedMenuTimer();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
+		this.clearVideoPrepareTimer();
+		this.destroyHlsPlayer();
 		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
 		this.setNativeVideoControls(false);
@@ -276,6 +291,9 @@ export default {
 		this.persistProgress(false);
 	},
 	computed: {
+		videoElementSrc() {
+			return this.usesHlsJs ? '' : this.videoUrl;
+		},
 		watermarkText() {
 			const user = this.userInfo || {};
 			const id = user.id || user.userId || user.user_id || user.uid || user.accountId;
@@ -288,7 +306,7 @@ export default {
 			return !!this.poster && !this.videoPlaying && !this.videoError && !this.lessonLocked && this.currentSeconds <= 0;
 		},
 		showTapPlayLayer() {
-			return !!this.videoUrl && !this.videoPlaying && !this.videoError && !this.lessonLocked;
+			return !!this.videoUrl && !this.videoPlaying && !this.videoError && !this.lessonLocked && !this.videoPreparing;
 		},
 		showLessonOutline() {
 			return false;
@@ -339,21 +357,129 @@ export default {
 			if (typeof document !== 'undefined') document.title = title;
 			this.cleanVideoTooltips();
 		},
+		clearVideoPrepareTimer() {
+			if (!this.videoPrepareTimer) return;
+			clearTimeout(this.videoPrepareTimer);
+			this.videoPrepareTimer = null;
+		},
+		scheduleProtectedVideoRetry(seconds = 3) {
+			this.clearVideoPrepareTimer();
+			this.videoPrepareAttempts += 1;
+			if (this.videoPrepareAttempts > 120) {
+				this.videoPreparing = false;
+				this.videoError = true;
+				this.videoErrorMessage = '安全视频生成超时，请稍后重新进入本讲。';
+				return;
+			}
+			this.videoPrepareTimer = setTimeout(() => {
+				this.videoPrepareTimer = null;
+				this.loadLesson();
+			}, Math.max(2, Number(seconds) || 3) * 1000);
+		},
+		destroyHlsPlayer() {
+			if (this.hlsPlayer) {
+				try { this.hlsPlayer.destroy(); } catch (err) { /* no-op */ }
+				this.hlsPlayer = null;
+			}
+			this.usesHlsJs = false;
+		},
+		setProtectedVideoSource(source = '') {
+			this.destroyHlsPlayer();
+			this.videoUrl = source;
+			if (!source) return;
+			this.$nextTick(() => this.configureHlsPlayback());
+		},
+		configureHlsPlayback() {
+			const source = String(this.videoUrl || '');
+			if (!source || !/\.m3u8(?:$|[?#])/i.test(source)) return;
+			this.$nextTick(() => {
+				const video = this.nativeVideoElement();
+				if (!video) return;
+				const nativeHls = typeof video.canPlayType === 'function'
+					&& !!video.canPlayType('application/vnd.apple.mpegurl');
+				if (nativeHls) {
+					this.usesHlsJs = false;
+					this.lockNativeVideoPlayback();
+					return;
+				}
+				if (!Hls.isSupported()) {
+					this.videoErrorMessage = '当前浏览器不支持安全视频播放，请更新浏览器后重试。';
+					this.videoError = true;
+					return;
+				}
+				this.destroyHlsPlayer();
+				this.usesHlsJs = true;
+				this.$nextTick(() => {
+					const media = this.nativeVideoElement();
+					if (!media) return;
+					const player = new Hls({
+						enableWorker: true,
+						lowLatencyMode: false,
+						backBufferLength: 30,
+						maxBufferLength: 24,
+						maxBufferSize: 24 * 1024 * 1024
+					});
+					this.hlsPlayer = player;
+					player.attachMedia(media);
+					player.on(Hls.Events.MEDIA_ATTACHED, () => player.loadSource(source));
+					player.on(Hls.Events.MANIFEST_PARSED, () => {
+						this.videoError = false;
+						this.lockNativeVideoPlayback();
+					});
+					player.on(Hls.Events.ERROR, (_event, detail) => {
+						if (!detail || !detail.fatal) return;
+						if (detail.type === Hls.ErrorTypes.NETWORK_ERROR && this.videoLoadAttempts < 1) {
+							this.videoLoadAttempts += 1;
+							player.startLoad();
+							return;
+						}
+						if (detail.type === Hls.ErrorTypes.MEDIA_ERROR && this.videoLoadAttempts < 2) {
+							this.videoLoadAttempts += 1;
+							player.recoverMediaError();
+							return;
+						}
+						this.videoErrorMessage = '安全视频连接已失效，请点击重新加载。';
+						this.videoError = true;
+					});
+				});
+			});
+		},
 		async loadLesson() {
 			try {
 				const data = await getLessonVideo(this.lessonId || this.title, this.courseId);
+				this.poster = resolveMediaUrl(data.poster || '');
 				if (data.locked) {
 					// 月卡顺序解锁：本节未解锁，仅展示提示，不加载视频
 					this.lessonLocked = true;
 					this.lockReason = data.lockReason || '请按课程顺序学习后再观看本节';
-					this.videoUrl = '';
+					this.videoPreparing = false;
+					this.clearVideoPrepareTimer();
+					this.setProtectedVideoSource('');
 					return;
 				}
 				this.lessonLocked = false;
+				if (data.preparing || (!data.videoUrl && data.protectionMode && !data.protectionError)) {
+					this.videoPreparing = true;
+					this.videoError = false;
+					this.setProtectedVideoSource('');
+					this.scheduleProtectedVideoRetry(data.retryAfterSeconds || 3);
+					return;
+				}
+				if (data.protectionError) {
+					this.videoPreparing = false;
+					this.clearVideoPrepareTimer();
+					this.setProtectedVideoSource('');
+					this.videoErrorMessage = `安全视频生成失败：${data.protectionError}`;
+					this.videoError = true;
+					return;
+				}
+				this.videoPreparing = false;
+				this.clearVideoPrepareTimer();
+				this.videoPrepareAttempts = 0;
 				this.videoError = false;
+				this.videoErrorMessage = '请检查网络，或稍后重新进入本讲。';
 				this.videoLoadAttempts = 0;
-				this.videoUrl = resolveMediaUrl(data.videoUrl || '');
-				this.poster = resolveMediaUrl(data.poster || '');
+				this.setProtectedVideoSource(resolveMediaUrl(data.videoUrl || ''));
 				if (!this.courseTitle && data.courseTitle) this.courseTitle = data.courseTitle;
 				if (!this.chapterTitle && data.chapterTitle) this.chapterTitle = data.chapterTitle;
 				this.pageTotal = data.pageTotal || 1;
@@ -374,7 +500,9 @@ export default {
 					this.curTime = this.formatTime(this.currentSeconds);
 				}
 			} catch (err) {
+				this.videoPreparing = false;
 				this.videoError = true;
+				this.videoErrorMessage = '视频接口暂时不可用，请检查网络后重试。';
 				console.warn('视频接口不可用', err);
 			}
 		},
@@ -865,11 +993,23 @@ export default {
 		},
 		retryVideo() {
 			this.videoLoadAttempts = 0;
+			if (/\.m3u8(?:$|[?#])/i.test(this.videoUrl || '') || !this.videoUrl) {
+				this.videoError = false;
+				this.videoPrepareAttempts = 0;
+				this.loadLesson();
+				return;
+			}
 			this.reloadVideo(true);
 		},
 		reloadVideo(playAfterReload = false) {
 			const src = this.videoUrl;
 			if (!src) return;
+			if (/\.m3u8(?:$|[?#])/i.test(src)) {
+				this.videoError = false;
+				this.videoPlaying = false;
+				this.setProtectedVideoSource(src);
+				return;
+			}
 			this.clearVideoErrorTimer();
 			this.videoError = false;
 			this.videoPlaying = false;
@@ -1285,6 +1425,29 @@ page { background:#fff; }
 	font-size:24rpx;
 	font-weight:800;
 }
+.video-preparing {
+	position:absolute;
+	inset:0;
+	z-index:8;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	padding:30rpx;
+	text-align:center;
+	background:linear-gradient(145deg, rgba(15,23,42,.94), rgba(30,58,138,.9));
+}
+.video-preparing-spinner {
+	width:48rpx;
+	height:48rpx;
+	border:5rpx solid rgba(255,255,255,.24);
+	border-top-color:#fff;
+	border-radius:50%;
+	animation:video-preparing-spin .85s linear infinite;
+}
+.video-preparing-title { margin-top:20rpx; color:#fff; font-size:30rpx; font-weight:800; }
+.video-preparing-sub { margin-top:10rpx; color:rgba(255,255,255,.76); font-size:23rpx; line-height:1.5; }
+@keyframes video-preparing-spin { to { transform:rotate(360deg); } }
 .lesson-lock {
 	position:absolute;
 	inset:0;
