@@ -764,7 +764,7 @@ export default {
 			return item && item.visible !== false;
 		},
 		hasVideoContent(child = {}, lesson = {}) {
-			return !!String(child.videoUrl || lesson.videoUrl || child.fileUrl || child.url || '').trim();
+			return !!(child.hasVideo || lesson.hasVideo || String(child.videoUrl || lesson.videoUrl || child.fileUrl || child.url || '').trim());
 		},
 		hasPracticeQuestions(child = {}, lesson = {}) {
 			const ids = Array.isArray(child.questionIds) && child.questionIds.length ? child.questionIds : (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
