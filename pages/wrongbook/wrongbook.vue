@@ -5,13 +5,6 @@
 			<view class="nav-title">错题与巩固</view>
 		</view>
 
-		<view class="course-summary">
-			<view class="summary-main">
-				<view class="summary-line"><text>共计 {{summary.chapterCount || course.chapterCount || 0}} 节</text></view>
-				<view class="summary-line"><text>已学节数：{{summary.learnedChapterCount || course.learnedChapterCount || 0}} 节</text><text>已学时长：{{summary.learnedDuration || course.learnedDuration || '--'}}</text></view>
-			</view>
-		</view>
-
 		<view class="action-grid">
 			<view class="action-card" :class="{active: mode === 'review'}" @click="setMode('review')">
 				<view class="action-mark">温</view>
@@ -126,6 +119,7 @@
 						<image v-if="detailAnswerImages(detail)[0]" class="answer-image" :src="detailAnswerImages(detail)[0]" mode="aspectFit" @click="previewDetailImage(detail)" />
 						<math-rich-text class="detail-answer ok" :text="'正确答案：' + (detail.correctAnswerText || detail.correctAnswer || '--')" />
 						<math-rich-text class="detail-answer bad" :text="'我的答案：' + detailMyAnswer(detail)" />
+						<analysis-viewer class="detail-analysis" :item="detail" :text="detail.analysis || detail.explain" />
 					</view>
 				</view>
 			</view>

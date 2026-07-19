@@ -452,11 +452,11 @@ export default {
 			this.showPermissionDenied(feature);
 		},
 		requestPermission(feature = '该功能') {
-			this.showPermissionDenied(feature);
+			this.showPermissionDenied(typeof feature === 'string' ? feature : '该功能');
 		},
 		showPermissionDenied(feature = '该功能') {
 			this.collapseCheckinPanel();
-			this.permissionFeature = feature || '该功能';
+			this.permissionFeature = typeof feature === 'string' && feature.trim() ? feature.trim() : '该功能';
 			this.showPermission = true;
 		},
 		closePermission() {

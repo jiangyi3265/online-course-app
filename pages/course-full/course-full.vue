@@ -275,7 +275,7 @@ export default {
 			return this.formatCourseDate(this.updatedAt);
 		},
 		progressLabel() {
-			return Math.max(0, Math.min(100, Math.round(Number(this.progress) || 0)));
+			return Math.max(0, Math.round(Number(this.progress) || 0));
 		},
 		progressBarWidth() {
 			return Math.min(this.progressLabel, 100);
@@ -649,7 +649,7 @@ export default {
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
 			const cumulative = Number(item.cumulativePercent ?? item.studyPercent);
-			if (Number.isFinite(cumulative)) return `${Math.max(0, Math.min(100, Math.round(cumulative)))}%`;
+			if (Number.isFinite(cumulative)) return `${Math.max(0, Math.round(cumulative))}%`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
 		practiceProgressText(item = {}) {

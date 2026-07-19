@@ -363,10 +363,13 @@ export default {
 				this.durationSeconds = this.safeSeconds(data.duration);
 				this.totalTime = this.formatTime(this.durationSeconds);
 				if (data.progress) {
-					this.initialTime = this.safeSeconds(data.progress.currentTime);
+					const savedTime = this.safeSeconds(data.progress.currentTime);
+					const completedPlayback = data.progress.ended === true
+						|| (this.durationSeconds > 0 && savedTime >= this.durationSeconds - 0.25);
+					this.initialTime = completedPlayback ? 0 : savedTime;
 					this.currentSeconds = this.initialTime;
 					this.percent = Math.max(0, Math.min(100, Number(data.progress.percent) || 0));
-					this.cumulativePercent = Math.max(0, Math.min(100, Number(data.progress.cumulativePercent) || this.percent));
+					this.cumulativePercent = Math.max(0, Number(data.progress.cumulativePercent) || this.percent);
 					this.maxVerifiedVideoTime = this.initialTime;
 					this.curTime = this.formatTime(this.currentSeconds);
 				}
@@ -1028,7 +1031,7 @@ export default {
 					progressEventId: batch.id
 				});
 				this.pendingWatchSeconds = Math.max(0, this.pendingWatchSeconds - batch.watchDelta);
-				this.cumulativePercent = Math.max(this.cumulativePercent, Math.min(100, Number(saved && saved.cumulativePercent) || 0));
+				this.cumulativePercent = Math.max(this.cumulativePercent, Number(saved && saved.cumulativePercent) || 0);
 				this.progressBatch = null;
 				this.progressSaved = true;
 				if (batch.ended || Number(saved && saved.bestPercent) >= 95 || Number(this.percent) >= 95) this.markLocalLessonUnlocked('videos');

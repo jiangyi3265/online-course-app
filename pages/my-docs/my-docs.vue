@@ -124,17 +124,17 @@
 									<view class="score-line">
 										<view class="score-field" :class="{locked: doc.reviewSubmitted || readOnly}">
 											<text>总分</text>
-											<input class="score-input" type="number" v-model="doc.totalScore" :disabled="doc.reviewSubmitted || readOnly" />
+											<input class="score-input" type="number" v-model="doc.totalScore" :disabled="doc.reviewSubmitted || readOnly" @blur="savePaperDraftUi(doc)" />
 											<text class="score-unit">分</text>
 										</view>
 										<view class="score-field" :class="{locked: doc.reviewSubmitted || readOnly}">
 											<text>得分</text>
-											<input class="score-input" type="number" v-model="doc.score" :disabled="doc.reviewSubmitted || readOnly" />
+											<input class="score-input" type="number" v-model="doc.score" :disabled="doc.reviewSubmitted || readOnly" @blur="savePaperDraftUi(doc)" />
 											<text class="score-unit">分</text>
 										</view>
 										<view class="score-field" :class="{locked: doc.reviewSubmitted || readOnly}">
 											<text>错题</text>
-											<input class="score-input small" type="number" v-model="doc.wrongCount" :disabled="doc.reviewSubmitted || readOnly" />
+											<input class="score-input small" type="number" v-model="doc.wrongCount" :disabled="doc.reviewSubmitted || readOnly" @blur="savePaperDraftUi(doc)" />
 											<text class="score-unit">道</text>
 										</view>
 									</view>
@@ -170,6 +170,7 @@ import { getFavorites, getMyDocs, getOfflinePaperReviews, isLoggedIn, isUsableMe
 import { safeNavigateBack } from '@/common/navigation.js'
 
 const REVIEW_KEY = 'offlineExamReviews';
+const PAPER_DRAFT_KEY = 'offlineExamPaperDraftUi';
 const LOCAL_DOCS = [
 	{ id:'local-doc-1', courseId:'gk-math-full', category:'lecture', title:'高考数学集合逻辑讲义.pdf', fileUrl:'#', fileType:'PDF', size:'1.2MB', uploadTime:'2026-05-26T10:11:00', visible:true },
 	{ id:'local-doc-2', courseId:'gk-math-full', category:'lecture', title:'导数极值专题学案.pdf', fileUrl:'#', fileType:'PDF', size:'2.4MB', uploadTime:'2026-05-26T10:11:00', visible:true },
@@ -191,6 +192,7 @@ export default {
 			readOnly:false,
 			list:[],
 			offlineReviews: [],
+			paperDrafts: {},
 			favoriteMap: {},
 			showLogin:false,
 			expandedSections: { lecture:false, paper:false }
@@ -205,6 +207,8 @@ export default {
 		}
 	},
 	onLoad(opts = {}) {
+		this.paperDrafts = this.readPaperDrafts();
+		if (Object.keys(this.paperDrafts).length) this.expandedSections.paper = true;
 		this.courseId = opts.courseId || '';
 		this.studentId = opts.studentId || opts.userId || '';
 		this.readOnly = opts.readonly === '1' || opts.readonly === 'true' || opts.readOnly === '1' || opts.readOnly === 'true';
@@ -455,8 +459,65 @@ export default {
 					decorated.score = '';
 					decorated.wrongCount = '';
 				}
+				if (!decorated.reviewSubmitted) {
+					const draft = this.paperDraftFor(doc);
+					if (draft) {
+						decorated.totalScore = draft.totalScore ?? decorated.totalScore;
+						decorated.score = draft.score ?? decorated.score;
+						decorated.wrongCount = draft.wrongCount ?? decorated.wrongCount;
+						decorated.images = resolveMediaList([draft.images, decorated.images]);
+						decorated.imageCount = decorated.images.length;
+						decorated.paperImageError = false;
+						decorated.reviewExpanded = draft.expanded !== false;
+					}
+				}
 			}
 			return decorated;
+		},
+		readPaperDrafts() {
+			if (typeof window === 'undefined' || !window.sessionStorage) return {};
+			try {
+				return JSON.parse(window.sessionStorage.getItem(PAPER_DRAFT_KEY) || '{}') || {};
+			} catch (err) {
+				return {};
+			}
+		},
+		writePaperDrafts() {
+			if (typeof window === 'undefined' || !window.sessionStorage) return;
+			window.sessionStorage.setItem(PAPER_DRAFT_KEY, JSON.stringify(this.paperDrafts || {}));
+		},
+		paperDraftKey(doc = {}) {
+			return `${this.docCourseId(doc)}:${String(doc.id || '')}`;
+		},
+		paperDraftFor(doc = {}) {
+			return this.paperDrafts[this.paperDraftKey(doc)] || null;
+		},
+		currentPaperDoc(doc = {}) {
+			return this.list.find(item => String(item.id) === String(doc.id) && this.docCourseId(item) === this.docCourseId(doc)) || doc;
+		},
+		savePaperDraftUi(doc = {}) {
+			if (!doc.id || doc.reviewSubmitted) return;
+			const key = this.paperDraftKey(doc);
+			this.paperDrafts = {
+				...this.paperDrafts,
+				[key]: {
+					totalScore: doc.totalScore,
+					score: doc.score,
+					wrongCount: doc.wrongCount,
+					images: this.paperImages(doc),
+					expanded: doc.reviewExpanded !== false,
+					updatedAt: Date.now()
+				}
+			};
+			this.writePaperDrafts();
+		},
+		clearPaperDraftUi(doc = {}) {
+			const key = this.paperDraftKey(doc);
+			if (!this.paperDrafts[key]) return;
+			const next = { ...this.paperDrafts };
+			delete next[key];
+			this.paperDrafts = next;
+			this.writePaperDrafts();
 		},
 		findPaperReview(doc = {}) {
 			if (!doc.id) return null;
@@ -495,6 +556,7 @@ export default {
 		},
 		handlePaperReviewAction(doc = {}) {
 			doc.reviewExpanded = !doc.reviewExpanded;
+			this.savePaperDraftUi(doc);
 		},
 		showPaperUploadAction(doc = {}) {
 			if (this.readOnly || doc.reviewSubmitted) return false;
@@ -548,26 +610,35 @@ export default {
 				uni.showToast({ title:'分数已提交，图片不可更换', icon:'none' });
 				return;
 			}
-			doc.reviewExpanded = true;
+			const activeDoc = this.currentPaperDoc(doc);
+			this.expandedSections.paper = true;
+			activeDoc.reviewExpanded = true;
+			this.savePaperDraftUi(activeDoc);
 			uni.chooseImage({
-				count: append ? Math.max(1, 3 - this.paperImages(doc).length) : 3,
+				count: append ? Math.max(1, 3 - this.paperImages(activeDoc).length) : 3,
 				success: async res => {
 					const images = await this.normalizeChosenPaperImages(res);
+					const target = this.currentPaperDoc(activeDoc);
 					if (!images.length) {
-						doc.paperImageError = true;
+						target.paperImageError = true;
+						target.reviewExpanded = true;
+						this.savePaperDraftUi(target);
 						uni.showToast({ title:'图片上传失败，请重新上传', icon:'none' });
 						return;
 					}
-					const current = append ? this.paperImages(doc) : [];
-					doc.images = Array.from(new Set(current.concat(images))).slice(0, 3);
-					doc.imageCount = doc.images.length;
-					doc.paperImageError = false;
-					if (!doc.reviewSubmitted) {
-						if (doc.totalScore === 0 || doc.totalScore === '0') doc.totalScore = '';
-						if (doc.score === 0 || doc.score === '0') doc.score = '';
-						if (doc.wrongCount === 0 || doc.wrongCount === '0') doc.wrongCount = '';
+					const current = append ? this.paperImages(target) : [];
+					target.images = Array.from(new Set(current.concat(images))).slice(0, 3);
+					target.imageCount = target.images.length;
+					target.paperImageError = false;
+					target.reviewExpanded = true;
+					if (!target.reviewSubmitted) {
+						if (target.totalScore === 0 || target.totalScore === '0') target.totalScore = '';
+						if (target.score === 0 || target.score === '0') target.score = '';
+						if (target.wrongCount === 0 || target.wrongCount === '0') target.wrongCount = '';
 					}
-					uni.showToast({ title:`已选择${doc.images.length}张，保存后生效`, icon:'none' });
+					this.savePaperDraftUi(target);
+					this.$nextTick(() => { target.reviewExpanded = true; });
+					uni.showToast({ title:`已选择${target.images.length}张，请继续添加或保存`, icon:'none' });
 				}
 			});
 		},
@@ -677,6 +748,7 @@ export default {
 			doc.imageCount = Number(saved.imageCount || doc.images.length || 0);
 			doc.reviewSubmitted = true;
 			doc.reviewExpanded = true;
+			this.clearPaperDraftUi(doc);
 			uni.showToast({ title:'试卷自评已保存', icon:'success' });
 		},
 		formatDateTime(value) {
