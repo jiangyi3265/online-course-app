@@ -68,15 +68,9 @@
 				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked">
 					<view
 						class="player-progress-track"
-						@click.stop="seekByClick"
-						@mousedown.stop.prevent="startSeekDrag"
-						@touchstart.stop.prevent="startSeekDrag"
-						@touchmove.stop.prevent="onSeekDrag"
-						@touchend.stop.prevent="endSeekDrag"
-						@touchcancel.stop.prevent="endSeekDrag"
+						aria-label="视频播放进度（不可拖动）"
 					>
 						<view class="player-progress-fill" :style="{width: percent + '%'}">
-							<view class="player-progress-thumb"></view>
 						</view>
 					</view>
 					<view class="player-control-row">
@@ -87,7 +81,7 @@
 							<text>{{totalTime}}</text>
 						</view>
 						<view class="control-spacer"></view>
-						<view class="desktop-speed-wrap">
+						<view class="desktop-speed-wrap" v-if="playbackRates.length > 1">
 							<view class="desktop-speed-menu" v-if="showSpeedMenu">
 								<view
 									class="desktop-speed-item"
@@ -205,13 +199,14 @@ export default {
 			pendingWatchSeconds: 0,
 			lastObservedVideoTime: null,
 			lastProgressObservedAt: 0,
+			maxVerifiedVideoTime: 0,
 			progressSaveInFlight: false,
 			progressSaveQueued: false,
 			progressSaveQueuedEnded: false,
 			progressBatch: null,
 			videoContext: null,
 			playbackRate: 1,
-			playbackRates: [1.5, 1, 0.75],
+			playbackRates: [1],
 			showSpeedMenu: false,
 			speedMenuTimer: null,
 			controlsVisible: true,
@@ -371,7 +366,8 @@ export default {
 					this.initialTime = this.safeSeconds(data.progress.currentTime);
 					this.currentSeconds = this.initialTime;
 					this.percent = Math.max(0, Math.min(100, Number(data.progress.percent) || 0));
-					this.cumulativePercent = Math.max(0, Number(data.progress.cumulativePercent) || this.percent);
+					this.cumulativePercent = Math.max(0, Math.min(100, Number(data.progress.cumulativePercent) || this.percent));
+					this.maxVerifiedVideoTime = this.initialTime;
 					this.curTime = this.formatTime(this.currentSeconds);
 				}
 			} catch (err) {
@@ -591,6 +587,11 @@ export default {
 				video.onratechange = () => {
 					this.enforceAllowedPlaybackRate(video);
 				};
+				video.onseeking = () => {
+					const requested = this.safeSeconds(video.currentTime);
+					const allowed = Math.max(this.initialTime, this.maxVerifiedVideoTime) + 1.25;
+					if (requested > allowed) video.currentTime = Math.max(0, this.maxVerifiedVideoTime || this.initialTime || 0);
+				};
 				this.bindNativeVideoGuardTimer();
 				this.cleanVideoTooltips();
 			});
@@ -613,13 +614,16 @@ export default {
 				this.nativeVideoGuardTimer = null;
 			}
 			const video = this.nativeVideoElement();
-			if (video) video.onratechange = null;
+			if (video) {
+				video.onratechange = null;
+				video.onseeking = null;
+			}
 		},
 		enforceAllowedPlaybackRate(video) {
 			if (!video) return;
 			const current = Number(video.playbackRate || 1);
 			const allowed = this.playbackRates.some(rate => Math.abs(rate - current) < 0.01);
-			if (!allowed || current > 1.5) {
+			if (!allowed || current !== 1) {
 				video.playbackRate = this.playbackRate || 1;
 				return;
 			}
@@ -713,6 +717,7 @@ export default {
 			const video = this.nativeVideoElement();
 			this.lastObservedVideoTime = this.safeSeconds(video && video.currentTime);
 			this.lastProgressObservedAt = Date.now();
+			this.maxVerifiedVideoTime = Math.max(this.maxVerifiedVideoTime, this.lastObservedVideoTime || 0);
 			this.scheduleControlsHide();
 		},
 		onPause() {
@@ -755,51 +760,16 @@ export default {
 				this.scheduleControlsHide();
 			}
 		},
-		seekByClick(e) {
-			if (!this.durationSeconds) return;
-			this.markPlayerActivity();
-			this.applySeekFromEvent(e);
-		},
-		startSeekDrag(e) {
-			if (!this.durationSeconds) return;
-			this.seekDragging = true;
-			this.showControls();
-			this.clearControlsHideTimer();
-			this.closeSpeedMenu();
-			this.applySeekFromEvent(e);
-			if (typeof document !== 'undefined' && e && e.type === 'mousedown') {
-				document.addEventListener('mousemove', this.onSeekDrag);
-				document.addEventListener('mouseup', this.endSeekDrag);
-			}
-		},
-		onSeekDrag(e) {
-			if (!this.seekDragging) return;
-			this.applySeekFromEvent(e);
-		},
-		endSeekDrag(e) {
-			if (!this.seekDragging) return;
-			this.applySeekFromEvent(e);
-			this.seekDragging = false;
-			this.unbindSeekDragListeners();
-			this.persistProgress(false);
-			this.scheduleControlsHide();
-		},
+		seekByClick() {},
+		startSeekDrag() {},
+		onSeekDrag() {},
+		endSeekDrag() {},
 		unbindSeekDragListeners() {
 			if (typeof document === 'undefined') return;
 			document.removeEventListener('mousemove', this.onSeekDrag);
 			document.removeEventListener('mouseup', this.endSeekDrag);
 		},
-		applySeekFromEvent(e) {
-			const clientX = this.getEventClientX(e);
-			if (typeof document === 'undefined' || typeof clientX !== 'number') return;
-			const track = document.querySelector('.player-progress-track');
-			if (!track || !this.durationSeconds) return;
-			const rect = track.getBoundingClientRect();
-			if (!rect.width) return;
-			const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-			const seconds = ratio * this.durationSeconds;
-			this.seekToSeconds(seconds, ratio);
-		},
+		applySeekFromEvent() {},
 		getEventClientX(e) {
 			if (!e) return undefined;
 			let clientX;
@@ -862,8 +832,11 @@ export default {
 			if (this.videoPlaying && Number.isFinite(previous) && next >= previous) {
 				const delta = next - previous;
 				const wallSeconds = this.lastProgressObservedAt > 0 ? Math.max(0, (now - this.lastProgressObservedAt) / 1000) : 0;
-				const allowedDelta = Math.max(2, wallSeconds * Math.max(1, Number(this.playbackRate) || 1) + 1.5);
-				if (delta > 0) this.pendingWatchSeconds += Math.min(delta, allowedDelta);
+				const allowedDelta = Math.max(1.5, wallSeconds + 1);
+				if (delta > 0 && delta <= allowedDelta && wallSeconds > 0 && wallSeconds <= 4) {
+					this.pendingWatchSeconds += Math.min(wallSeconds, 4);
+					this.maxVerifiedVideoTime = Math.max(this.maxVerifiedVideoTime, next);
+				}
 			}
 			this.lastObservedVideoTime = next;
 			this.lastProgressObservedAt = now;
@@ -1055,7 +1028,7 @@ export default {
 					progressEventId: batch.id
 				});
 				this.pendingWatchSeconds = Math.max(0, this.pendingWatchSeconds - batch.watchDelta);
-				this.cumulativePercent = Math.max(this.cumulativePercent, Number(saved && saved.cumulativePercent) || 0);
+				this.cumulativePercent = Math.max(this.cumulativePercent, Math.min(100, Number(saved && saved.cumulativePercent) || 0));
 				this.progressBatch = null;
 				this.progressSaved = true;
 				if (batch.ended || Number(saved && saved.bestPercent) >= 95 || Number(this.percent) >= 95) this.markLocalLessonUnlocked('videos');
@@ -1348,8 +1321,9 @@ page { background:#fff; }
 	height:38rpx;
 	display:flex;
 	align-items:center;
-	cursor:pointer;
-	touch-action:none;
+	cursor:default;
+	touch-action:pan-y;
+	pointer-events:none;
 }
 .player-progress-track::before {
 	content:'';
@@ -1370,18 +1344,6 @@ page { background:#fff; }
 	border-radius:999rpx;
 	background:#ff4f55;
 	box-shadow:0 0 12rpx rgba(255,79,85,.35);
-}
-.player-progress-thumb {
-	position:absolute;
-	right:-13rpx;
-	top:50%;
-	width:26rpx;
-	height:26rpx;
-	transform:translateY(-50%);
-	border-radius:50%;
-	background:#fff;
-	border:5rpx solid #ff4f55;
-	box-shadow:0 4rpx 12rpx rgba(0,0,0,.22);
 }
 .player-control-row {
 	display:flex;

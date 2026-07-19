@@ -82,7 +82,7 @@
 											<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
 											<view>
 												<view class="child-name">{{childName(child, c, s, j)}}</view>
-												<view class="child-progress">已学习：{{progressText(child)}}</view>
+								<view class="child-progress">{{child.type===2 ? practiceProgressText(child) : `已学习：${progressText(child)}`}}</view>
 											</view>
 										</view>
 										<view class="child-actions">
@@ -153,7 +153,7 @@
 											<view class="child-mark" :class="{practice:child.type===2}">{{child.type===2 ? '练' : '学'}}</view>
 											<view>
 												<view class="child-name">{{knowledgeChildName(child, s)}}</view>
-												<view class="child-progress">已学习：{{progressText(child)}}</view>
+										<view class="child-progress">{{child.type===2 ? practiceProgressText(child) : `已学习：${progressText(child)}`}}</view>
 											</view>
 										</view>
 										<view class="child-actions">
@@ -275,7 +275,7 @@ export default {
 			return this.formatCourseDate(this.updatedAt);
 		},
 		progressLabel() {
-			return Math.max(0, Math.round(Number(this.progress) || 0));
+			return Math.max(0, Math.min(100, Math.round(Number(this.progress) || 0)));
 		},
 		progressBarWidth() {
 			return Math.min(this.progressLabel, 100);
@@ -649,8 +649,13 @@ export default {
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
 			const cumulative = Number(item.cumulativePercent ?? item.studyPercent);
-			if (Number.isFinite(cumulative)) return `${Math.max(0, Math.round(cumulative))}%`;
+			if (Number.isFinite(cumulative)) return `${Math.max(0, Math.min(100, Math.round(cumulative)))}%`;
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
+		},
+		practiceProgressText(item = {}) {
+			const total = Number(item.total || (Array.isArray(item.questionIds) ? item.questionIds.length : 0) || 0);
+			const completed = Number(item.read || item.completedCount || item.attemptCount || 0);
+			return `共 ${total} 题　已完成 ${completed} 次`;
 		},
 		versionLabel(version, index) {
 			return (version && version.name) || (index === 0 ? '复习加强课' : '技巧绝招');

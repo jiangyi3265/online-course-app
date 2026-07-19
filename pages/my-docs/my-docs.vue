@@ -108,8 +108,12 @@
 										@click="previewPaperImages(doc, imageIndex)"
 										@error="onPaperImageError(doc)"
 									/>
+									<view v-if="paperImages(doc).length < 3 && !doc.reviewSubmitted && !readOnly" class="paper-add-tile" @click.stop="choosePaperImages(doc, true)">
+										<text class="paper-add-icon">＋</text>
+										<text>继续添加</text>
+									</view>
 								</view>
-								<view class="paper-image-empty" v-if="!paperImages(doc).length && !doc.paperImageError">请先上传试卷照片，再填写自评分数。</view>
+								<view class="paper-image-empty" v-if="!paperImages(doc).length && !doc.paperImageError">试卷照片为选填项；填写分数后点击“保存记录”才会生效。</view>
 								<view class="paper-image-tip" v-if="doc.paperImageError">图片预览已失效，请重新上传。</view>
 								<view class="paper-image-reupload" v-if="doc.paperImageError && !doc.reviewSubmitted && !readOnly" @click.stop="choosePaperImages(doc)">
 									<view class="reupload-title">图片无法显示</view>
@@ -249,11 +253,12 @@ export default {
 			const localRecords = uni.getStorageSync(REVIEW_KEY) || [];
 			let remoteRecords = [];
 			try {
-				remoteRecords = await getOfflinePaperReviews(this.courseId, this.studentId);
+			remoteRecords = await getOfflinePaperReviews(this.courseId, this.studentId);
 			} catch (err) {
 				console.warn('线下试卷记录接口不可用，使用本地记录', err);
 			}
-			this.offlineReviews = this.mergePaperReviews(remoteRecords || [], localRecords);
+			const submittedOnly = list => (list || []).filter(item => this.isSubmittedPaperReview(item));
+			this.offlineReviews = this.mergePaperReviews(submittedOnly(remoteRecords), submittedOnly(localRecords));
 			uni.setStorageSync(REVIEW_KEY, this.offlineReviews);
 		},
 		mergePaperReviews(remote = [], local = []) {
@@ -534,7 +539,7 @@ export default {
 			}
 			return [];
 		},
-		choosePaperImages(doc) {
+		choosePaperImages(doc, append = false) {
 			if (this.readOnly) {
 				uni.showToast({ title:'只读查看，不能上传', icon:'none' });
 				return;
@@ -545,7 +550,7 @@ export default {
 			}
 			doc.reviewExpanded = true;
 			uni.chooseImage({
-				count: 3,
+				count: append ? Math.max(1, 3 - this.paperImages(doc).length) : 3,
 				success: async res => {
 					const images = await this.normalizeChosenPaperImages(res);
 					if (!images.length) {
@@ -553,7 +558,8 @@ export default {
 						uni.showToast({ title:'图片上传失败，请重新上传', icon:'none' });
 						return;
 					}
-					doc.images = images;
+					const current = append ? this.paperImages(doc) : [];
+					doc.images = Array.from(new Set(current.concat(images))).slice(0, 3);
 					doc.imageCount = doc.images.length;
 					doc.paperImageError = false;
 					if (!doc.reviewSubmitted) {
@@ -561,8 +567,7 @@ export default {
 						if (doc.score === 0 || doc.score === '0') doc.score = '';
 						if (doc.wrongCount === 0 || doc.wrongCount === '0') doc.wrongCount = '';
 					}
-					await this.savePaperReviewDraft(doc);
-						uni.showToast({ title:`已上传${doc.images.length}张`, icon:'none' });
+					uni.showToast({ title:`已选择${doc.images.length}张，保存后生效`, icon:'none' });
 				}
 			});
 		},
@@ -649,11 +654,6 @@ export default {
 				return;
 			}
 			const images = this.paperImages(doc);
-			if (!images.length) {
-				uni.showToast({ title:'请先上传试卷照片', icon:'none' });
-				doc.reviewExpanded = true;
-				return;
-			}
 			const record = {
 				id: `offline-${Date.now()}`,
 				docId: doc.id,
@@ -873,6 +873,22 @@ page { background:#f5f7fa; }
 }
 .paper-image-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12rpx; margin-bottom:16rpx; }
 .paper-thumb { width:100%; height:128rpx; border-radius:10rpx; background:#e8eef6; border:1rpx solid #dbe4ef; box-sizing:border-box; object-fit:contain; }
+.paper-add-tile {
+	height:128rpx;
+	border:2rpx dashed #93b8f5;
+	border-radius:10rpx;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	gap:4rpx;
+	background:#f7fbff;
+	color:#2563eb;
+	font-size:21rpx;
+	font-weight:800;
+	cursor:pointer;
+}
+.paper-add-icon { font-size:42rpx; line-height:1; font-weight:400; }
 .paper-image-empty {
 	margin-bottom:16rpx;
 	padding:18rpx 20rpx;

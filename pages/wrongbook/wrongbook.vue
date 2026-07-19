@@ -7,7 +7,7 @@
 
 		<view class="course-summary">
 			<view class="summary-main">
-				<view class="summary-line"><text>共计 {{summary.chapterCount || course.chapterCount || 0}} 节</text><text>总时长：{{summary.totalDuration || course.totalDuration || '--'}}</text></view>
+				<view class="summary-line"><text>共计 {{summary.chapterCount || course.chapterCount || 0}} 节</text></view>
 				<view class="summary-line"><text>已学节数：{{summary.learnedChapterCount || course.learnedChapterCount || 0}} 节</text><text>已学时长：{{summary.learnedDuration || course.learnedDuration || '--'}}</text></view>
 			</view>
 		</view>
@@ -111,13 +111,14 @@
 				<view class="record-head" @click="toggleRecord(record)">
 					<view>
 						<view class="record-time">完成时间 {{formatFullTime(record.completedAt || record.time || record.createTime)}}</view>
-						<view class="record-name">{{record.courseName || record.title || '测试记录'}} {{record.source || ''}}</view>
+						<view class="record-name">{{record.courseName || record.courseTitle || record.title || '测试记录'}} {{record.sourceType || record.source || ''}}</view>
+						<view class="record-meta">共 {{record.total || 0}} 题，答错 {{record.wrongCount || 0}} 题</view>
 					</view>
 					<view class="record-score">得分 {{record.score || 0}}/{{record.totalScore || 100}} 分</view>
 				</view>
 				<view class="record-detail" v-if="activeRecordId === record.id">
 					<view class="detail-row" v-for="(detail, index) in mediaList(record.questions || record.details)" :key="detail.id || index">
-						<view class="detail-index">题目数：{{index + 1}}</view>
+						<view class="detail-index">第 {{index + 1}} 题 · <text :class="detail.correct ? 'detail-correct' : 'detail-wrong'">{{detail.correct ? '正确' : '错误'}}</text></view>
 						<math-rich-text class="detail-stem" :text="detailStem(detail)" />
 						<view class="detail-actions" v-if="detailAnswerImages(detail).length">
 							<button size="mini" @click="previewDetailImage(detail)">查看图片</button>
@@ -261,6 +262,8 @@ export default {
 		async loadRecords() {
 			try {
 				this.records = this.scopeCourseRecords(await getWrongBookRecords(this.source, this.courseId, this.studentId))
+				const first = this.recordList[0]
+				this.activeRecordId = first ? first.id : ''
 			} catch (err) {
 				this.records = { total: 0, courseCounts: [], records: [] }
 			}
@@ -776,6 +779,7 @@ export default {
 	color: #667085;
 	font-size: 24rpx;
 }
+.record-meta { margin-top:8rpx; color:#667085; font-size:23rpx; }
 .record-name,
 .record-score {
 	font-size: 28rpx;
@@ -794,6 +798,8 @@ export default {
 	font-weight: 800;
 	margin-bottom: 10rpx;
 }
+.detail-correct { color:#00875a; }
+.detail-wrong { color:#d92d20; }
 .detail-actions {
 	display: flex;
 	gap: 12rpx;

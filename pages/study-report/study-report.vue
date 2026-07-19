@@ -82,7 +82,6 @@
 					<view class="track-foot">
 						<text>总节数 {{item.totalLessons}}节</text>
 						<text>已学习 {{item.learnedLessons}}节</text>
-						<text>累计打卡 {{item.checkins}}天</text>
 					</view>
 				</view>
 			</view>

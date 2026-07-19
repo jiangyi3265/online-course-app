@@ -732,7 +732,7 @@ page { background:#f5f7fa; }
 	position:fixed;
 	inset:0;
 	z-index:220;
-	dis:flex;
+	display:flex;
 	align-items:center;
 	justify-content:center;
 	padding:34rpx;
