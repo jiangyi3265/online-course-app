@@ -196,6 +196,7 @@ export default {
 			durationSeconds: 0,
 			percent: 0,
 			cumulativePercent: 0,
+			courseProgress: 0,
 			videoError: false,
 			videoErrorMessage: '请检查网络，或稍后重新进入本讲。',
 			videoErrorTimer: null,
@@ -325,7 +326,9 @@ export default {
 			return this.categoryTitle || this.inferCategoryTitle(this.title, this.chapterTitle) || '讲点';
 		},
 		freePlaybackUnlocked() {
-			return /-trial$/i.test(String(this.courseId || '')) || Number(this.cumulativePercent || 0) >= 100;
+			return /-trial$/i.test(String(this.courseId || ''))
+				|| Number(this.courseProgress || 0) >= 100
+				|| Number(this.cumulativePercent || 0) >= 100;
 		}
 	},
 	methods: {
@@ -524,6 +527,8 @@ export default {
 			if (!this.courseId) return;
 			try {
 				const course = await getCourse(this.courseId);
+				this.courseProgress = Math.max(0, Number(course.progress || course.cumulativePercent || 0));
+				this.refreshPlaybackPolicy();
 				const context = this.findLessonContext(course, this.lessonId || this.title);
 				if (!context || !context.lessons.length) return;
 				this.chapterLessons = context.lessons;
