@@ -73,7 +73,11 @@
 				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked && !videoPreparing">
 					<view
 						class="player-progress-track"
-						aria-label="视频播放进度（不可拖动）"
+						:class="{seekable: freePlaybackUnlocked}"
+						:aria-label="freePlaybackUnlocked ? '视频播放进度（可拖动）' : '视频播放进度（完整观看后可拖动）'"
+						@click.stop="seekByClick"
+						@mousedown.stop.prevent="startSeekDrag"
+						@touchstart.stop.prevent="startSeekDrag"
 					>
 						<view class="player-progress-fill" :style="{width: percent + '%'}">
 						</view>
@@ -252,6 +256,7 @@ export default {
 		if (opts && opts.courseTitle) this.courseTitle = this.decodeRouteText(opts.courseTitle);
 		if (opts && opts.chapterTitle) this.chapterTitle = this.decodeRouteText(opts.chapterTitle);
 		this.categoryTitle = this.resolveCategoryTitle(opts);
+		this.refreshPlaybackPolicy();
 		this.syncPageTitle();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		await this.loadLesson();
@@ -318,6 +323,9 @@ export default {
 		},
 		lessonCategoryTitle() {
 			return this.categoryTitle || this.inferCategoryTitle(this.title, this.chapterTitle) || '讲点';
+		},
+		freePlaybackUnlocked() {
+			return /-trial$/i.test(String(this.courseId || '')) || Number(this.cumulativePercent || 0) >= 100;
 		}
 	},
 	methods: {
@@ -397,7 +405,9 @@ export default {
 				if (!video) return;
 				const nativeHls = typeof video.canPlayType === 'function'
 					&& !!video.canPlayType('application/vnd.apple.mpegurl');
-				if (nativeHls) {
+				const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+				const prefersNativeHls = /iP(?:hone|ad|od)|Macintosh.*Mobile/i.test(userAgent);
+				if (nativeHls && (prefersNativeHls || !Hls.isSupported())) {
 					this.usesHlsJs = false;
 					this.lockNativeVideoPlayback();
 					return;
@@ -413,11 +423,14 @@ export default {
 					const media = this.nativeVideoElement();
 					if (!media) return;
 					const player = new Hls({
-						enableWorker: true,
+						enableWorker: false,
 						lowLatencyMode: false,
 						backBufferLength: 30,
 						maxBufferLength: 24,
-						maxBufferSize: 24 * 1024 * 1024
+						maxBufferSize: 24 * 1024 * 1024,
+						manifestLoadingMaxRetry: 3,
+						levelLoadingMaxRetry: 3,
+						fragLoadingMaxRetry: 4
 					});
 					this.hlsPlayer = player;
 					player.attachMedia(media);
@@ -499,6 +512,7 @@ export default {
 					this.maxVerifiedVideoTime = this.initialTime;
 					this.curTime = this.formatTime(this.currentSeconds);
 				}
+				this.refreshPlaybackPolicy();
 			} catch (err) {
 				this.videoPreparing = false;
 				this.videoError = true;
@@ -719,6 +733,7 @@ export default {
 					this.enforceAllowedPlaybackRate(video);
 				};
 				video.onseeking = () => {
+					if (this.freePlaybackUnlocked) return;
 					const requested = this.safeSeconds(video.currentTime);
 					const allowed = Math.max(this.initialTime, this.maxVerifiedVideoTime) + 1.25;
 					if (requested > allowed) video.currentTime = Math.max(0, this.maxVerifiedVideoTime || this.initialTime || 0);
@@ -754,8 +769,9 @@ export default {
 			if (!video) return;
 			const current = Number(video.playbackRate || 1);
 			const allowed = this.playbackRates.some(rate => Math.abs(rate - current) < 0.01);
-			if (!allowed || current !== 1) {
-				video.playbackRate = this.playbackRate || 1;
+			if (!allowed) {
+				this.playbackRate = 1;
+				video.playbackRate = 1;
 				return;
 			}
 			if (Math.abs((this.playbackRate || 1) - current) > 0.01) {
@@ -764,7 +780,11 @@ export default {
 		},
 		cleanVideoTooltips() {
 			if (typeof document === 'undefined') return;
-			const nodes = Array.from(document.querySelectorAll('.video-wrap, .video-wrap *, #lessonVideo, #lessonVideo *, video, video *'));
+			const nodes = Array.from(document.querySelectorAll('.page, .video-wrap, .video-wrap *, #lessonVideo, #lessonVideo *, video, video *'));
+			document.querySelectorAll('[title],[data-title]').forEach(el => {
+				const value = `${el.getAttribute('title') || ''} ${el.getAttribute('data-title') || ''}`;
+				if (/%[0-9a-f]{2}/i.test(value)) nodes.push(el);
+			});
 			const active = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
 			if (active && active.querySelectorAll) {
 				nodes.push(...Array.from(active.querySelectorAll('[title],[download],[aria-label],[data-title]')));
@@ -891,16 +911,53 @@ export default {
 				this.scheduleControlsHide();
 			}
 		},
-		seekByClick() {},
-		startSeekDrag() {},
-		onSeekDrag() {},
-		endSeekDrag() {},
+		seekByClick(e) {
+			if (!this.freePlaybackUnlocked || this.seekDragging) return;
+			this.applySeekFromEvent(e);
+		},
+		startSeekDrag(e) {
+			if (!this.freePlaybackUnlocked) return;
+			this.seekDragging = true;
+			this.showControls();
+			this.clearControlsHideTimer();
+			this.applySeekFromEvent(e);
+			if (typeof document !== 'undefined') {
+				document.addEventListener('mousemove', this.onSeekDrag);
+				document.addEventListener('mouseup', this.endSeekDrag);
+				document.addEventListener('touchmove', this.onSeekDrag, { passive:false });
+				document.addEventListener('touchend', this.endSeekDrag);
+			}
+		},
+		onSeekDrag(e) {
+			if (!this.seekDragging) return;
+			if (e && typeof e.preventDefault === 'function') e.preventDefault();
+			this.applySeekFromEvent(e);
+		},
+		endSeekDrag(e) {
+			if (!this.seekDragging) return;
+			this.applySeekFromEvent(e);
+			this.seekDragging = false;
+			this.unbindSeekDragListeners();
+			this.scheduleControlsHide();
+		},
 		unbindSeekDragListeners() {
 			if (typeof document === 'undefined') return;
 			document.removeEventListener('mousemove', this.onSeekDrag);
 			document.removeEventListener('mouseup', this.endSeekDrag);
+			document.removeEventListener('touchmove', this.onSeekDrag);
+			document.removeEventListener('touchend', this.endSeekDrag);
 		},
-		applySeekFromEvent() {},
+		applySeekFromEvent(e) {
+			if (!this.freePlaybackUnlocked || !this.durationSeconds || typeof document === 'undefined') return;
+			const clientX = this.getEventClientX(e);
+			const track = document.querySelector('.player-progress-track');
+			if (typeof clientX !== 'number' || !track || !track.getBoundingClientRect) return;
+			const rect = track.getBoundingClientRect();
+			if (!rect.width) return;
+			const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			this.seekToSeconds(this.durationSeconds * ratio, ratio);
+			this.markPlayerActivity();
+		},
 		getEventClientX(e) {
 			if (!e) return undefined;
 			let clientX;
@@ -1030,6 +1087,11 @@ export default {
 			this.playbackRate = this.playbackRates.includes(next) ? next : 1;
 			this.applyPlaybackRate();
 			this.closeSpeedMenu();
+		},
+		refreshPlaybackPolicy() {
+			this.playbackRates = this.freePlaybackUnlocked ? [0.75, 1, 1.25, 1.5, 2] : [1];
+			if (!this.playbackRates.includes(Number(this.playbackRate))) this.playbackRate = 1;
+			this.applyPlaybackRate();
 		},
 		toggleSpeedMenu() {
 			this.showControls();
@@ -1172,6 +1234,7 @@ export default {
 				});
 				this.pendingWatchSeconds = Math.max(0, this.pendingWatchSeconds - batch.watchDelta);
 				this.cumulativePercent = Math.max(this.cumulativePercent, Number(saved && saved.cumulativePercent) || 0);
+				this.refreshPlaybackPolicy();
 				this.progressBatch = null;
 				this.progressSaved = true;
 				if (batch.ended || Number(saved && saved.bestPercent) >= 95 || Number(this.percent) >= 95) this.markLocalLessonUnlocked('videos');
@@ -1490,6 +1553,23 @@ page { background:#fff; }
 	cursor:default;
 	touch-action:pan-y;
 	pointer-events:none;
+}
+.player-progress-track.seekable {
+	cursor:pointer;
+	touch-action:none;
+	pointer-events:auto;
+}
+.player-progress-track.seekable .player-progress-fill::after {
+	content:'';
+	position:absolute;
+	right:-9rpx;
+	top:50%;
+	width:18rpx;
+	height:18rpx;
+	transform:translateY(-50%);
+	border-radius:50%;
+	background:#fff;
+	box-shadow:0 1rpx 8rpx rgba(15,23,42,.35);
 }
 .player-progress-track::before {
 	content:'';

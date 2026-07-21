@@ -251,6 +251,9 @@ export default {
 		if (!this.courseVersions.length) this.courseVersions = this.normalizeVersions({}, this.chapters);
 		this.coverTitle = this.title;
 	},
+	onReady() {
+		this.clearEncodedPageTitle();
+	},
 	methods: {
 		decodeRouteText(value = '') {
 			let text = String(value || '');
@@ -426,7 +429,27 @@ export default {
 			this.requestPermission('知识巩固');
 		},
 		goLesson(chapter, item) {
-			this.requestPermission(item && item.type === 2 ? '练习功能' : '课程学习');
+			if (item && Number(item.type) === 2) {
+				this.requestPermission('练习功能');
+				return;
+			}
+			const lessonId = String((chapter && chapter.title) || (item && item.name) || '').trim();
+			if (!lessonId) {
+				uni.showToast({ title:'课程视频暂未上传', icon:'none' });
+				return;
+			}
+			uni.navigateTo({
+				url:`/pages/lesson/lesson?title=${encodeURIComponent(lessonId)}&lessonId=${encodeURIComponent(lessonId)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(lessonId)}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle())}`
+			});
+		},
+		clearEncodedPageTitle() {
+			if (typeof document === 'undefined') return;
+			this.$nextTick(() => {
+				document.querySelectorAll('.page[title], [title]').forEach(el => {
+					const value = String(el.getAttribute('title') || '');
+					if (/%[0-9a-f]{2}/i.test(value)) el.removeAttribute('title');
+				});
+			});
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '2026-05-26';

@@ -275,7 +275,7 @@ export default {
 		},
 		reportDetailRows() {
 			const chapterRows = this.chapterRows;
-			const attempts = this.report.attempts || [];
+			const attempts = this.report.attemptStats || this.report.attempts || [];
 			const reinforceRows = attempts.filter(item => item.type === 'reinforce');
 			const retryRows = attempts.filter(item => item.type === 'wrongRetry');
 			const practiceRows = this.practiceRows.filter(item => item.type !== 'reinforce' && item.type !== 'wrongRetry');
