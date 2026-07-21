@@ -1,15 +1,20 @@
 <script>
+	import { initializeSessionTimeout, pauseSessionTimeout, resumeSessionTimeout } from '@/common/session-timeout.js'
+
 	export default {
 		onLaunch: function() {
 			console.log('App Launch')
 			this.syncH5Title()
+			initializeSessionTimeout()
 		},
 		onShow: function() {
 			console.log('App Show')
 			this.syncH5Title()
+			resumeSessionTimeout()
 		},
 		onHide: function() {
 			console.log('App Hide')
+			pauseSessionTimeout()
 		},
 		methods: {
 			syncH5Title() {

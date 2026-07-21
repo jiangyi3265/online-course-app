@@ -1,3 +1,5 @@
+import { clearSessionTiming, startAuthenticatedSession } from '@/common/session-timeout.js'
+
 const TOKEN_KEY = 'apiToken'
 const LOCAL_API_ORIGIN = 'http://127.0.0.1:8007'
 const APP_API_PATH = '/course/app'
@@ -306,12 +308,14 @@ export function saveSession(session = {}) {
 		uni.setStorageSync('userInfo', user)
 	}
 	uni.setStorageSync('logined', true)
+	startAuthenticatedSession()
 }
 
 export function clearSession() {
 	uni.removeStorageSync(TOKEN_KEY)
 	uni.removeStorageSync('logined')
 	uni.removeStorageSync('userInfo')
+	clearSessionTiming()
 }
 
 export function login(phone, password) {

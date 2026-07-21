@@ -78,6 +78,7 @@
 
 <script>
 	import { bindReferrer, decodeRouteText, login, resetPassword, saveSession, sendSmsCode } from '@/common/api.js'
+	import { startAuthenticatedSession } from '@/common/session-timeout.js'
 	export default {
 		data() {
 			return {
@@ -98,6 +99,11 @@
 		onLoad(opts = {}) {
 			this.invitePhone = opts.invitePhone ? decodeRouteText(opts.invitePhone) : '';
 			this.inviteId = opts.inviteId ? decodeRouteText(opts.inviteId) : '';
+			if (opts.reason === 'inactive') {
+				setTimeout(() => {
+					uni.showToast({ title: '离线已超过15分钟，请重新登录', icon: 'none', duration: 2600 });
+				}, 200);
+			}
 		},
 		methods: {
 			goHome() {
@@ -207,6 +213,7 @@
 
 				uni.setStorageSync('userInfo', { name: matched.name, id: matched.id, phone: matched.phone, tenantId: matched.tenantId || 52, role: matched.role || 'student' });
 				uni.setStorageSync('logined', true);
+				startAuthenticatedSession();
 				uni.showToast({ title: '登录成功', icon: 'success' });
 				setTimeout(() => {
 					uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index', fail: () => {} }) });
