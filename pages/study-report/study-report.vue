@@ -137,14 +137,22 @@
 			</view>
 		</view>
 
-		<view class="panel" v-if="offlineRows.length">
-			<view class="panel-title">线下试卷自评</view>
-			<view class="row practice-stat-row" v-for="item in offlineRows" :key="item.id">
-				<view class="practice-stat-main">
-					<view class="practice-stat-title">{{item.title}}</view>
-					<view class="practice-stat-time">练习时间：{{formatPracticeTime(item)}}</view>
+		<view class="panel offline-review-panel" :class="{collapsed: !showOfflineReviews}" v-if="offlineRows.length">
+			<view class="panel-head" @click="showOfflineReviews = !showOfflineReviews">
+				<view>
+					<view class="panel-title">线下试卷自评</view>
+					<view class="detail-sub">默认收起，展开后查看已保存的试卷分数和错题数。</view>
 				</view>
-				<view class="practice-stat-score">{{item.score}}/{{item.totalScore}}分，错题{{item.wrongCount}}道</view>
+				<view class="panel-toggle">{{showOfflineReviews ? '收起' : '展开'}}</view>
+			</view>
+			<view class="offline-review-body" v-if="showOfflineReviews">
+				<view class="row practice-stat-row" v-for="item in offlineRows" :key="item.id">
+					<view class="practice-stat-main">
+						<view class="practice-stat-title">{{item.title}}</view>
+						<view class="practice-stat-time">练习时间：{{formatPracticeTime(item)}}</view>
+					</view>
+					<view class="practice-stat-score">{{item.score}}/{{item.totalScore}}分，错题{{item.wrongCount}}道</view>
+				</view>
 			</view>
 		</view>
 
@@ -177,6 +185,7 @@ export default {
 			showLearningRecords: false,
 			showCourseRecords: false,
 			showPracticeStats: false,
+			showOfflineReviews: false,
 			recordDateFilter: '',
 			selectedPractice: null,
 			offlineReviews: []

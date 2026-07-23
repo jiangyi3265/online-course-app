@@ -196,7 +196,6 @@ export default {
 			durationSeconds: 0,
 			percent: 0,
 			cumulativePercent: 0,
-			courseProgress: 0,
 			videoError: false,
 			videoErrorMessage: '请检查网络，或稍后重新进入本讲。',
 			videoErrorTimer: null,
@@ -327,7 +326,6 @@ export default {
 		},
 		freePlaybackUnlocked() {
 			return /-trial$/i.test(String(this.courseId || ''))
-				|| Number(this.courseProgress || 0) >= 100
 				|| Number(this.cumulativePercent || 0) >= 100;
 		}
 	},
@@ -527,8 +525,6 @@ export default {
 			if (!this.courseId) return;
 			try {
 				const course = await getCourse(this.courseId);
-				this.courseProgress = Math.max(0, Number(course.progress || course.cumulativePercent || 0));
-				this.refreshPlaybackPolicy();
 				const context = this.findLessonContext(course, this.lessonId || this.title);
 				if (!context || !context.lessons.length) return;
 				this.chapterLessons = context.lessons;
@@ -740,8 +736,8 @@ export default {
 				video.onseeking = () => {
 					if (this.freePlaybackUnlocked) return;
 					const requested = this.safeSeconds(video.currentTime);
-					const allowed = Math.max(this.initialTime, this.maxVerifiedVideoTime) + 1.25;
-					if (requested > allowed) video.currentTime = Math.max(0, this.maxVerifiedVideoTime || this.initialTime || 0);
+					const allowed = Math.max(this.initialTime, this.maxVerifiedVideoTime);
+					if (Math.abs(requested - allowed) > 1.25) video.currentTime = Math.max(0, allowed);
 				};
 				this.bindNativeVideoGuardTimer();
 				this.cleanVideoTooltips();

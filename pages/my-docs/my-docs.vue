@@ -99,15 +99,25 @@
 									<view class="paper-upload-count">{{paperImageCount(doc)}}/3 张</view>
 								</view>
 								<view class="paper-image-strip" v-if="paperImages(doc).length">
-									<image
+									<view
 										v-for="(url, imageIndex) in paperImages(doc)"
 										:key="`${doc.id}-paper-${imageIndex}`"
-										class="paper-thumb"
-										:src="url"
-										mode="aspectFit"
-										@click="previewPaperImages(doc, imageIndex)"
-										@error="onPaperImageError(doc)"
-									/>
+										class="paper-thumb-wrap"
+									>
+										<image
+											class="paper-thumb"
+											:src="url"
+											mode="aspectFit"
+											@click="previewPaperImages(doc, imageIndex)"
+											@error="onPaperImageError(doc)"
+										/>
+										<view
+											v-if="!doc.reviewSubmitted && !readOnly"
+											class="paper-image-remove"
+											aria-label="删除这张试卷照片"
+											@click.stop="removePaperImage(doc, imageIndex)"
+										>×</view>
+									</view>
 									<view v-if="paperImages(doc).length < 3 && !doc.reviewSubmitted && !readOnly" class="paper-add-tile" @click.stop="choosePaperImages(doc, true)">
 										<text class="paper-add-icon">＋</text>
 										<text>继续添加</text>
@@ -560,11 +570,10 @@ export default {
 		},
 		showPaperUploadAction(doc = {}) {
 			if (this.readOnly || doc.reviewSubmitted) return false;
-			return true;
+			return this.paperImages(doc).length === 0;
 		},
 			paperUploadActionText(doc = {}) {
 				if (doc.paperImageError || (this.paperImageCount(doc) > 0 && !this.paperImages(doc).length)) return '重新上传试卷照片';
-				if (this.paperImages(doc).length) return '更换试卷照片';
 				return '上传试卷照片';
 			},
 		previewPaperImages(doc = {}, index = 0) {
@@ -575,6 +584,18 @@ export default {
 		onPaperImageError(doc = {}) {
 			doc.paperImageError = true;
 			doc.imageCount = Math.max(Number(doc.imageCount || 0), 1);
+		},
+		removePaperImage(doc = {}, index = 0) {
+			if (this.readOnly || doc.reviewSubmitted) return;
+			const images = this.paperImages(doc);
+			if (index < 0 || index >= images.length) return;
+			images.splice(index, 1);
+			doc.images = images;
+			doc.imageCount = images.length;
+			doc.paperImageError = false;
+			doc.reviewExpanded = true;
+			this.savePaperDraftUi(doc);
+			uni.showToast({ title:'已删除，可继续添加或保存', icon:'none' });
 		},
 		async normalizeChosenPaperImages(res = {}) {
 			const paths = (res.tempFilePaths || []).slice(0, 3).filter(Boolean);
@@ -944,7 +965,25 @@ page { background:#f5f7fa; }
 	font-weight:800;
 }
 .paper-image-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12rpx; margin-bottom:16rpx; }
-.paper-thumb { width:100%; height:128rpx; border-radius:10rpx; background:#e8eef6; border:1rpx solid #dbe4ef; box-sizing:border-box; object-fit:contain; }
+.paper-thumb-wrap { position:relative; min-width:0; height:128rpx; }
+.paper-thumb { display:block; width:100%; height:128rpx; border-radius:10rpx; background:#e8eef6; border:1rpx solid #dbe4ef; box-sizing:border-box; object-fit:contain; }
+.paper-image-remove {
+	position:absolute;
+	top:6rpx;
+	right:6rpx;
+	width:44rpx;
+	height:44rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	border-radius:50%;
+	background:rgba(30, 41, 59, .82);
+	color:#f8fafc;
+	font-size:34rpx;
+	line-height:1;
+	font-weight:500;
+	cursor:pointer;
+}
 .paper-add-tile {
 	height:128rpx;
 	border:2rpx dashed #93b8f5;

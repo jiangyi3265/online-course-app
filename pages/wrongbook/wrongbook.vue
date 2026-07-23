@@ -254,10 +254,9 @@ export default {
 			}
 		},
 		async loadRecords() {
+			this.activeRecordId = ''
 			try {
 				this.records = this.scopeCourseRecords(await getWrongBookRecords(this.source, this.courseId, this.studentId))
-				const first = this.recordList[0]
-				this.activeRecordId = first ? first.id : ''
 			} catch (err) {
 				this.records = { total: 0, courseCounts: [], records: [] }
 			}
