@@ -12,8 +12,9 @@
 		<!-- 4 categories -->
 		<view class="cats">
 			<view class="cat" v-for="(c,i) in cats" :key="i" @click="goTab(i)">
-				<view class="cat-icon" :class="'cat-tone-' + (i + 1)">
-					<text class="cat-icon-letter">{{catSymbol(c, i)}}</text>
+				<view class="cat-icon" :class="['cat-tone-' + (i + 1), { 'is-fallback': c.iconError }]">
+					<image v-if="c.icon && !c.iconError" class="cat-img" :src="catIconSrc(c)" mode="aspectFit" @error.stop="onCatIconError(c)" />
+					<text v-else class="cat-icon-letter">{{catSymbol(c, i)}}</text>
 				</view>
 				<text class="cat-text">{{c.text}}</text>
 			</view>
@@ -58,16 +59,16 @@
 <script>
 import TabBar from '@/components/tab-bar.vue'
 import { GAOKAO_MATH_TRIAL, stripCourseYear } from '@/common/course-data.js'
-import { getCourses, getFrontendSettings, resolveMediaList } from '@/common/api.js'
+import { getCourses, getFrontendSettings, resolveMediaList, resolveMediaUrl } from '@/common/api.js'
 export default {
 	components: { TabBar },
 	data() {
 		return {
 			cats: [
-				{ icon:'', iconError:true, symbol:'听', text:'中考试听' },
-				{ icon:'', iconError:true, symbol:'课', text:'中考课程' },
-				{ icon:'', iconError:true, symbol:'听', text:'高考试听' },
-				{ icon:'', iconError:true, symbol:'课', text:'高考课程' }
+				{ icon:'/static/system-icons/home/zk-trial.png', iconError:false, symbol:'听', text:'中考试听' },
+				{ icon:'/static/system-icons/home/zk-course.png', iconError:false, symbol:'课', text:'中考课程' },
+				{ icon:'/static/system-icons/home/gk-trial.png', iconError:false, symbol:'听', text:'高考试听' },
+				{ icon:'/static/system-icons/home/gk-course.png', iconError:false, symbol:'课', text:'高考课程' }
 			],
 			homeBanners: [
 				{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }
@@ -232,7 +233,7 @@ page { background:#f7f8fa; color-scheme:light; }
 .cat-tone-2 { background:linear-gradient(135deg,#eefcf5,#dcf9ec); color:#16a36a; }
 .cat-tone-3 { background:linear-gradient(135deg,#fff3e7,#ffe6cc); color:#ff7a00; }
 .cat-tone-4 { background:linear-gradient(135deg,#f1edff,#e5dcff); color:#7c3aed; }
-.cat-img { width:74rpx; height:74rpx; display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:0; opacity:.18; }
+.cat-img { width:86rpx; height:86rpx; display:block; position:relative; z-index:1; opacity:1; }
 .cat-icon-letter { position:relative; z-index:1; font-size:30rpx; line-height:1; font-weight:900; opacity:1; transition:opacity .18s ease; }
 .cat-img + .cat-icon-letter { position:relative; opacity:1; }
 .cat-icon.is-fallback .cat-icon-letter { position:relative; opacity:1; }

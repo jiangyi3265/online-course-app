@@ -66,17 +66,17 @@
 		<view class="funcs">
 			<view class="func locked" @click="goDocs">
 				<text class="func-lock">未授权</text>
-				<view class="f-ico blue">文</view>
+				<view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/documents.png" mode="aspectFit" /></view>
 				<text class="f-text">我的文档</text>
 			</view>
 			<view class="func locked" @click="goPlan">
 				<text class="func-lock">未授权</text>
-				<view class="f-ico pink">卡</view>
+				<view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/checkin.png" mode="aspectFit" /></view>
 				<text class="f-text">学习打卡</text>
 			</view>
 			<view class="func locked" @click="goReport">
 				<text class="func-lock">未授权</text>
-				<view class="f-ico green">报</view>
+				<view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/report.png" mode="aspectFit" /></view>
 				<text class="f-text">学习报告</text>
 			</view>
 		</view>
@@ -671,6 +671,8 @@ page { background:#f5f7fa; }
 .f-ico.blue { background:#0d7cfe; }
 .f-ico.pink { background:#e7548c; }
 .f-ico.green { background:#2bb673; }
+.f-ico.system-icon { background:transparent; border-radius:0; }
+.f-icon-image { width:88rpx; height:88rpx; display:block; }
 .f-text { font-size:24rpx; color:#333; }
 
 /* 段标题（带下划线） */

@@ -41,9 +41,9 @@
 
 		<!-- 三功能 -->
 		<view class="funcs">
-			<view class="func" @click="goDocs"><view class="f-ico blue">文</view><text class="f-text">我的文档</text></view>
-			<view class="func" @click="goPlan"><view class="f-ico pink">卡</view><text class="f-text">学习打卡</text></view>
-			<view class="func" @click="goReport"><view class="f-ico green">报</view><text class="f-text">学习报告</text></view>
+			<view class="func" @click="goDocs"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/documents.png" mode="aspectFit" /></view><text class="f-text">我的文档</text></view>
+			<view class="func" @click="goPlan"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/checkin.png" mode="aspectFit" /></view><text class="f-text">学习打卡</text></view>
+			<view class="func" @click="goReport"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/report.png" mode="aspectFit" /></view><text class="f-text">学习报告</text></view>
 		</view>
 
 		<view class="course-actions-area" @click="collapseCheckinPanel">
@@ -1043,6 +1043,8 @@ page { background:#f5f7fa; }
 .f-ico.blue { background:#3aa3f5; }
 .f-ico.pink { background:#e7548c; }
 .f-ico.green { background:#2bb673; }
+.f-ico.system-icon { background:transparent; border-radius:0; }
+.f-icon-image { width:88rpx; height:88rpx; display:block; }
 .f-text { font-size:24rpx; color:#333; }
 
 /* Tabs */

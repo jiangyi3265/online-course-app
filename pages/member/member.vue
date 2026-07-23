@@ -40,8 +40,8 @@
 					<view class="section-title">常用功能</view>
 					<view class="funcs">
 						<view class="func" :class="{featured: f.featured}" v-for="(f,i) in funcs" :key="i" @click="openFunc(f)">
-							<view class="f-ico" :class="'icon-' + f.icon">
-								<text class="f-symbol">{{f.symbol}}</text>
+							<view class="f-ico has-image" :class="'icon-' + f.icon">
+								<image class="f-icon-image" :src="f.iconUrl" mode="aspectFit" />
 							</view>
 							<view class="f-main">
 								<text class="f-text">{{f.text}}</text>
@@ -83,13 +83,13 @@ export default {
 			avatarCandidateIndex: 0,
 			userInfo: {},
 			funcs: [
-				{ icon:'referrer', symbol:'荐', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
-				{ icon:'students', symbol:'生', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
-				{ icon:'stats', symbol:'统', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
-				{ icon:'favorites', symbol:'藏', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
-				{ icon:'feedback', symbol:'馈', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
-				{ icon:'privacy', symbol:'隐', text:'隐私政策', desc:'查看隐私说明' },
-				{ icon:'agreement', symbol:'协', text:'用户协议', desc:'查看服务条款' }
+				{ icon:'referrer', iconUrl:'/static/system-icons/member/referrer.png', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
+				{ icon:'students', iconUrl:'/static/system-icons/member/students.png', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
+				{ icon:'stats', iconUrl:'/static/system-icons/member/stats.png', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
+				{ icon:'favorites', iconUrl:'/static/system-icons/member/favorites.png', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
+				{ icon:'feedback', iconUrl:'/static/system-icons/member/feedback.png', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
+				{ icon:'privacy', iconUrl:'/static/system-icons/member/privacy.png', text:'隐私政策', desc:'查看隐私说明' },
+				{ icon:'agreement', iconUrl:'/static/system-icons/member/agreement.png', text:'用户协议', desc:'查看服务条款' }
 			]
 		}
 	},
@@ -187,7 +187,7 @@ export default {
 			const index = this.funcs.findIndex(item => item.route === route);
 			const enabled = this.userInfo && this.userInfo.role === 'agency_admin';
 			if (enabled && index < 0) {
-				this.funcs.push({ icon:'campus', symbol:'校', text:'我的校区', desc:'校区激活码统计', route });
+				this.funcs.push({ icon:'campus', iconUrl:'/static/system-icons/member/campus.png', text:'我的校区', desc:'校区激活码统计', route });
 			}
 			if (!enabled && index >= 0) {
 				this.funcs.splice(index, 1);
@@ -868,5 +868,24 @@ page { background:#eef3f7; }
 		padding:0 18rpx;
 		font-size:23rpx;
 	}
+}
+
+.f-ico.has-image {
+	background:#fff !important;
+	border-color:#e5edf7 !important;
+	color:inherit !important;
+	box-shadow:0 6rpx 16rpx rgba(15,23,42,.08) !important;
+}
+.f-ico.has-image::before,
+.f-ico.has-image::after {
+	content:none !important;
+	display:none !important;
+}
+.f-icon-image {
+	position:relative;
+	z-index:2;
+	width:54rpx;
+	height:54rpx;
+	display:block;
 }
 </style>
