@@ -111,6 +111,7 @@ export function hasAuthenticatedSession() {
 }
 
 export function startAuthenticatedSession(now = Date.now()) {
+	stopExpiryTimer()
 	uni.setStorageSync(LAST_ACTIVE_KEY, now)
 	uni.removeStorageSync(INACTIVE_SINCE_KEY)
 }

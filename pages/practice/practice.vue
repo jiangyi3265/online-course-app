@@ -321,6 +321,7 @@ import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
 
 export default {
+	inheritAttrs: false,
 	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {

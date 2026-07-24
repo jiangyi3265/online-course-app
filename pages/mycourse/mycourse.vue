@@ -148,7 +148,10 @@ page { background:#fff; }
 	border-radius:16rpx;
 	padding:20rpx;
 	margin-bottom:22rpx;
-	display:flex;
+	display:grid;
+	grid-template-columns:220rpx minmax(0, 1fr);
+	gap:22rpx;
+	align-items:center;
 	box-shadow:0 4rpx 12rpx rgba(0,0,0,.04);
 }
 .course-cover {
@@ -159,7 +162,6 @@ page { background:#fff; }
 	height:154rpx;
 	border-radius:12rpx;
 	overflow:hidden;
-	flex-shrink:0;
 	background:linear-gradient(135deg,#e8f3ff,#f8fafc);
 	color:#1677ff;
 	font-size:30rpx;
@@ -183,9 +185,7 @@ page { background:#fff; }
 	line-height:1.2;
 }
 .course-info {
-	flex:1;
 	min-width:0;
-	margin-left:22rpx;
 }
 .course-title {
 	font-size:28rpx;
@@ -207,10 +207,15 @@ page { background:#fff; }
 	font-size:22rpx;
 	color:#999;
 	margin-top:12rpx;
+	white-space:nowrap;
+	overflow:hidden;
+	text-overflow:ellipsis;
 }
 .actions {
 	display:flex;
 	align-items:center;
+	flex-wrap:wrap;
+	gap:12rpx;
 	margin-top:16rpx;
 }
 .learn-btn, .report-btn {
@@ -219,9 +224,10 @@ page { background:#fff; }
 	padding:8rpx 22rpx;
 	border-radius:28rpx;
 	cursor:pointer;
+	white-space:nowrap;
 }
 .learn-btn { background:#3aa3f5; }
-.report-btn { background:#2bb673; margin-left:14rpx; }
+.report-btn { background:#2bb673; }
 .ill-img { width:460rpx; }
 .ill { position:relative; width:400rpx; height:340rpx; }
 .bubble {
@@ -279,4 +285,33 @@ page { background:#fff; }
 .m-btn.cancel { color:#000; }
 .m-btn.ok { color:#007aff; }
 .m-divider { width:1rpx; background:#ececec; }
+
+@media screen and (min-width: 768px) {
+	.course-list {
+		padding: 16px 16px 0;
+	}
+	.course-card {
+		grid-template-columns: 152px minmax(0, 1fr);
+		gap: 16px;
+		padding: 16px;
+		margin-bottom: 16px;
+		border-radius: 12px;
+		box-shadow: 0 4px 14px rgba(15,23,42,.06);
+	}
+	.course-cover {
+		width: 152px;
+		height: 108px;
+		border-radius: 10px;
+		font-size: 22px;
+	}
+	.course-title { font-size: 18px; }
+	.course-sub { margin-top: 5px; font-size: 14px; }
+	.expiry { margin-top: 7px; font-size: 13px; }
+	.actions { gap: 8px; margin-top: 10px; }
+	.learn-btn, .report-btn {
+		padding: 6px 13px;
+		border-radius: 18px;
+		font-size: 13px;
+	}
+}
 </style>

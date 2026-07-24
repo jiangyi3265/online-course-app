@@ -2,15 +2,10 @@
 	<view class="checkin-wrap">
 		<view class="checkin-card">
 			<view class="hero-row">
-				<view>
-					<view class="title">学习打卡</view>
-					<view class="sub">每天上传学习内容，有助于规划师了解你的学习情况</view>
-				</view>
-				<view class="hero-ico">✓</view>
+				<view class="sub">每天上传学习内容，有助于规划师了解你的学习情况</view>
 			</view>
 
 			<view class="date-row">
-				<text class="date-ico">□</text>
 				<text>{{ todayText }}</text>
 			</view>
 
@@ -48,7 +43,6 @@
 				</view>
 
 				<view class="submit" :class="{done: checkedIn, locked: isEditLocked}" @click="submitCheckin">
-					<text class="submit-ico">□</text>
 					<text>{{ submitText }}</text>
 				</view>
 			</view>
@@ -416,12 +410,9 @@ export default {
 <style lang="scss">
 .checkin-wrap { padding:24rpx; background:#f5f7fa; }
 .checkin-card { max-width:640rpx; margin:0 auto; padding:28rpx; border-radius:10rpx; background:#d9f3ff; border:1rpx solid #b6e7fb; box-sizing:border-box; }
-.hero-row { display:flex; justify-content:space-between; align-items:flex-start; }
-.title { color:#111827; font-size:48rpx; font-weight:900; }
-.sub { margin-top:14rpx; max-width:460rpx; color:#111827; font-size:26rpx; line-height:1.45; font-weight:700; }
-.hero-ico { width:120rpx; height:120rpx; display:flex; align-items:center; justify-content:center; font-size:72rpx; flex-shrink:0; color:#1677ff; }
-.date-row { margin-top:34rpx; min-height:86rpx; display:flex; align-items:center; padding:0 28rpx; border-radius:8rpx 8rpx 0 0; background:#80d9f2; color:#111827; font-size:34rpx; font-weight:900; }
-.date-ico { margin-right:18rpx; color:#333; font-size:30rpx; }
+.hero-row { display:flex; align-items:flex-start; }
+.sub { color:#111827; font-size:26rpx; line-height:1.45; font-weight:700; }
+.date-row { margin-top:24rpx; min-height:86rpx; display:flex; align-items:center; padding:0 28rpx; border-radius:8rpx 8rpx 0 0; background:#80d9f2; color:#111827; font-size:34rpx; font-weight:900; }
 .readonly-box { padding:26rpx 28rpx 30rpx; border-radius:0 0 10rpx 10rpx; background:#fff; border-top:1rpx solid #eef2f7; }
 .readonly-title { color:#111827; font-size:30rpx; font-weight:900; }
 .readonly-text { margin-top:10rpx; color:#667085; font-size:24rpx; line-height:1.5; }
@@ -444,7 +435,6 @@ export default {
 .submit { margin-top:44rpx; height:88rpx; border-radius:44rpx; display:flex; align-items:center; justify-content:center; gap:16rpx; background:#458af7; color:#fff; font-size:34rpx; font-weight:900; }
 .submit.done { background:#458af7; }
 .submit.locked { background:#aab4c3; }
-.submit-ico { font-size:34rpx; }
 .record-panel { max-width:640rpx; margin:18rpx auto 0; padding:24rpx; background:#fff; border:1rpx solid #dfeaf5; border-radius:14rpx; box-sizing:border-box; box-shadow:0 8rpx 20rpx rgba(37,99,235,.06); }
 .record-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; }
 .panel-title { color:#111827; font-size:30rpx; font-weight:900; }

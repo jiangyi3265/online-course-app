@@ -160,6 +160,7 @@ import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseY
 import { getCourse, resolveMediaUrl } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 export default {
+	inheritAttrs: false,
 	data() {
 		return {
 			title: '中考语文',

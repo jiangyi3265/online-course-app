@@ -40,7 +40,7 @@ export default {
 <style lang="scss">
 page { background:#f5f7fa; }
 .page { min-height:100vh; background:#f5f7fa; padding-bottom:50rpx; }
-.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
+.nav { position:sticky; top:0; z-index:120; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; box-shadow:0 4rpx 14rpx rgba(15,23,42,.05); }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; font-weight:800; color:#222; }
 .readonly-tip { margin:24rpx 24rpx 0; padding:18rpx 22rpx; border-radius:10rpx; background:#f8fafc; border:1rpx solid #e1e8f0; color:#667085; font-size:24rpx; line-height:1.45; }

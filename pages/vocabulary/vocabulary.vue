@@ -28,15 +28,18 @@
 				<view class="small-btn ghost" @click="removeWord(item)">删除</view>
 			</view>
 		</view>
+		<tab-bar active="vocabulary" />
 	</view>
 </template>
 
 <script>
 import { safeNavigateBack } from '@/common/navigation.js'
+import TabBar from '@/components/tab-bar.vue'
 
 const WORD_KEY = 'englishVocabularyWords'
 
 export default {
+	components: { TabBar },
 	data() {
 		return {
 			words: [],
@@ -85,7 +88,7 @@ export default {
 
 <style lang="scss">
 page { background:#f5f7fa; }
-.page { min-height:100vh; background:#f5f7fa; padding-bottom:40rpx; }
+.page { min-height:100vh; background:#f5f7fa; padding-bottom:150rpx; }
 .nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; font-weight:700; }

@@ -15,6 +15,7 @@
 		<view class="form">
 			<view class="title">元知智学</view>
 			<view class="invite-tip" v-if="inviteId || invitePhone">邀请人：{{invitePhone || '--'}} / ID {{inviteId || '--'}}</view>
+			<view class="session-tip" v-if="sessionExpired">登录状态已失效，请重新登录</view>
 
 			<template v-if="!resetMode">
 			<view class="input-row">
@@ -78,7 +79,7 @@
 
 <script>
 	import { bindReferrer, decodeRouteText, login, resetPassword, saveSession, sendSmsCode } from '@/common/api.js'
-	import { startAuthenticatedSession } from '@/common/session-timeout.js'
+	import { resumeSessionTimeout, startAuthenticatedSession } from '@/common/session-timeout.js'
 	export default {
 		data() {
 			return {
@@ -93,21 +94,36 @@
 					confirmPassword: ''
 				},
 				invitePhone: '',
-				inviteId: ''
+				inviteId: '',
+				sessionExpired: false
 			}
 		},
 		onLoad(opts = {}) {
 			this.invitePhone = opts.invitePhone ? decodeRouteText(opts.invitePhone) : '';
 			this.inviteId = opts.inviteId ? decodeRouteText(opts.inviteId) : '';
-			if (opts.reason === 'inactive') {
-				setTimeout(() => {
-					uni.showToast({ title: '离线已超过15分钟，请重新登录', icon: 'none', duration: 2600 });
-				}, 200);
-			}
+			this.sessionExpired = opts.reason === 'inactive';
 		},
 		methods: {
 			goHome() {
-				uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index', fail: () => {} }) });
+				this.enterHome();
+			},
+			enterHome() {
+				const url = '/pages/index/index';
+				const fallback = () => {
+					if (typeof window !== 'undefined') window.location.hash = `#${url}`;
+				};
+				uni.reLaunch({
+					url,
+					fail: () => uni.redirectTo({ url, fail: fallback })
+				});
+			},
+			finishLogin() {
+				uni.hideToast();
+				this.sessionExpired = false;
+				startAuthenticatedSession();
+				resumeSessionTimeout();
+				uni.showToast({ title: '登录成功', icon: 'success', duration: 800 });
+				setTimeout(() => this.enterHome(), 350);
 			},
 			onForget() {
 				this.reset.phone = this.phone;
@@ -191,10 +207,7 @@
 					const session = await login(this.phone, this.password);
 					saveSession(session);
 					await this.bindInviteReferrer();
-					uni.showToast({ title: '登录成功', icon: 'success' });
-					setTimeout(() => {
-						uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index', fail: () => {} }) });
-					}, 800);
+					this.finishLogin();
 					return;
 				} catch (err) {
 					console.warn('登录接口不可用，尝试本地账号兜底', err);
@@ -213,11 +226,7 @@
 
 				uni.setStorageSync('userInfo', { name: matched.name, id: matched.id, phone: matched.phone, tenantId: matched.tenantId || 52, role: matched.role || 'student' });
 				uni.setStorageSync('logined', true);
-				startAuthenticatedSession();
-				uni.showToast({ title: '登录成功', icon: 'success' });
-				setTimeout(() => {
-					uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index', fail: () => {} }) });
-				}, 1200);
+				this.finishLogin();
 			}
 		}
 	}
@@ -233,6 +242,17 @@ page {
 	background: #ffffff;
 	display: flex;
 	flex-direction: column;
+}
+
+.session-tip {
+	margin: 0 auto 22rpx;
+	padding: 14rpx 24rpx;
+	border-radius: 12rpx;
+	background: #fff4e8;
+	color: #b45309;
+	font-size: 24rpx;
+	line-height: 1.4;
+	text-align: center;
 }
 
 /* ============ Header ============ */

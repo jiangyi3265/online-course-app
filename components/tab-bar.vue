@@ -8,6 +8,10 @@
 			<image class="ico" :src="active==='course' ? '/static/tabbar/book-active.png' : '/static/tabbar/book.png'" mode="aspectFit" />
 			<text class="lab">我的课程</text>
 		</view>
+		<view class="tab" :class="{active: active==='vocabulary'}" @click="go('vocabulary')">
+			<view class="word-ico">Aa</view>
+			<text class="lab">外语词汇</text>
+		</view>
 		<view class="tab" :class="{active: active==='member'}" @click="go('member')">
 			<image class="ico user" :src="'/static/tabbar/user.png'" mode="aspectFit" />
 			<text class="lab">会员中心</text>
@@ -23,6 +27,7 @@ export default {
 			const map = {
 				home: '/pages/index/index',
 				course: '/pages/mycourse/mycourse',
+				vocabulary: '/pages/vocabulary/vocabulary',
 				member: '/pages/member/member'
 			};
 			const url = map[k];
@@ -73,6 +78,20 @@ export default {
 	cursor:pointer;
 }
 .tab .ico { width:48rpx; height:48rpx; margin-bottom:4rpx; }
+.word-ico {
+	width:48rpx;
+	height:48rpx;
+	margin-bottom:4rpx;
+	border:3rpx solid currentColor;
+	border-radius:10rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	box-sizing:border-box;
+	font-size:19rpx;
+	font-weight:900;
+	line-height:1;
+}
 .tab .lab { font-size:20rpx; }
 .tab.active { color:#1890e1; }
 .tab.active .ico.user { filter: brightness(0) saturate(100%) invert(36%) sepia(95%) saturate(2200%) hue-rotate(199deg) brightness(98%) contrast(101%); }

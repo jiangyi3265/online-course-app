@@ -179,6 +179,7 @@
 import { getCourse, getLessonRatingApi, getLessonVideo, isLoggedIn, resolveMediaUrl, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
 import Hls from 'hls.js'
 export default {
+	inheritAttrs: false,
 	data() {
 		return {
 			title: '选材与加工高分技巧',
@@ -326,7 +327,7 @@ export default {
 		},
 		freePlaybackUnlocked() {
 			return /-trial$/i.test(String(this.courseId || ''))
-				|| Number(this.cumulativePercent || 0) >= 100;
+				|| Number(this.percent || 0) >= 100;
 		}
 	},
 	methods: {
@@ -504,11 +505,13 @@ export default {
 				this.totalTime = this.formatTime(this.durationSeconds);
 				if (data.progress) {
 					const savedTime = this.safeSeconds(data.progress.currentTime);
+					const savedPercent = Math.max(0, Math.min(100, Number(data.progress.percent) || 0));
 					const completedPlayback = data.progress.ended === true
 						|| (this.durationSeconds > 0 && savedTime >= this.durationSeconds - 0.25);
-					this.initialTime = completedPlayback ? 0 : savedTime;
+					const canResume = completedPlayback || this.isProgressWithinResumeWindow(data.progress);
+					this.initialTime = completedPlayback ? 0 : (canResume ? savedTime : 0);
 					this.currentSeconds = this.initialTime;
-					this.percent = Math.max(0, Math.min(100, Number(data.progress.percent) || 0));
+					this.percent = completedPlayback ? Math.max(100, savedPercent) : (canResume ? savedPercent : 0);
 					this.cumulativePercent = Math.max(0, Number(data.progress.cumulativePercent) || this.percent);
 					this.maxVerifiedVideoTime = this.initialTime;
 					this.curTime = this.formatTime(this.currentSeconds);
@@ -1234,6 +1237,7 @@ export default {
 					progressEventId: batch.id
 				});
 				this.pendingWatchSeconds = Math.max(0, this.pendingWatchSeconds - batch.watchDelta);
+				uni.setStorageSync(this.progressResumeStorageKey(), Date.now());
 				this.cumulativePercent = Math.max(this.cumulativePercent, Number(saved && saved.cumulativePercent) || 0);
 				this.refreshPlaybackPolicy();
 				this.progressBatch = null;
@@ -1261,6 +1265,33 @@ export default {
 		safeSeconds(value = 0) {
 			const number = Number(value);
 			return Number.isFinite(number) && number > 0 ? number : 0;
+		},
+		progressUpdatedAt(progress = {}) {
+			const raw = progress.updatedAt
+				|| progress.lastWatchedAt
+				|| progress.lastProgressAt
+				|| progress.recordTime
+				|| progress.updateTime
+				|| progress.createdAt
+				|| uni.getStorageSync(this.progressResumeStorageKey());
+			if (!raw) return 0;
+			if (typeof raw === 'number' || /^\d+$/.test(String(raw))) {
+				const numeric = Number(raw);
+				return numeric > 0 && numeric < 100000000000 ? numeric * 1000 : numeric;
+			}
+			const parsed = new Date(String(raw).replace(' ', 'T')).getTime();
+			return Number.isFinite(parsed) ? parsed : 0;
+		},
+		isProgressWithinResumeWindow(progress = {}) {
+			const updatedAt = this.progressUpdatedAt(progress);
+			if (!updatedAt) return false;
+			const elapsed = Date.now() - updatedAt;
+			return elapsed >= 0 && elapsed <= 24 * 60 * 60 * 1000;
+		},
+		progressResumeStorageKey() {
+			const user = this.userInfo || {};
+			const userId = user.id || user.userId || user.user_id || user.uid || 'guest';
+			return `lessonResumeAt:${userId}:${this.courseId || 'course'}:${this.lessonId || this.title || 'lesson'}`;
 		},
 		noop() {},
 		goNext() {

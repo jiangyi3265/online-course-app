@@ -28,7 +28,7 @@
 								<text>资料</text>
 								<text class="section-count">{{lectureDocs.length}}份</text>
 							</view>
-							<view class="section-sub">讲义、学习资料、学案统一放在这里</view>
+							<view class="section-sub">讲义、学习资料</view>
 					</view>
 						<view class="section-caret" :class="{open: expandedSections.lecture}">›</view>
 				</view>
