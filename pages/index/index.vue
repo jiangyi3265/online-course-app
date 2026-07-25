@@ -39,7 +39,6 @@
 				<view class="cover">
 					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFill" @error.stop="onCourseCoverError(it)" />
 					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
-					<text class="course-tag">视频+考练</text>
 				</view>
 				<view class="info">
 					<view class="title">《{{it.full}}》试听课</view>
@@ -255,11 +254,110 @@ page { background:#f7f8fa; color-scheme:light; }
 .cover-img { width:100%; height:100%; display:block; object-fit:cover; background:#f8fafc; }
 .cover-img :deep(div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
 .cover-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#edf5ff,#f8fbff); color:#1677ff; font-size:32rpx; font-weight:900; letter-spacing:2rpx; }
-.course-tag { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.5); color:#fff; font-size:22rpx; padding:8rpx 14rpx; border-top-right-radius:8rpx; }
 .info { padding:16rpx 18rpx 22rpx; }
 .title { font-size:26rpx; color:rgba(0,0,0,0.9); font-weight:700; }
 .learn { display:inline-block; font-size:22rpx; color:#0d7cfe; background:#eaf0ff; padding:4rpx 14rpx; border-radius:6rpx; margin-top:14rpx; }
 .access-row { margin-top:14rpx; display:flex; align-items:center; flex-wrap:wrap; gap:10rpx; }
 .access-chip { color:#0d7cfe; background:#eaf4ff; font-weight:700; font-size:24rpx; padding:6rpx 14rpx; border-radius:8rpx; }
 .access-note { color:#8a94a3; font-size:22rpx; }
+
+@media screen and (min-width: 768px) {
+	.page {
+		padding-bottom:78px;
+	}
+	.banner {
+		padding:16px 18px 6px;
+	}
+	.banner-swiper {
+		height:210px;
+		border-radius:12px;
+	}
+	.banner-img {
+		border-radius:12px;
+	}
+	.cats {
+		padding:18px 12px 12px;
+	}
+	.cat {
+		min-height:96px;
+	}
+	.cat-icon {
+		width:56px;
+		height:56px;
+		flex-basis:56px;
+		margin-bottom:9px;
+		border-radius:16px;
+	}
+	.cat-img {
+		width:52px;
+		height:52px;
+	}
+	.cat-text {
+		font-size:16px;
+		white-space:nowrap;
+	}
+	.tool-strip {
+		padding:10px 16px 0;
+	}
+	.tool-card {
+		min-height:86px;
+		padding:0 18px;
+		border-radius:12px;
+	}
+	.tool-mark {
+		width:52px;
+		height:52px;
+		flex-basis:52px;
+		margin-right:14px;
+	}
+	.tool-mark-image {
+		width:48px;
+		height:48px;
+	}
+	.tool-title {
+		font-size:18px;
+	}
+	.tool-sub {
+		margin-top:4px;
+		font-size:14px;
+	}
+	.tool-arrow {
+		font-size:30px;
+	}
+	.grid {
+		display:grid;
+		grid-template-columns:repeat(2, minmax(0, 1fr));
+		gap:16px;
+		padding:16px;
+	}
+	.card {
+		width:auto;
+		margin:0;
+		border-radius:12px;
+	}
+	.info {
+		padding:12px 14px 16px;
+	}
+	.title {
+		font-size:17px;
+		line-height:1.4;
+	}
+	.learn {
+		margin-top:10px;
+		padding:3px 9px;
+		font-size:14px;
+	}
+	.access-row {
+		margin-top:10px;
+		gap:7px;
+	}
+	.access-chip {
+		padding:4px 9px;
+		border-radius:6px;
+		font-size:14px;
+	}
+	.access-note {
+		font-size:13px;
+	}
+}
 </style>

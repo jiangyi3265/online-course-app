@@ -82,4 +82,21 @@ export default {
 .tab.active { color:#1890e1; }
 .tab.active .ico.user { filter: brightness(0) saturate(100%) invert(36%) sepia(95%) saturate(2200%) hue-rotate(199deg) brightness(98%) contrast(101%); }
 .tab.active .ico.vocabulary { filter:brightness(0) saturate(100%) invert(44%) sepia(97%) saturate(1730%) hue-rotate(174deg) brightness(95%) contrast(89%); }
+@media screen and (min-width: 768px) {
+	.tabbar {
+		height:68px;
+	}
+	.tab {
+		font-size:14px;
+	}
+	.tab .ico {
+		width:30px;
+		height:30px;
+		margin-bottom:3px;
+	}
+	.tab .lab {
+		font-size:14px;
+		white-space:nowrap;
+	}
+}
 </style>

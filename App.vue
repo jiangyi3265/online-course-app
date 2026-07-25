@@ -68,7 +68,7 @@
 
 	@media screen and (min-width: 768px) {
 		:root {
-			--wk-app-width: min(430px, 100vw);
+			--wk-app-width: min(600px, 100vw);
 		}
 
 		* {

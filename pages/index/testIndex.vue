@@ -6,11 +6,9 @@
 
 		<scroll-view scroll-y class="list">
 			<view class="row" v-for="(it,i) in currentList" :key="i" @click="goDetail(it)">
-				<view class="cover" :class="{'clean-cover': !it.isTry}">
+				<view class="cover">
 					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFit" @error="markCoverError(it)" />
 					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
-					<text class="course-tag">视频+考练</text>
-					<view class="cover-clean-patch" v-if="!it.isTry"></view>
 				</view>
 				<view class="info">
 					<view class="title">《{{it.full}}》{{it.suffix}}</view>
@@ -170,11 +168,11 @@ export default {
 
 <style lang="scss">
 page { background:#f5f7fa; }
-.page { min-height:100vh; padding-bottom:130rpx; background:#f5f7fa; display:flex; flex-direction:column; }
-.tabs { display:flex; padding: 30rpx 30rpx 20rpx; background:#fff; }
-.tab-item { margin-right:50rpx; font-size:28rpx; color:#b6b9c0; font-weight:500; padding:8rpx 0; cursor:pointer; }
+.page { min-height:100vh; padding-bottom:130rpx; background:#f5f7fa; display:flex; flex-direction:column; overflow-x:hidden; }
+.tabs { width:100%; box-sizing:border-box; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); align-items:center; padding:30rpx 18rpx 20rpx; background:#fff; }
+.tab-item { min-width:0; margin:0; text-align:center; font-size:28rpx; color:#b6b9c0; font-weight:500; padding:8rpx 4rpx; cursor:pointer; white-space:nowrap; }
 .tab-item.active { color: rgba(0,0,0,0.9); font-size:30rpx; font-weight:700; }
-.list { flex:1; padding: 10rpx 24rpx; }
+.list { width:100%; box-sizing:border-box; flex:1; padding:10rpx 24rpx; }
 .row { display:flex; background:#fff; border-radius:16rpx; padding:20rpx; margin-bottom:24rpx; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
 .cover { width:220rpx; height:160rpx; border-radius:12rpx; overflow:hidden; flex-shrink:0; position:relative; }
 .cover-img { width:100%; height:100%; display:block; object-fit:contain; background:#f8fafc; }
@@ -192,17 +190,6 @@ page { background:#f5f7fa; }
 	text-align:center;
 	line-height:1.2;
 }
-.course-tag { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.5); color:#fff; font-size:20rpx; padding:6rpx 12rpx; border-top-right-radius:8rpx; }
-.cover-clean-patch {
-	position:absolute;
-	top:0;
-	right:0;
-	width:92rpx;
-	height:44rpx;
-	background:linear-gradient(135deg, rgba(255,255,255,.78), rgba(255,255,255,.18));
-	border-bottom-left-radius:18rpx;
-	backdrop-filter: blur(2rpx);
-}
 .info { flex:1; margin-left:24rpx; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
 .title { font-size:26rpx; font-weight:700; color:rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sub { font-size:24rpx; color:#666; margin-top:6rpx; }
@@ -216,4 +203,70 @@ page { background:#f5f7fa; }
 .go-btn.locked { background:#f59e0b; box-shadow:0 4rpx 10rpx rgba(245,158,11,0.28); }
 .go-btn.trial { background:#1890e1; }
 .end-tip { text-align:center; color:#bcc1c8; font-size:24rpx; padding:50rpx 0 20rpx; }
+
+@media screen and (min-width: 768px) {
+	.page {
+		padding-bottom:78px;
+	}
+	.tabs {
+		padding:20px 16px 14px;
+	}
+	.tab-item {
+		padding:7px 4px;
+		font-size:16px;
+	}
+	.tab-item.active {
+		font-size:17px;
+	}
+	.list {
+		padding:10px 16px;
+	}
+	.row {
+		padding:14px;
+		margin-bottom:14px;
+		border-radius:12px;
+	}
+	.cover {
+		width:150px;
+		height:110px;
+		border-radius:9px;
+	}
+	.cover-fallback {
+		font-size:22px;
+	}
+	.info {
+		margin-left:16px;
+	}
+	.title {
+		font-size:17px;
+	}
+	.sub {
+		margin-top:4px;
+		font-size:14px;
+		line-height:1.35;
+	}
+	.bottom {
+		padding-right:10px;
+	}
+	.access {
+		min-width:100px;
+	}
+	.access-title {
+		font-size:15px;
+	}
+	.access-sub {
+		margin-top:3px;
+		font-size:13px;
+	}
+	.go-btn {
+		min-width:84px;
+		padding:8px 18px;
+		border-radius:22px;
+		font-size:14px;
+	}
+	.end-tip {
+		padding:32px 0 16px;
+		font-size:14px;
+	}
+}
 </style>
