@@ -32,7 +32,7 @@
 					:show-fullscreen-btn="false"
 					:show-play-btn="false"
 					:show-center-play-btn="false"
-					:enable-progress-gesture="false"
+					:enable-progress-gesture="freePlaybackUnlocked"
 					@loadedmetadata="onLoadedMeta"
 					@play="onPlay"
 					@pause="onPause"
@@ -327,6 +327,7 @@ export default {
 		},
 		freePlaybackUnlocked() {
 			return /-trial$/i.test(String(this.courseId || ''))
+				|| Number(this.cumulativePercent || 0) >= 100
 				|| Number(this.percent || 0) >= 100;
 		}
 	},
@@ -506,13 +507,15 @@ export default {
 				if (data.progress) {
 					const savedTime = this.safeSeconds(data.progress.currentTime);
 					const savedPercent = Math.max(0, Math.min(100, Number(data.progress.percent) || 0));
+					const completionPercent = this.progressCompletionPercent(data.progress, savedPercent);
 					const completedPlayback = data.progress.ended === true
+						|| completionPercent >= 100
 						|| (this.durationSeconds > 0 && savedTime >= this.durationSeconds - 0.25);
 					const canResume = completedPlayback || this.isProgressWithinResumeWindow(data.progress);
 					this.initialTime = completedPlayback ? 0 : (canResume ? savedTime : 0);
 					this.currentSeconds = this.initialTime;
 					this.percent = completedPlayback ? Math.max(100, savedPercent) : (canResume ? savedPercent : 0);
-					this.cumulativePercent = Math.max(0, Number(data.progress.cumulativePercent) || this.percent);
+					this.cumulativePercent = Math.max(0, completionPercent);
 					this.maxVerifiedVideoTime = this.initialTime;
 					this.curTime = this.formatTime(this.currentSeconds);
 				}
@@ -1238,11 +1241,12 @@ export default {
 				});
 				this.pendingWatchSeconds = Math.max(0, this.pendingWatchSeconds - batch.watchDelta);
 				uni.setStorageSync(this.progressResumeStorageKey(), Date.now());
-				this.cumulativePercent = Math.max(this.cumulativePercent, Number(saved && saved.cumulativePercent) || 0);
+				const completionPercent = this.progressCompletionPercent(saved || {}, this.cumulativePercent);
+				this.cumulativePercent = Math.max(this.cumulativePercent, completionPercent);
 				this.refreshPlaybackPolicy();
 				this.progressBatch = null;
 				this.progressSaved = true;
-				if (batch.ended || Number(saved && saved.bestPercent) >= 95 || Number(this.percent) >= 95) this.markLocalLessonUnlocked('videos');
+				if (batch.ended || completionPercent >= 100) this.markLocalLessonUnlocked('videos');
 			} catch (err) {
 				console.warn('学习进度保存失败', err);
 			} finally {
@@ -1265,6 +1269,19 @@ export default {
 		safeSeconds(value = 0) {
 			const number = Number(value);
 			return Number.isFinite(number) && number > 0 ? number : 0;
+		},
+		progressCompletionPercent(progress = {}, fallback = 0) {
+			const values = [
+				progress.cumulativePercent,
+				progress.studyPercent,
+				progress.totalPercent,
+				progress.bestPercent,
+				progress.percent,
+				fallback
+			]
+				.map(value => Number(value))
+				.filter(value => Number.isFinite(value) && value >= 0);
+			return values.length ? Math.max(...values) : 0;
 		},
 		progressUpdatedAt(progress = {}) {
 			const raw = progress.updatedAt

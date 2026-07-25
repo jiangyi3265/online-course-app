@@ -410,8 +410,8 @@ export default {
 <style lang="scss">
 .checkin-wrap { padding:24rpx; background:#f5f7fa; }
 .checkin-card { max-width:640rpx; margin:0 auto; padding:28rpx; border-radius:10rpx; background:#d9f3ff; border:1rpx solid #b6e7fb; box-sizing:border-box; }
-.hero-row { display:flex; align-items:flex-start; }
-.sub { color:#111827; font-size:26rpx; line-height:1.45; font-weight:700; }
+.hero-row { display:flex; align-items:center; }
+.sub { width:100%; color:#111827; font-size:22rpx; line-height:1.4; font-weight:700; white-space:nowrap; }
 .date-row { margin-top:24rpx; min-height:86rpx; display:flex; align-items:center; padding:0 28rpx; border-radius:8rpx 8rpx 0 0; background:#80d9f2; color:#111827; font-size:34rpx; font-weight:900; }
 .readonly-box { padding:26rpx 28rpx 30rpx; border-radius:0 0 10rpx 10rpx; background:#fff; border-top:1rpx solid #eef2f7; }
 .readonly-title { color:#111827; font-size:30rpx; font-weight:900; }
