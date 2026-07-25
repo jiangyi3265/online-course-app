@@ -871,10 +871,10 @@ page { background:#eef3f7; }
 }
 
 .f-ico.has-image {
-	background:#fff !important;
-	border-color:#e5edf7 !important;
+	background:transparent !important;
+	border:0 !important;
 	color:inherit !important;
-	box-shadow:0 6rpx 16rpx rgba(15,23,42,.08) !important;
+	box-shadow:none !important;
 }
 .f-ico.has-image::before,
 .f-ico.has-image::after {
@@ -884,8 +884,79 @@ page { background:#eef3f7; }
 .f-icon-image {
 	position:relative;
 	z-index:2;
-	width:54rpx;
-	height:54rpx;
+	width:62rpx;
+	height:62rpx;
 	display:block;
+}
+
+/* Supplied member icon set: open, four-column layout matching the product reference. */
+.func-panel {
+	padding:30rpx 24rpx 28rpx;
+}
+.funcs {
+	grid-template-columns:repeat(4, minmax(0, 1fr));
+	gap:24rpx 10rpx;
+}
+@media screen and (max-width: 430px) {
+	.funcs {
+		grid-template-columns:repeat(4, minmax(0, 1fr));
+		gap:24rpx 10rpx;
+	}
+}
+.func {
+	min-height:112rpx;
+	padding:8rpx 2rpx;
+	gap:8rpx;
+	background:transparent;
+	border:0;
+	border-radius:0;
+	box-shadow:none;
+	overflow:visible;
+}
+.func.featured {
+	background:transparent;
+	border:0;
+}
+.f-ico {
+	width:68rpx;
+	height:68rpx;
+	margin:0 auto;
+	border-radius:0;
+}
+.f-main {
+	align-items:center;
+	width:100%;
+}
+.f-text {
+	margin-top:4rpx;
+	font-size:22rpx;
+	font-weight:700;
+	white-space:nowrap;
+}
+@media screen and (min-width: 600px) {
+	.func-panel {
+		padding:24px 20px;
+	}
+	.funcs {
+		gap:20px 8px;
+		margin-top:20px;
+	}
+	.func {
+		min-height:82px;
+		padding:4px 0;
+		gap:4px;
+	}
+	.f-ico {
+		width:48px;
+		height:48px;
+	}
+	.f-icon-image {
+		width:44px;
+		height:44px;
+	}
+	.f-text {
+		margin-top:2px;
+		font-size:14px;
+	}
 }
 </style>

@@ -22,7 +22,9 @@
 
 		<view class="tool-strip">
 			<view class="tool-card" @click="goVocabulary">
-				<view class="tool-mark">Aa</view>
+				<view class="tool-mark">
+					<image class="tool-mark-image" src="/static/system-icons/vocabulary.png" mode="aspectFit" />
+				</view>
 				<view class="tool-info">
 					<view class="tool-title">外语词汇</view>
 					<view class="tool-sub">英语单词工具</view>
@@ -240,7 +242,8 @@ page { background:#f7f8fa; color-scheme:light; }
 .cat-text { font-size:30rpx; color:rgba(0,0,0,0.9); font-weight:700; }
 .tool-strip { padding:12rpx 20rpx 0; }
 .tool-card { min-height:118rpx; background:#fff; border:1rpx solid #edf0f4; border-radius:16rpx; display:flex; align-items:center; padding:0 24rpx; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
-.tool-mark { width:74rpx; height:74rpx; border-radius:16rpx; background:#eaf4ff; color:#0d7cfe; display:flex; align-items:center; justify-content:center; font-size:28rpx; font-weight:900; margin-right:18rpx; }
+.tool-mark { width:74rpx; height:74rpx; display:flex; align-items:center; justify-content:center; margin-right:18rpx; flex:0 0 74rpx; }
+.tool-mark-image { width:66rpx; height:66rpx; display:block; }
 .tool-info { flex:1; min-width:0; }
 .tool-title { color:#222; font-size:30rpx; font-weight:800; }
 .tool-sub { margin-top:6rpx; color:#697386; font-size:24rpx; }
