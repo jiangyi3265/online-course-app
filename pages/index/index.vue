@@ -66,10 +66,10 @@ export default {
 	data() {
 		return {
 			cats: [
-				{ icon:'/static/system-icons/home/zk-trial.png', iconError:false, symbol:'听', text:'中考试听' },
-				{ icon:'/static/system-icons/home/zk-course.png', iconError:false, symbol:'课', text:'中考课程' },
-				{ icon:'/static/system-icons/home/gk-trial.png', iconError:false, symbol:'听', text:'高考试听' },
-				{ icon:'/static/system-icons/home/gk-course.png', iconError:false, symbol:'课', text:'高考课程' }
+				{ icon:'/static/system-icons/home/zk-trial.png?v=20260725', iconError:false, symbol:'听', text:'中考试听' },
+				{ icon:'/static/system-icons/home/zk-course.png?v=20260725', iconError:false, symbol:'课', text:'中考课程' },
+				{ icon:'/static/system-icons/home/gk-trial.png?v=20260725', iconError:false, symbol:'听', text:'高考试听' },
+				{ icon:'/static/system-icons/home/gk-course.png?v=20260725', iconError:false, symbol:'课', text:'高考课程' }
 			],
 			homeBanners: [
 				{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }
@@ -129,7 +129,10 @@ export default {
 					id: item.id,
 					full: stripCourseYear(item.full),
 					learn: item.studyCount || item.learn || 0,
-					cover: this.firstMediaUrl([item.cover, item.coverUrl, item.imageUrl, item.image, item.thumbnail]),
+					cover: this.firstMediaUrl(
+						[item.cover, item.coverUrl, item.imageUrl, item.image, item.thumbnail],
+						this.localCourseCover(item.full || item.title || item.name)
+					),
 					coverError: false,
 					subject: item.subject,
 					kind: item.kind,
@@ -174,8 +177,31 @@ export default {
 			return resolveMediaUrl(item.icon || '');
 		},
 		onCourseCoverError(item = {}) {
+			const fallback = this.localCourseCover(item.full || item.title || item.name);
+			if (fallback && item.cover !== fallback) {
+				item.cover = fallback;
+				item.coverError = false;
+				return;
+			}
 			if (this.$set) this.$set(item, 'coverError', true);
 			else item.coverError = true;
+		},
+		localCourseCover(value = '') {
+			const title = String(value || '').replace(/[《》\s]/g, '');
+			const covers = {
+				中考语文:'/static/courses/zk-yuwen.jpg',
+				中考数学:'/static/courses/zk-shuxue.jpg',
+				中考英语:'/static/courses/zk-yingyu.jpg',
+				中考物理:'/static/courses/zk-wuli.jpg',
+				中考化学:'/static/courses/zk-huaxue.jpg',
+				高考语文:'/static/courses/gk-yuwen.jpg',
+				高考数学:'/static/courses/gk-shuxue.jpg',
+				高考英语:'/static/courses/gk-yingyu.jpg',
+				高考物理:'/static/courses/gk-wuli.jpg',
+				高考化学:'/static/courses/gk-huaxue.jpg'
+			};
+			const matched = Object.keys(covers).find(key => title.includes(key));
+			return matched ? covers[matched] : '';
 		},
 		catFallbackText(item = {}) {
 			const text = String(item.text || '');
@@ -335,6 +361,24 @@ page { background:#f7f8fa; color-scheme:light; }
 		margin:0;
 		border-radius:12px;
 	}
+	.cover {
+		min-height:180px;
+		aspect-ratio:4 / 3;
+	}
+	.cover-img {
+		position:absolute;
+		inset:0;
+		width:100%;
+		height:100%;
+	}
+	.cover-img :deep(img),
+	.cover-img :deep(.uni-image-div) {
+		width:100% !important;
+		height:100% !important;
+		object-fit:cover !important;
+		background-position:center !important;
+		background-size:cover !important;
+	}
 	.info {
 		padding:12px 14px 16px;
 	}
@@ -358,6 +402,15 @@ page { background:#f7f8fa; color-scheme:light; }
 	}
 	.access-note {
 		font-size:13px;
+	}
+}
+
+@media (hover:hover) and (pointer:fine) {
+	.tool-strip {
+		display:none;
+	}
+	.grid {
+		padding-top:14px;
 	}
 }
 </style>

@@ -66,7 +66,7 @@
 		-webkit-user-drag: none;
 	}
 
-	@media screen and (min-width: 768px) {
+	@media screen and (min-width: 600px) {
 		:root {
 			--wk-app-width: min(600px, 100vw);
 		}

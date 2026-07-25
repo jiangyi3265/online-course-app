@@ -41,9 +41,9 @@
 
 		<!-- 三功能 -->
 		<view class="funcs">
-			<view class="func" @click="goDocs"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/documents.png" mode="aspectFit" /></view><text class="f-text">我的文档</text></view>
-			<view class="func" @click="goPlan"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/checkin.png" mode="aspectFit" /></view><text class="f-text">学习打卡</text></view>
-			<view class="func" @click="goReport"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/report.png" mode="aspectFit" /></view><text class="f-text">学习报告</text></view>
+			<view class="func" @click="goDocs"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/documents.png?v=20260725" mode="aspectFit" /></view><text class="f-text">我的文档</text></view>
+			<view class="func" @click="goPlan"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/checkin.png?v=20260725" mode="aspectFit" /></view><text class="f-text">学习打卡</text></view>
+			<view class="func" @click="goReport"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/report.png?v=20260725" mode="aspectFit" /></view><text class="f-text">学习报告</text></view>
 		</view>
 
 		<view class="course-actions-area" @click="collapseCheckinPanel">
@@ -1382,6 +1382,132 @@ page { background:#f5f7fa; }
 	}
 	.info-block {
 		margin:0;
+	}
+}
+
+@media screen and (min-width: 600px) {
+	.page {
+		padding-top:64px;
+	}
+	.nav {
+		height:64px;
+	}
+	.back {
+		width:72px;
+		height:64px;
+		font-size:44px;
+	}
+	.nav-title {
+		max-width:420px;
+		font-size:20px;
+		white-space:nowrap;
+		overflow:hidden;
+		text-overflow:ellipsis;
+	}
+	.cover-banner {
+		aspect-ratio:1476 / 472;
+	}
+	.cover-poster {
+		aspect-ratio:4 / 3;
+	}
+	.info-block {
+		padding:22px 24px;
+	}
+	.info-top {
+		gap:16px;
+	}
+	.info-title {
+		min-width:0;
+		font-size:22px;
+		line-height:1.3;
+	}
+	.course-intro {
+		margin-top:10px;
+		font-size:15px;
+	}
+	.update-meta {
+		gap:6px;
+		padding:7px 11px;
+		border-radius:8px;
+		font-size:14px;
+		white-space:nowrap;
+	}
+	.version-stats {
+		gap:6px;
+		margin-top:12px;
+	}
+	.version-stat {
+		grid-template-columns:104px 64px minmax(0, 1fr);
+		gap:8px;
+		font-size:14px;
+	}
+	.progress-row {
+		grid-template-columns:auto 150px auto minmax(0, 1fr);
+		gap:9px;
+		margin-top:15px;
+	}
+	.bar {
+		width:150px;
+		height:8px;
+	}
+	.p-label,
+	.p-num,
+	.p-extra {
+		font-size:14px;
+		line-height:1.35;
+	}
+	.p-extra {
+		min-width:0;
+		white-space:nowrap;
+		overflow:hidden;
+		text-overflow:ellipsis;
+	}
+	.funcs {
+		gap:14px;
+		padding:20px 18px 24px;
+	}
+	.func {
+		min-height:108px;
+		border-radius:12px;
+	}
+	.f-ico {
+		width:62px;
+		height:62px;
+		margin-bottom:10px;
+	}
+	.f-icon-image {
+		width:60px;
+		height:60px;
+	}
+	.f-text {
+		font-size:16px;
+	}
+	.tabs {
+		gap:8px;
+		padding:14px 18px 12px;
+	}
+	.tab {
+		height:46px;
+		line-height:46px;
+		padding:0 6px;
+		font-size:17px;
+		white-space:nowrap;
+	}
+	.tab.active::after {
+		bottom:-6px;
+		width:46px;
+		height:3px;
+	}
+	.chip-row {
+		gap:10px;
+		padding:16px 20px 8px;
+	}
+	.chip {
+		min-width:118px;
+		height:40px;
+		line-height:40px;
+		padding:0 16px;
+		font-size:15px;
 	}
 }
 </style>

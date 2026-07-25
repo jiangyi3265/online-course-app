@@ -83,13 +83,13 @@ export default {
 			avatarCandidateIndex: 0,
 			userInfo: {},
 			funcs: [
-				{ icon:'referrer', iconUrl:'/static/system-icons/member/referrer.png', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
-				{ icon:'students', iconUrl:'/static/system-icons/member/students.png', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
-				{ icon:'stats', iconUrl:'/static/system-icons/member/stats.png', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
-				{ icon:'favorites', iconUrl:'/static/system-icons/member/favorites.png', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
-				{ icon:'feedback', iconUrl:'/static/system-icons/member/feedback.png', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
-				{ icon:'privacy', iconUrl:'/static/system-icons/member/privacy.png', text:'隐私政策', desc:'查看隐私说明' },
-				{ icon:'agreement', iconUrl:'/static/system-icons/member/agreement.png', text:'用户协议', desc:'查看服务条款' }
+				{ icon:'referrer', iconUrl:'/static/system-icons/member/referrer.png?v=20260725', text:'我的推荐人', desc:'绑定推荐关系', route:'/pages/referrer/referrer', featured:true },
+				{ icon:'students', iconUrl:'/static/system-icons/member/students.png?v=20260725', text:'我的学生', desc:'只读查看学情', route:'/pages/students/students', featured:true },
+				{ icon:'stats', iconUrl:'/static/system-icons/member/stats.png?v=20260725', text:'学情统计', desc:'学习数据汇总', route:'/pages/study-analysis/study-analysis' },
+				{ icon:'favorites', iconUrl:'/static/system-icons/member/favorites.png?v=20260725', text:'我的收藏', desc:'课程与题目收藏', route:'/pages/favorites/favorites' },
+				{ icon:'feedback', iconUrl:'/static/system-icons/member/feedback.png?v=20260725', text:'意见反馈', desc:'提交问题建议', route:'/pages/feedback/feedback' },
+				{ icon:'privacy', iconUrl:'/static/system-icons/member/privacy.png?v=20260725', text:'隐私政策', desc:'查看隐私说明' },
+				{ icon:'agreement', iconUrl:'/static/system-icons/member/agreement.png?v=20260725', text:'用户协议', desc:'查看服务条款' }
 			]
 		}
 	},
@@ -187,7 +187,7 @@ export default {
 			const index = this.funcs.findIndex(item => item.route === route);
 			const enabled = this.userInfo && this.userInfo.role === 'agency_admin';
 			if (enabled && index < 0) {
-				this.funcs.push({ icon:'campus', iconUrl:'/static/system-icons/member/campus.png', text:'我的校区', desc:'校区激活码统计', route });
+				this.funcs.push({ icon:'campus', iconUrl:'/static/system-icons/member/campus.png?v=20260725', text:'我的校区', desc:'校区激活码统计', route });
 			}
 			if (!enabled && index >= 0) {
 				this.funcs.splice(index, 1);
@@ -934,6 +934,58 @@ page { background:#eef3f7; }
 	white-space:nowrap;
 }
 @media screen and (min-width: 600px) {
+	.member-content {
+		padding:24px 20px 0;
+	}
+	.user-card {
+		gap:18px;
+		padding:22px;
+		border-radius:16px;
+	}
+	.avatar {
+		width:78px;
+		height:78px;
+		font-size:30px;
+	}
+	.u-name {
+		font-size:23px;
+	}
+	.u-id {
+		margin-top:6px;
+		font-size:15px;
+	}
+	.logout-btn {
+		min-width:92px;
+		height:40px;
+		line-height:40px;
+		font-size:15px;
+	}
+	.invite {
+		min-height:116px;
+		margin-top:18px;
+		padding:22px 24px;
+		gap:20px;
+		border-radius:16px;
+	}
+	.invite-l {
+		max-width:calc(100% - 136px);
+	}
+	.invite-t {
+		font-size:22px;
+	}
+	.invite-s {
+		max-width:34ch;
+		margin-top:7px;
+		font-size:15px;
+		line-height:1.45;
+	}
+	.invite-btn {
+		min-width:104px;
+		height:40px;
+		line-height:40px;
+		padding:0 18px;
+		font-size:15px;
+	}
 	.func-panel {
 		padding:24px 20px;
 	}

@@ -151,21 +151,27 @@
 		<view class="rating-panel">
 			<view class="rating-head">
 				<text class="rating-title">课程评分</text>
-				<text class="rating-state">{{myRating ? `${myRating}星` : '1到5颗星'}}</text>
+				<text class="rating-state">{{myRating ? `${myRating}星` : (pendingRating ? `已选${pendingRating}星` : '1到5颗星')}}</text>
 			</view>
 			<view class="star-row">
 				<view
 					class="star-item"
 					v-for="star in ratingOptions"
 					:key="star"
-					:class="{active: myRating >= star, disabled: ratingLoading || !!myRating}"
-					@click="submitLessonRating(star)"
+					:class="{active: selectedRating >= star, disabled: ratingLoading || !!myRating || percent < 90}"
+					@click="selectLessonRating(star)"
 				>
 					<text class="star-icon">★</text>
 					<text class="star-label">{{star}}星</text>
 				</view>
 			</view>
 			<view class="rating-desc">{{ratingHint}}</view>
+			<view
+				v-if="pendingRating && !myRating"
+				class="rating-save-btn"
+				:class="{disabled:ratingLoading}"
+				@click="saveSelectedLessonRating"
+			>{{ratingLoading ? '正在保存…' : '保存记录'}}</view>
 		</view>
 
 		<!-- 底部 -->
@@ -248,6 +254,7 @@ export default {
 			page: 1,
 			pageTotal: 1,
 			myRating: 0,
+			pendingRating: 0,
 			ratingLoading: false,
 			ratingOptions: [1, 2, 3, 4, 5],
 			userInfo: {}
@@ -327,7 +334,11 @@ export default {
 		ratingHint() {
 			if (this.myRating) return '已记录本节课程评分，不可更改。';
 			if (this.percent < 90) return '学习进度达到90%后即可提交评分。';
-			return '看完课程后点击星级，每节课只能评价一次。';
+			if (this.pendingRating) return `已选择${this.pendingRating}星，请点击“保存记录”确认。`;
+			return '请选择星级，再点击“保存记录”。未保存的选择不会记录。';
+		},
+		selectedRating() {
+			return this.myRating || this.pendingRating || 0;
 		},
 		lessonCategoryTitle() {
 			return this.categoryTitle || this.inferCategoryTitle(this.title, this.chapterTitle) || '讲点';
@@ -637,6 +648,7 @@ export default {
 				const ratingValue = data && typeof data.rating === 'object' ? data.rating.rating : (data && data.rating);
 				const rating = Number(ratingValue);
 				this.myRating = rating >= 1 && rating <= 5 ? rating : 0;
+				this.pendingRating = 0;
 			} catch (err) {
 				console.warn('评分接口不可用', err);
 			}
@@ -1476,13 +1488,26 @@ export default {
 			uni.redirectTo({ url:`/pages/${page}/${page}?title=${encodeURIComponent(title)}&courseId=${encodeURIComponent(this.courseId)}` });
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); },
-		async submitLessonRating(star) {
+		selectLessonRating(star) {
 			if (!isLoggedIn()) {
 				uni.showToast({ title:'请先登录', icon:'none' });
 				return;
 			}
 			if (this.myRating) {
 				uni.showToast({ title:'本节已评分，不可更改', icon:'none' });
+				return;
+			}
+			if (this.percent < 90) {
+				uni.showToast({ title:'学习进度达到90%后可评分', icon:'none' });
+				return;
+			}
+			if (this.ratingLoading) return;
+			this.pendingRating = Number(star) || 0;
+		},
+		async saveSelectedLessonRating() {
+			const star = Number(this.pendingRating) || 0;
+			if (!star) {
+				uni.showToast({ title:'请先选择星级', icon:'none' });
 				return;
 			}
 			if (this.ratingLoading) return;
@@ -1494,6 +1519,7 @@ export default {
 					chapterTitle: this.chapterTitle
 				});
 				this.myRating = star;
+				this.pendingRating = 0;
 				uni.showToast({ title:'评分已保存', icon:'success' });
 			} catch (err) {
 				uni.showToast({ title: err.message || '评分失败', icon:'none' });
@@ -1542,6 +1568,8 @@ page { background:#fff; }
 }
 .video-wrap {
 	position:relative;
+	width:100%;
+	aspect-ratio:16 / 9;
 	background:#0f172a;
 	overflow:hidden;
 	-webkit-user-select:none;
@@ -1551,7 +1579,7 @@ page { background:#fff; }
 }
 .video-player {
 	width:100%;
-	height:420rpx;
+	height:100%;
 	background:#0f172a;
 	display:block;
 	cursor:pointer;
@@ -1594,7 +1622,7 @@ page { background:#fff; }
 	inset:0;
 	z-index:2;
 	width:100%;
-	height:420rpx;
+	height:100%;
 	background:#0f172a;
 }
 .tap-play-layer {
@@ -2120,6 +2148,23 @@ page { background:#fff; }
 	padding:16rpx 18rpx;
 	border-radius:12rpx;
 }
+.rating-save-btn {
+	margin-top:16rpx;
+	height:72rpx;
+	line-height:72rpx;
+	text-align:center;
+	border-radius:12rpx;
+	background:#1677ff;
+	color:#fff;
+	font-size:27rpx;
+	font-weight:800;
+	cursor:pointer;
+	box-shadow:0 8rpx 18rpx rgba(22,119,255,.18);
+}
+.rating-save-btn.disabled {
+	opacity:.62;
+	cursor:default;
+}
 .favorite-desc {
 	margin-top:20rpx;
 	background:#f8fafc;
@@ -2212,24 +2257,54 @@ page { background:#fff; }
 	color:#fff;
 }
 
+.video-wrap:fullscreen,
+.video-wrap:-webkit-full-screen,
+.video-wrap:-moz-full-screen {
+	width:100vw !important;
+	height:100vh !important;
+	max-width:none !important;
+	aspect-ratio:auto !important;
+	display:flex !important;
+	align-items:center !important;
+	justify-content:center !important;
+	background:#0f172a !important;
+}
+.video-wrap:fullscreen .video-player,
+.video-wrap:-webkit-full-screen .video-player,
+.video-wrap:-moz-full-screen .video-player {
+	width:100vw !important;
+	height:100vh !important;
+	max-width:none !important;
+	object-fit:contain !important;
+}
+.video-wrap:fullscreen .poster-cover,
+.video-wrap:-webkit-full-screen .poster-cover,
+.video-wrap:-moz-full-screen .poster-cover {
+	width:100vw !important;
+	height:100vh !important;
+	object-fit:contain !important;
+}
+.video-wrap:fullscreen .player-controls,
+.video-wrap:-webkit-full-screen .player-controls,
+.video-wrap:-moz-full-screen .player-controls {
+	width:100%;
+	box-sizing:border-box;
+}
+
+@media screen and (orientation:landscape) and (max-height: 640px) {
+	.video-wrap:fullscreen,
+	.video-wrap:-webkit-full-screen,
+	.video-wrap:-moz-full-screen {
+		position:fixed !important;
+		inset:0 !important;
+	}
+}
+
 @media (hover:hover) and (pointer:fine) {
 	.page {
 		max-width:var(--wk-app-width, 430px);
 		margin:0 auto;
 		box-shadow:0 0 0 1px #e5e7eb;
-	}
-	.video-wrap:fullscreen {
-		width:100vw;
-		height:100vh;
-		background:#0f172a;
-		display:flex;
-		align-items:center;
-		justify-content:center;
-	}
-	.video-wrap:fullscreen .video-player {
-		width:100vw;
-		height:100%;
-		min-height:0;
 	}
 	.footer {
 		left:50%;
