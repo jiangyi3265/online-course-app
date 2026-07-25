@@ -429,6 +429,25 @@ export function saveLessonProgress(lessonId, payload) {
 	})
 }
 
+export function saveLessonProgressOnExit(lessonId, payload) {
+	if (!isH5Runtime() || typeof fetch !== 'function') return false
+	const token = getToken()
+	try {
+		void fetch(`${getBaseUrl(false)}/lesson/progress`, {
+			method: 'POST',
+			keepalive: true,
+			headers: {
+				'Content-Type': 'application/json',
+				...(token ? { Authorization: `Bearer ${token}` } : {})
+			},
+			body: JSON.stringify({ lessonId, ...payload })
+		}).catch(() => {})
+		return true
+	} catch (err) {
+		return false
+	}
+}
+
 export function getLessonRatingApi(lessonId) {
 	return request('/lesson/rating', { params: { lessonId } })
 }

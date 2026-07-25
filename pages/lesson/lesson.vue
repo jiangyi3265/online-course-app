@@ -176,7 +176,7 @@
 </template>
 
 <script>
-import { getCourse, getLessonRatingApi, getLessonVideo, isLoggedIn, resolveMediaUrl, saveLessonProgress, saveLessonRatingApi } from '@/common/api.js'
+import { getCourse, getLessonRatingApi, getLessonVideo, isLoggedIn, resolveMediaUrl, saveLessonProgress, saveLessonProgressOnExit, saveLessonRatingApi } from '@/common/api.js'
 import Hls from 'hls.js'
 export default {
 	inheritAttrs: false,
@@ -191,6 +191,7 @@ export default {
 			videoUrl: '',
 			poster: '',
 			initialTime: 0,
+			resumePositionApplied: false,
 			curTime: '00:00',
 			totalTime: '00:00',
 			currentSeconds: 0,
@@ -216,6 +217,7 @@ export default {
 			pendingWatchSeconds: 0,
 			lastObservedVideoTime: null,
 			lastProgressObservedAt: 0,
+			lastLocalSnapshotAt: 0,
 			maxVerifiedVideoTime: 0,
 			progressSaveInFlight: false,
 			progressSaveQueued: false,
@@ -236,6 +238,8 @@ export default {
 			isDesktopH5: false,
 			isWebFullscreen: false,
 			fullscreenListener: null,
+			h5PageHideHandler: null,
+			h5VisibilityHandler: null,
 			nativeVideoGuardTimer: null,
 			prevTitle: '',
 			nextTitle: '',
@@ -272,8 +276,10 @@ export default {
 		this.applyPlaybackRate();
 		this.applyVolume();
 		this.lockNativeVideoPlayback();
+		this.bindH5ProgressEvents();
 	},
 	onUnload() {
+		this.flushProgressOnExit();
 		this.clearSpeedMenuTimer();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
@@ -281,12 +287,13 @@ export default {
 		this.destroyHlsPlayer();
 		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
+		this.unbindH5ProgressEvents();
 		this.setNativeVideoControls(false);
 		this.unbindNativeVideoGuards();
 		this.exitWebFullscreen(false);
-		this.persistProgress(false);
 	},
 	onHide() {
+		this.saveLocalResumeSnapshot(true);
 		this.closeSpeedMenu();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
@@ -396,6 +403,7 @@ export default {
 		},
 		setProtectedVideoSource(source = '') {
 			this.destroyHlsPlayer();
+			this.resumePositionApplied = false;
 			this.videoUrl = source;
 			if (!source) return;
 			this.$nextTick(() => this.configureHlsPlayback());
@@ -504,14 +512,20 @@ export default {
 				this.lessonCard = data.card || null;
 				this.durationSeconds = this.safeSeconds(data.duration);
 				this.totalTime = this.formatTime(this.durationSeconds);
-				if (data.progress) {
-					const savedTime = this.safeSeconds(data.progress.currentTime);
-					const savedPercent = Math.max(0, Math.min(100, Number(data.progress.percent) || 0));
-					const completionPercent = this.progressCompletionPercent(data.progress, savedPercent);
-					const completedPlayback = data.progress.ended === true
-						|| completionPercent >= 100
-						|| (this.durationSeconds > 0 && savedTime >= this.durationSeconds - 0.25);
-					const canResume = completedPlayback || this.isProgressWithinResumeWindow(data.progress);
+				const progress = this.resolveResumeProgress(data.progress);
+				if (progress) {
+					const savedTime = this.safeSeconds(progress.currentTime);
+					const savedDuration = this.safeSeconds(progress.duration);
+					if (savedDuration > 0) {
+						this.durationSeconds = savedDuration;
+						this.totalTime = this.formatTime(savedDuration);
+					}
+					const savedPercent = Math.max(0, Math.min(100, Number(progress.percent) || 0));
+					const completionPercent = this.progressCompletionPercent(progress, savedPercent);
+					const completedPlayback = progress.ended === true
+						|| (savedDuration > 0 && savedTime >= savedDuration - 0.25);
+					const canResume = completedPlayback || this.isProgressWithinResumeWindow(progress);
+					this.resumePositionApplied = false;
 					this.initialTime = completedPlayback ? 0 : (canResume ? savedTime : 0);
 					this.currentSeconds = this.initialTime;
 					this.percent = completedPlayback ? Math.max(100, savedPercent) : (canResume ? savedPercent : 0);
@@ -520,6 +534,7 @@ export default {
 					this.curTime = this.formatTime(this.currentSeconds);
 				}
 				this.refreshPlaybackPolicy();
+				this.$nextTick(() => this.applyInitialPlaybackPosition());
 			} catch (err) {
 				this.videoPreparing = false;
 				this.videoError = true;
@@ -867,6 +882,7 @@ export default {
 			this.videoLoadAttempts = 0;
 			this.clearVideoErrorTimer();
 			this.setNativeVideoControls(false);
+			this.applyInitialPlaybackPosition();
 			this.applyPlaybackRate();
 			this.applyVolume();
 		},
@@ -882,6 +898,7 @@ export default {
 			this.videoPlaying = false;
 			this.showControls();
 			this.clearControlsHideTimer();
+			this.saveLocalResumeSnapshot(true);
 			this.persistProgress(false);
 		},
 		onVideoTap() {
@@ -1009,6 +1026,7 @@ export default {
 			this.totalTime = this.formatTime(this.durationSeconds);
 			this.percent = this.durationSeconds ? Math.min(100, Math.round((this.currentSeconds / this.durationSeconds) * 100)) : 0;
 			this.progressSaved = false;
+			this.saveLocalResumeSnapshot(false);
 			if (Date.now() - this.lastSavedAt > 8000) this.persistProgress(false);
 		},
 		onEnded() {
@@ -1018,6 +1036,7 @@ export default {
 			this.videoPlaying = false;
 			this.showControls();
 			this.clearControlsHideTimer();
+			this.saveLocalResumeSnapshot(true, true);
 			this.persistProgress(true);
 		},
 		accumulateWatchProgress(nextSeconds) {
@@ -1243,6 +1262,7 @@ export default {
 				uni.setStorageSync(this.progressResumeStorageKey(), Date.now());
 				const completionPercent = this.progressCompletionPercent(saved || {}, this.cumulativePercent);
 				this.cumulativePercent = Math.max(this.cumulativePercent, completionPercent);
+				this.saveLocalResumeSnapshot(true, batch.ended);
 				this.refreshPlaybackPolicy();
 				this.progressBatch = null;
 				this.progressSaved = true;
@@ -1282,6 +1302,120 @@ export default {
 				.map(value => Number(value))
 				.filter(value => Number.isFinite(value) && value >= 0);
 			return values.length ? Math.max(...values) : 0;
+		},
+		localResumeSnapshotKey() {
+			const user = this.userInfo || {};
+			const userId = user.id || user.userId || user.user_id || user.uid || 'guest';
+			return `lessonResumeSnapshot:${userId}:${this.courseId || 'course'}:${this.lessonId || this.title || 'lesson'}`;
+		},
+		readLocalResumeSnapshot() {
+			try {
+				const snapshot = uni.getStorageSync(this.localResumeSnapshotKey());
+				return snapshot && typeof snapshot === 'object' ? snapshot : null;
+			} catch (err) {
+				return null;
+			}
+		},
+		saveLocalResumeSnapshot(force = false, ended = false) {
+			const currentTime = this.safeSeconds(this.currentSeconds);
+			if (!currentTime && !ended) return;
+			const now = Date.now();
+			if (!force && now - this.lastLocalSnapshotAt < 2000) return;
+			this.lastLocalSnapshotAt = now;
+			try {
+				uni.setStorageSync(this.localResumeSnapshotKey(), {
+					currentTime,
+					duration: this.safeSeconds(this.durationSeconds),
+					percent: Math.max(0, Math.min(100, Number(this.percent) || 0)),
+					cumulativePercent: Math.max(0, Number(this.cumulativePercent) || 0),
+					ended: !!ended,
+					updatedAt: now
+				});
+			} catch (err) {}
+		},
+		resolveResumeProgress(serverProgress = null) {
+			const server = serverProgress && typeof serverProgress === 'object' ? serverProgress : null;
+			const local = this.readLocalResumeSnapshot();
+			if (!server && !local) return null;
+			if (!server) return local;
+			if (!local) return server;
+			const serverUpdatedAt = this.progressUpdatedAt(server);
+			const localUpdatedAt = this.progressUpdatedAt(local);
+			const position = localUpdatedAt > serverUpdatedAt ? local : server;
+			return {
+				...server,
+				...position,
+				bestPercent: Math.max(Number(server.bestPercent) || 0, Number(local.bestPercent) || 0),
+				cumulativePercent: Math.max(
+					this.progressCompletionPercent(server),
+					this.progressCompletionPercent(local)
+				)
+			};
+		},
+		applyInitialPlaybackPosition() {
+			if (this.resumePositionApplied) return;
+			const target = this.safeSeconds(this.initialTime);
+			if (!target) {
+				this.resumePositionApplied = true;
+				return;
+			}
+			const video = this.nativeVideoElement();
+			if (!video) return;
+			const duration = this.safeSeconds(video.duration);
+			if (!duration) return;
+			const safeTarget = Math.min(target, Math.max(0, duration - 0.1));
+			try {
+				const ctx = this.videoContext || uni.createVideoContext('lessonVideo', this);
+				this.videoContext = ctx;
+				if (ctx && typeof ctx.seek === 'function') ctx.seek(safeTarget);
+				video.currentTime = safeTarget;
+				this.currentSeconds = safeTarget;
+				this.curTime = this.formatTime(safeTarget);
+				this.maxVerifiedVideoTime = Math.max(this.maxVerifiedVideoTime, safeTarget);
+				this.resumePositionApplied = true;
+			} catch (err) {}
+		},
+		exitProgressPayload() {
+			this.progressSaveSequence += 1;
+			return {
+				lessonTitle: this.title,
+				sourceLessonTitle: this.lessonId || this.title,
+				courseId: this.courseId,
+				courseTitle: this.courseTitle,
+				currentTime: this.currentSeconds,
+				duration: this.durationSeconds,
+				percent: this.percent,
+				ended: false,
+				watchDelta: 0,
+				progressSessionId: this.progressSessionId,
+				progressEventId: `${this.progressSessionId}:exit:${this.progressSaveSequence}`
+			};
+		},
+		flushProgressOnExit() {
+			this.saveLocalResumeSnapshot(true);
+			if (isLoggedIn() && this.videoUrl && this.safeSeconds(this.currentSeconds) >= 3) {
+				saveLessonProgressOnExit(this.lessonId || this.title, this.exitProgressPayload());
+			}
+			this.persistProgress(false);
+		},
+		bindH5ProgressEvents() {
+			if (typeof window === 'undefined' || typeof document === 'undefined' || this.h5PageHideHandler) return;
+			this.h5PageHideHandler = () => this.flushProgressOnExit();
+			this.h5VisibilityHandler = () => {
+				if (document.hidden) this.flushProgressOnExit();
+			};
+			window.addEventListener('pagehide', this.h5PageHideHandler);
+			document.addEventListener('visibilitychange', this.h5VisibilityHandler);
+		},
+		unbindH5ProgressEvents() {
+			if (typeof window !== 'undefined' && this.h5PageHideHandler) {
+				window.removeEventListener('pagehide', this.h5PageHideHandler);
+			}
+			if (typeof document !== 'undefined' && this.h5VisibilityHandler) {
+				document.removeEventListener('visibilitychange', this.h5VisibilityHandler);
+			}
+			this.h5PageHideHandler = null;
+			this.h5VisibilityHandler = null;
 		},
 		progressUpdatedAt(progress = {}) {
 			const raw = progress.updatedAt
