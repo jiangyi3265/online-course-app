@@ -210,7 +210,7 @@ page { background:#f6f8fb; }
 	.panel-head { align-items:flex-start; }
 	.head-actions { flex-direction:column; align-items:flex-end; gap:8rpx; }
 }
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 600px) {
 	.nav { left:50%; right:auto; width:var(--wk-app-width, 430px); max-width:100vw; transform:translateX(-50%); }
 }
 </style>

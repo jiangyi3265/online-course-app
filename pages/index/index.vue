@@ -66,10 +66,10 @@ export default {
 	data() {
 		return {
 			cats: [
-				{ icon:'/static/system-icons/home/zk-trial.png?v=20260725', iconError:false, symbol:'听', text:'中考试听' },
-				{ icon:'/static/system-icons/home/zk-course.png?v=20260725', iconError:false, symbol:'课', text:'中考课程' },
-				{ icon:'/static/system-icons/home/gk-trial.png?v=20260725', iconError:false, symbol:'听', text:'高考试听' },
-				{ icon:'/static/system-icons/home/gk-course.png?v=20260725', iconError:false, symbol:'课', text:'高考课程' }
+				{ icon:'/static/system-icons/home/zk-trial.png?v=2026072502', iconError:false, symbol:'听', text:'中考试听' },
+				{ icon:'/static/system-icons/home/zk-course.png?v=2026072502', iconError:false, symbol:'课', text:'中考课程' },
+				{ icon:'/static/system-icons/home/gk-trial.png?v=2026072502', iconError:false, symbol:'听', text:'高考试听' },
+				{ icon:'/static/system-icons/home/gk-course.png?v=2026072502', iconError:false, symbol:'课', text:'高考课程' }
 			],
 			homeBanners: [
 				{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }
@@ -287,7 +287,7 @@ page { background:#f7f8fa; color-scheme:light; }
 .access-chip { color:#0d7cfe; background:#eaf4ff; font-weight:700; font-size:24rpx; padding:6rpx 14rpx; border-radius:8rpx; }
 .access-note { color:#8a94a3; font-size:22rpx; }
 
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 600px) {
 	.page {
 		padding-bottom:78px;
 	}

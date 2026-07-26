@@ -199,7 +199,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFill';
+			return this.isPosterCover ? 'aspectFit' : 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -972,7 +972,146 @@ page { background:#f5f7fa; }
 	.ch-actions { gap:8rpx; }
 	.btn-go, .btn-ai { padding:10rpx 16rpx; }
 }
-@media screen and (min-width: 768px) {
-	.nav { left:50%; right:auto; width:var(--wk-app-width, 430px); max-width:100vw; transform:translateX(-50%); }
+@media screen and (min-width: 600px) {
+	.page {
+		padding-top:56px;
+	}
+	.nav {
+		left:50%;
+		right:auto;
+		width:var(--wk-app-width, 430px);
+		max-width:100vw;
+		height:56px;
+		transform:translateX(-50%);
+	}
+	.back,
+	.nav-spacer {
+		width:64px;
+		height:56px;
+	}
+	.back {
+		font-size:38px;
+	}
+	.nav-title {
+		max-width:420px;
+		font-size:18px;
+	}
+	.cover {
+		margin:14px 16px 0;
+		border-radius:14px 14px 0 0;
+	}
+	.cover-poster {
+		aspect-ratio:16 / 9;
+	}
+	.info-block {
+		margin:0 16px 14px;
+		padding:18px 20px;
+		border-radius:0 0 14px 14px;
+	}
+	.info-top {
+		gap:12px;
+	}
+	.info-title {
+		font-size:20px;
+		line-height:1.3;
+	}
+	.info-meta,
+	.course-intro {
+		margin-top:8px;
+		font-size:14px;
+	}
+	.version-stats {
+		gap:8px;
+		margin-top:12px;
+	}
+	.version-stat {
+		padding:10px 12px;
+		font-size:13px;
+	}
+	.progress-row {
+		margin-top:14px;
+	}
+	.p-label,
+	.p-num {
+		font-size:13px;
+	}
+	.bar {
+		max-width:160px;
+		height:8px;
+		margin:0 10px;
+	}
+	.funcs {
+		gap:12px;
+		padding:16px 16px 18px;
+	}
+	.func {
+		min-height:92px;
+		border-radius:12px;
+	}
+	.f-ico {
+		width:52px;
+		height:52px;
+		margin-bottom:8px;
+	}
+	.f-icon-image {
+		width:50px;
+		height:50px;
+	}
+	.f-text {
+		font-size:15px;
+	}
+	.tabs {
+		padding:12px 0 10px;
+	}
+	.tab {
+		padding:8px 0;
+		font-size:16px;
+	}
+	.version-chips {
+		gap:8px;
+		padding:14px 16px 8px;
+	}
+	.version-chip {
+		height:36px;
+		line-height:36px;
+		padding:0 14px;
+		font-size:14px;
+	}
+	.chapter {
+		margin:10px 16px;
+		padding:15px 16px;
+		border-radius:10px;
+	}
+	.ch-title {
+		font-size:16px;
+	}
+	.trial {
+		font-size:13px;
+	}
+	.ch-body {
+		margin-top:14px;
+		padding-top:12px;
+	}
+	.ch-name,
+	.q-name {
+		font-size:14px;
+	}
+	.ch-progress,
+	.q-status {
+		font-size:12px;
+	}
+	.btn-go,
+	.btn-ai,
+	.q-btn {
+		padding:7px 13px;
+		font-size:13px;
+	}
+	.quiz-list {
+		padding:10px 16px;
+	}
+	.quiz {
+		padding:14px 16px;
+		margin-bottom:10px;
+	}
 }
 </style>

@@ -204,7 +204,7 @@ page { background:#f5f7fa; }
 .go-btn.trial { background:#1890e1; }
 .end-tip { text-align:center; color:#bcc1c8; font-size:24rpx; padding:50rpx 0 20rpx; }
 
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 600px) {
 	.page {
 		padding-bottom:78px;
 	}

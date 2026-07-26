@@ -286,7 +286,7 @@ page { background:#fff; }
 .m-btn.ok { color:#007aff; }
 .m-divider { width:1rpx; background:#ececec; }
 
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 600px) {
 	.course-list {
 		padding: 16px 16px 0;
 	}

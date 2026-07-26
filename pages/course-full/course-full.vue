@@ -254,7 +254,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return 'aspectFill';
+			return this.isPosterCover ? 'aspectFit' : 'aspectFill';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -1387,19 +1387,19 @@ page { background:#f5f7fa; }
 
 @media screen and (min-width: 600px) {
 	.page {
-		padding-top:64px;
+		padding-top:56px;
 	}
 	.nav {
-		height:64px;
+		height:56px;
 	}
 	.back {
-		width:72px;
-		height:64px;
-		font-size:44px;
+		width:64px;
+		height:56px;
+		font-size:38px;
 	}
 	.nav-title {
 		max-width:420px;
-		font-size:20px;
+		font-size:18px;
 		white-space:nowrap;
 		overflow:hidden;
 		text-overflow:ellipsis;
@@ -1408,28 +1408,28 @@ page { background:#f5f7fa; }
 		aspect-ratio:1476 / 472;
 	}
 	.cover-poster {
-		aspect-ratio:4 / 3;
+		aspect-ratio:16 / 9;
 	}
 	.info-block {
-		padding:22px 24px;
+		padding:18px 20px;
 	}
 	.info-top {
-		gap:16px;
+		gap:12px;
 	}
 	.info-title {
 		min-width:0;
-		font-size:22px;
+		font-size:20px;
 		line-height:1.3;
 	}
 	.course-intro {
-		margin-top:10px;
-		font-size:15px;
+		margin-top:8px;
+		font-size:14px;
 	}
 	.update-meta {
 		gap:6px;
-		padding:7px 11px;
+		padding:6px 10px;
 		border-radius:8px;
-		font-size:14px;
+		font-size:13px;
 		white-space:nowrap;
 	}
 	.version-stats {
@@ -1437,23 +1437,23 @@ page { background:#f5f7fa; }
 		margin-top:12px;
 	}
 	.version-stat {
-		grid-template-columns:104px 64px minmax(0, 1fr);
+		grid-template-columns:96px 58px minmax(0, 1fr);
 		gap:8px;
-		font-size:14px;
+		font-size:13px;
 	}
 	.progress-row {
-		grid-template-columns:auto 150px auto minmax(0, 1fr);
+		grid-template-columns:auto 130px auto minmax(0, 1fr);
 		gap:9px;
-		margin-top:15px;
+		margin-top:13px;
 	}
 	.bar {
-		width:150px;
+		width:130px;
 		height:8px;
 	}
 	.p-label,
 	.p-num,
 	.p-extra {
-		font-size:14px;
+		font-size:13px;
 		line-height:1.35;
 	}
 	.p-extra {
@@ -1463,34 +1463,34 @@ page { background:#f5f7fa; }
 		text-overflow:ellipsis;
 	}
 	.funcs {
-		gap:14px;
-		padding:20px 18px 24px;
+		gap:12px;
+		padding:16px 16px 18px;
 	}
 	.func {
-		min-height:108px;
+		min-height:92px;
 		border-radius:12px;
 	}
 	.f-ico {
-		width:62px;
-		height:62px;
-		margin-bottom:10px;
+		width:52px;
+		height:52px;
+		margin-bottom:8px;
 	}
 	.f-icon-image {
-		width:60px;
-		height:60px;
+		width:50px;
+		height:50px;
 	}
 	.f-text {
-		font-size:16px;
+		font-size:15px;
 	}
 	.tabs {
 		gap:8px;
-		padding:14px 18px 12px;
+		padding:12px 16px 10px;
 	}
 	.tab {
-		height:46px;
-		line-height:46px;
+		height:42px;
+		line-height:42px;
 		padding:0 6px;
-		font-size:17px;
+		font-size:16px;
 		white-space:nowrap;
 	}
 	.tab.active::after {
@@ -1499,15 +1499,60 @@ page { background:#f5f7fa; }
 		height:3px;
 	}
 	.chip-row {
-		gap:10px;
-		padding:16px 20px 8px;
+		gap:8px;
+		padding:14px 18px 8px;
 	}
 	.chip {
-		min-width:118px;
-		height:40px;
-		line-height:40px;
-		padding:0 16px;
+		min-width:105px;
+		height:36px;
+		line-height:36px;
+		padding:0 14px;
+		font-size:14px;
+	}
+	.chap-list {
+		padding:8px 16px;
+	}
+	.chap {
+		margin-bottom:10px;
+	}
+	.chap-head {
+		height:58px;
+		padding:0 18px;
+		border-radius:10px;
+	}
+	.chap-title {
+		font-size:16px;
+	}
+	.sub-row {
+		min-height:54px;
+		padding:12px 18px;
+		margin-bottom:8px;
+	}
+	.sub-title,
+	.q-name {
 		font-size:15px;
+	}
+	.lesson-child {
+		padding:10px 0;
+	}
+	.child-name {
+		font-size:14px;
+	}
+	.child-progress,
+	.q-status {
+		font-size:12px;
+	}
+	.child-btn,
+	.q-btn {
+		font-size:13px;
+		padding:7px 13px;
+	}
+	.quiz-list {
+		padding:10px 16px;
+	}
+	.quiz {
+		padding:14px 16px;
+		margin-bottom:10px;
 	}
 }
 </style>

@@ -206,6 +206,28 @@
 			margin-left: auto;
 			margin-right: auto;
 		}
+
+		/*
+		 * Tablet typography baseline for secondary pages.
+		 * Most legacy pages use rpx sizing, which becomes visually oversized
+		 * on 600–767px browser viewports unless these shared roles are capped.
+		 */
+		uni-page-body .nav-title {
+			font-size: 18px !important;
+			line-height: 1.3;
+		}
+
+		uni-page-body .section-title,
+		uni-page-body .panel-title,
+		uni-page-body .hero-title,
+		uni-page-body .m-title {
+			font-size: 20px !important;
+			line-height: 1.35;
+		}
+
+		uni-page-body .back {
+			font-size: 36px !important;
+		}
 	}
 	/* #endif */
 	/*每个页面公共css */

@@ -935,80 +935,80 @@ page { background:#eef3f7; }
 }
 @media screen and (min-width: 600px) {
 	.member-content {
-		padding:24px 20px 0;
+		padding:18px 16px 0;
 	}
 	.user-card {
-		gap:18px;
-		padding:22px;
-		border-radius:16px;
+		gap:14px;
+		padding:16px 18px;
+		border-radius:14px;
 	}
 	.avatar {
-		width:78px;
-		height:78px;
-		font-size:30px;
+		width:64px;
+		height:64px;
+		font-size:26px;
 	}
 	.u-name {
-		font-size:23px;
+		font-size:20px;
 	}
 	.u-id {
-		margin-top:6px;
-		font-size:15px;
+		margin-top:5px;
+		font-size:14px;
 	}
 	.logout-btn {
-		min-width:92px;
-		height:40px;
-		line-height:40px;
-		font-size:15px;
+		min-width:82px;
+		height:36px;
+		line-height:36px;
+		font-size:14px;
 	}
 	.invite {
-		min-height:116px;
-		margin-top:18px;
-		padding:22px 24px;
-		gap:20px;
-		border-radius:16px;
+		min-height:96px;
+		margin-top:14px;
+		padding:18px 20px;
+		gap:14px;
+		border-radius:14px;
 	}
 	.invite-l {
-		max-width:calc(100% - 136px);
+		max-width:calc(100% - 116px);
 	}
 	.invite-t {
-		font-size:22px;
+		font-size:18px;
 	}
 	.invite-s {
-		max-width:34ch;
-		margin-top:7px;
-		font-size:15px;
-		line-height:1.45;
+		max-width:38ch;
+		margin-top:5px;
+		font-size:13px;
+		line-height:1.4;
 	}
 	.invite-btn {
-		min-width:104px;
-		height:40px;
-		line-height:40px;
-		padding:0 18px;
-		font-size:15px;
+		min-width:92px;
+		height:36px;
+		line-height:36px;
+		padding:0 15px;
+		font-size:13px;
 	}
 	.func-panel {
-		padding:24px 20px;
+		padding:18px 16px 16px;
 	}
 	.funcs {
-		gap:20px 8px;
-		margin-top:20px;
+		gap:16px 8px;
+		margin-top:16px;
 	}
 	.func {
-		min-height:82px;
+		min-height:72px;
 		padding:4px 0;
 		gap:4px;
 	}
 	.f-ico {
-		width:48px;
-		height:48px;
+		width:42px;
+		height:42px;
 	}
 	.f-icon-image {
-		width:44px;
-		height:44px;
+		width:38px;
+		height:38px;
 	}
 	.f-text {
 		margin-top:2px;
-		font-size:14px;
+		font-size:13px;
 	}
 }
 </style>
