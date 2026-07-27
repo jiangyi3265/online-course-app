@@ -7,7 +7,7 @@
 				<text class="back-text">返回首页</text>
 			</view>
 
-			<image class="illu" src="/static/login-banner.png" mode="widthFix" />
+			<image class="illu" src="/static/login-hero-education.jpg?v=2026072701" mode="aspectFill" />
 			<view class="wave"></view>
 		</view>
 
@@ -232,7 +232,7 @@
 	}
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 page {
 	background: #ffffff;
 }
@@ -623,4 +623,116 @@ page {
 	cursor: pointer;
 }
 .agree-text { color: #5a5a5a; }
+
+@media screen and (min-width: 600px) {
+	.page {
+		min-height:100vh;
+	}
+	.header {
+		height:320px;
+		background:#dbe7ef;
+	}
+	.illu {
+		inset:0;
+		width:100%;
+		height:100%;
+		transform:none;
+		object-fit:cover;
+	}
+	.back {
+		top:22px;
+		left:28px;
+		font-size:16px;
+	}
+	.back-arrow {
+		margin-right:5px;
+		font-size:32px;
+		line-height:32px;
+	}
+	.back-text {
+		font-size:16px;
+	}
+	.wave {
+		left:-8px;
+		right:-8px;
+		bottom:-1px;
+		height:52px;
+		border-top-left-radius:50% 38px;
+		border-top-right-radius:50% 48px;
+	}
+	.form {
+		width:100%;
+		max-width:720px;
+		margin:0 auto;
+		padding:22px 40px 44px;
+		box-sizing:border-box;
+	}
+	.title {
+		margin:12px 0 28px;
+		font-size:28px;
+	}
+	.invite-tip,
+	.session-tip {
+		margin:0 auto 18px;
+		padding:10px 16px;
+		border-radius:9px;
+		font-size:14px;
+	}
+	.input-row {
+		height:56px;
+		margin-bottom:18px;
+		padding:0 20px;
+		border-width:1px;
+		border-radius:30px;
+	}
+	.iconfont {
+		margin-right:12px;
+		font-size:20px;
+	}
+	.input {
+		height:56px;
+		font-size:16px;
+	}
+	.reset-tip,
+	.code-btn,
+	.register-row {
+		font-size:15px;
+	}
+	.forget {
+		margin:2px 0 28px;
+		font-size:14px;
+	}
+	.login-btn {
+		height:56px;
+		line-height:56px;
+		border-radius:30px;
+		font-size:18px;
+	}
+	.register-row {
+		margin-top:20px;
+	}
+	.agree-row {
+		margin-top:18px;
+		font-size:13px;
+	}
+	.checkbox {
+		width:20px;
+		height:20px;
+		margin-right:7px;
+		border-width:1px;
+	}
+	.tick {
+		font-size:15px;
+		line-height:15px;
+	}
+}
+
+@media screen and (min-width: 900px) and (max-width: 1366px) {
+	.header {
+		height:380px;
+	}
+	.form {
+		padding-top:26px;
+	}
+}
 </style>

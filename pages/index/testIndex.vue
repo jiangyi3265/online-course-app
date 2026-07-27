@@ -23,7 +23,7 @@
 				</view>
 			</view>
 			<view class="end-tip">—暂无更多课程—</view>
-			<view style="height:140rpx"></view>
+			<view class="list-spacer"></view>
 		</scroll-view>
 
 		<tab-bar active="home" />
@@ -166,7 +166,7 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 page { background:#f5f7fa; }
 .page { min-height:100vh; padding-bottom:130rpx; background:#f5f7fa; display:flex; flex-direction:column; overflow-x:hidden; }
 .tabs { width:100%; box-sizing:border-box; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); align-items:center; padding:30rpx 18rpx 20rpx; background:#fff; }
@@ -267,6 +267,41 @@ page { background:#f5f7fa; }
 	.end-tip {
 		padding:32px 0 16px;
 		font-size:14px;
+	}
+}
+
+@media screen and (min-width: 900px) and (max-width: 1366px) {
+	.tabs {
+		padding-left:28px;
+		padding-right:28px;
+	}
+	.list {
+		display:block;
+		padding:16px 24px 24px;
+	}
+	.list :deep(.uni-scroll-view) {
+		width:100%;
+	}
+	.list :deep(.uni-scroll-view-content) {
+		display:grid;
+		grid-template-columns:repeat(2, minmax(0, 1fr));
+		gap:18px;
+		align-content:start;
+	}
+	.row {
+		min-height:164px;
+		margin:0;
+	}
+	.cover {
+		width:160px;
+		height:132px;
+	}
+	.end-tip,
+	.list-spacer {
+		grid-column:1 / -1;
+	}
+	.list-spacer {
+		height:76px;
 	}
 }
 </style>

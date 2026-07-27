@@ -5,7 +5,7 @@
 				<text class="back-arrow">‹</text>
 				<text class="back-text">返回登录</text>
 			</view>
-			<image class="illu" src="/static/login-banner.png" mode="widthFix" />
+			<image class="illu" src="/static/login-hero-education.jpg?v=2026072701" mode="aspectFill" />
 		</view>
 
 		<view class="form">
@@ -157,7 +157,7 @@
 	}
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 page {
 	background: #ffffff;
 }
@@ -331,5 +331,95 @@ page {
 	margin-left: 8rpx;
 	color: #5c7cfa;
 	font-weight: 700;
+}
+
+@media screen and (min-width: 600px) {
+	.header {
+		height:320px;
+		background:#dbe7ef;
+	}
+	.illu {
+		inset:0;
+		width:100%;
+		height:100%;
+		transform:none;
+		object-fit:cover;
+	}
+	.back {
+		top:22px;
+		left:28px;
+		font-size:16px;
+	}
+	.back-arrow {
+		margin-right:5px;
+		font-size:32px;
+		line-height:32px;
+	}
+	.form {
+		width:100%;
+		max-width:720px;
+		margin:-24px auto 0;
+		padding:0 40px 44px;
+		border-radius:24px 24px 0 0;
+		box-sizing:border-box;
+	}
+	.title {
+		padding-top:34px;
+		font-size:28px;
+	}
+	.subtitle {
+		margin:10px 0 22px;
+		font-size:15px;
+	}
+	.invite-tip {
+		margin:-8px 0 18px;
+		padding:10px 14px;
+		border-radius:8px;
+		font-size:14px;
+	}
+	.input-row {
+		height:56px;
+		margin-bottom:16px;
+		padding:0 18px;
+		border-width:1px;
+		border-radius:12px;
+	}
+	.input-icon {
+		width:30px;
+		font-size:20px;
+	}
+	.input {
+		height:54px;
+		margin-left:12px;
+		font-size:16px;
+	}
+	.code-btn,
+	.agree-row {
+		font-size:14px;
+	}
+	.checkbox {
+		width:20px;
+		height:20px;
+		margin-right:7px;
+		border-width:1px;
+		font-size:14px;
+	}
+	.register-btn {
+		height:56px;
+		line-height:56px;
+		margin-top:10px;
+		border-radius:30px;
+		font-size:18px;
+	}
+	.login-row {
+		margin-top:20px;
+		font-size:15px;
+	}
+}
+
+@media screen and (min-width: 900px) and (max-width: 1366px) {
+	.header {
+		height:380px;
+	}
 }
 </style>

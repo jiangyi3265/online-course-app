@@ -244,7 +244,7 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 page { background:#f7f8fa; color-scheme:light; }
 .page { padding-bottom:130rpx; background:#f7f8fa; min-height:100vh; color:#111827; }
 
@@ -261,6 +261,7 @@ page { background:#f7f8fa; color-scheme:light; }
 .cat-tone-3 { background:linear-gradient(135deg,#fff3e7,#ffe6cc); color:#ff7a00; }
 .cat-tone-4 { background:linear-gradient(135deg,#f1edff,#e5dcff); color:#7c3aed; }
 .cat-img { width:86rpx; height:86rpx; display:block; position:relative; z-index:1; opacity:1; }
+.cat:nth-child(2) .cat-img { transform:scale(1.1); }
 .cat-icon-letter { position:relative; z-index:1; font-size:30rpx; line-height:1; font-weight:900; opacity:1; transition:opacity .18s ease; }
 .cat-img + .cat-icon-letter { position:relative; opacity:1; }
 .cat-icon.is-fallback .cat-icon-letter { position:relative; opacity:1; }
@@ -295,7 +296,8 @@ page { background:#f7f8fa; color-scheme:light; }
 		padding:16px 18px 6px;
 	}
 	.banner-swiper {
-		height:210px;
+		height:auto;
+		aspect-ratio:1476 / 472;
 		border-radius:12px;
 	}
 	.banner-img {
@@ -308,15 +310,15 @@ page { background:#f7f8fa; color-scheme:light; }
 		min-height:96px;
 	}
 	.cat-icon {
-		width:56px;
-		height:56px;
-		flex-basis:56px;
+		width:64px;
+		height:64px;
+		flex-basis:64px;
 		margin-bottom:9px;
-		border-radius:16px;
+		border-radius:18px;
 	}
 	.cat-img {
-		width:52px;
-		height:52px;
+		width:60px;
+		height:60px;
 	}
 	.cat-text {
 		font-size:16px;
@@ -411,6 +413,26 @@ page { background:#f7f8fa; color-scheme:light; }
 	}
 	.grid {
 		padding-top:14px;
+	}
+}
+
+@media screen and (min-width: 900px) and (max-width: 1366px) {
+	.banner {
+		padding:20px 24px 8px;
+	}
+	.cats {
+		padding:20px 28px 14px;
+	}
+	.tool-strip {
+		padding:12px 24px 0;
+	}
+	.grid {
+		grid-template-columns:repeat(3, minmax(0, 1fr));
+		gap:18px;
+		padding:18px 24px 24px;
+	}
+	.cover {
+		min-height:0;
 	}
 }
 </style>

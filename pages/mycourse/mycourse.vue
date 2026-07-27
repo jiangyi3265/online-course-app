@@ -16,7 +16,7 @@
 					</view>
 				</view>
 			</view>
-			<view style="height:140rpx"></view>
+			<view class="course-list-spacer"></view>
 		</view>
 
 		<view class="empty" v-else>
@@ -130,7 +130,7 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 page { background:#fff; }
 .page { min-height:100vh; background:#fff; }
 .empty {
@@ -312,6 +312,28 @@ page { background:#fff; }
 		padding: 6px 13px;
 		border-radius: 18px;
 		font-size: 13px;
+	}
+}
+
+@media screen and (min-width: 900px) and (max-width: 1366px) {
+	.course-list {
+		display:grid;
+		grid-template-columns:repeat(2, minmax(0, 1fr));
+		gap:18px;
+		padding:20px 24px 88px;
+	}
+	.course-card {
+		grid-template-columns:168px minmax(0, 1fr);
+		min-height:144px;
+		margin:0;
+	}
+	.course-cover {
+		width:168px;
+		height:120px;
+	}
+	.course-list-spacer {
+		grid-column:1 / -1;
+		height:70px;
 	}
 }
 </style>

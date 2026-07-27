@@ -68,7 +68,13 @@
 
 	@media screen and (min-width: 600px) {
 		:root {
-			--wk-app-width: min(600px, 100vw);
+			/*
+			 * Tablets and small browser windows are first-class layouts.
+			 * The old 600px cap made every page look like a phone floating in
+			 * the middle of the screen, so the shared shell now fills the
+			 * viewport until the true desktop breakpoint below.
+			 */
+			--wk-app-width: 100vw;
 		}
 
 		* {
@@ -79,11 +85,7 @@
 		body {
 			min-height: 100%;
 			overflow-x: hidden;
-			background-color: var(--wk-desktop-bg);
-			background-image:
-				linear-gradient(90deg, rgba(49, 64, 84, 0.04) 1px, transparent 1px),
-				linear-gradient(180deg, rgba(49, 64, 84, 0.035) 1px, transparent 1px);
-			background-size: 40px 40px;
+			background: var(--wk-page-bg);
 		}
 
 		body {
@@ -124,9 +126,7 @@
 			margin: 0 auto;
 			overflow-x: hidden;
 			background: var(--wk-page-bg);
-			box-shadow:
-				0 0 0 1px rgba(15, 23, 42, 0.08),
-				0 18px 52px rgba(15, 23, 42, 0.16);
+			box-shadow: none;
 		}
 
 		uni-app,
@@ -227,6 +227,31 @@
 
 		uni-page-body .back {
 			font-size: 36px !important;
+		}
+	}
+
+	/*
+	 * Wide desktop keeps a focused reading column. Tablet portrait/landscape,
+	 * including 1366px touch screens, remains full-width above.
+	 */
+	@media screen and (min-width: 1367px) {
+		:root {
+			--wk-app-width: min(600px, 100vw);
+		}
+
+		html,
+		body {
+			background-color: var(--wk-desktop-bg);
+			background-image:
+				linear-gradient(90deg, rgba(49, 64, 84, 0.04) 1px, transparent 1px),
+				linear-gradient(180deg, rgba(49, 64, 84, 0.035) 1px, transparent 1px);
+			background-size: 40px 40px;
+		}
+
+		#app {
+			box-shadow:
+				0 0 0 1px rgba(15, 23, 42, 0.08),
+				0 18px 52px rgba(15, 23, 42, 0.16);
 		}
 	}
 	/* #endif */

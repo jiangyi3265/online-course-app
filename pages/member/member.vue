@@ -217,7 +217,7 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 page { background:#f6f8fb; }
 .page { min-height:100vh; padding-bottom:140rpx; background:#f6f8fb; box-sizing:border-box; }
 
@@ -1009,6 +1009,42 @@ page { background:#eef3f7; }
 	.f-text {
 		margin-top:2px;
 		font-size:13px;
+	}
+}
+
+@media screen and (min-width: 900px) and (max-width: 1366px) {
+	.member-content {
+		display:grid;
+		grid-template-columns:repeat(2, minmax(0, 1fr));
+		gap:18px;
+		padding:24px 24px 88px;
+	}
+	.user-card,
+	.invite {
+		min-height:116px;
+		margin:0;
+	}
+	.func-panel {
+		grid-column:1 / -1;
+		padding:22px 24px 20px;
+	}
+	.funcs {
+		grid-template-columns:repeat(4, minmax(0, 1fr));
+		gap:20px 12px;
+	}
+	.func {
+		min-height:92px;
+	}
+	.f-ico {
+		width:52px;
+		height:52px;
+	}
+	.f-icon-image {
+		width:48px;
+		height:48px;
+	}
+	.f-text {
+		font-size:14px;
 	}
 }
 </style>
