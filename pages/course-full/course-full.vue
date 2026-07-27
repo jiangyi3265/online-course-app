@@ -276,7 +276,10 @@ export default {
 			return this.formatCourseDate(this.updatedAt);
 		},
 		progressLabel() {
-			return Math.max(0, Math.round(Number(this.progress) || 0));
+			const total = Math.max(0, Number(this.total) || 0);
+			const completed = Math.max(0, Number(this.learntCount) || 0);
+			if (total > 0) return Math.min(100, Math.round(Math.min(completed, total) * 100 / total));
+			return Math.min(100, Math.max(0, Math.round(Number(this.progress) || 0)));
 		},
 		progressBarWidth() {
 			return Math.min(this.progressLabel, 100);

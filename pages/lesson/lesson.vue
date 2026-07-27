@@ -17,7 +17,7 @@
 					:poster="poster"
 					:initial-time="initialTime"
 					:controls="false"
-					controlslist="nodownload nofullscreen noplaybackrate noremoteplayback"
+					controlslist="nodownload nofullscreen noremoteplayback"
 					disablepictureinpicture
 					x-webkit-airplay="deny"
 					webkit-playsinline
@@ -231,7 +231,7 @@ export default {
 			progressBatch: null,
 			videoContext: null,
 			playbackRate: 1,
-			playbackRates: [1],
+			playbackRates: [0.75, 1, 1.25, 1.5, 2],
 			showSpeedMenu: false,
 			speedMenuTimer: null,
 			controlsVisible: true,
@@ -344,9 +344,7 @@ export default {
 			return this.categoryTitle || this.inferCategoryTitle(this.title, this.chapterTitle) || '讲点';
 		},
 		freePlaybackUnlocked() {
-			return /-trial$/i.test(String(this.courseId || ''))
-				|| Number(this.cumulativePercent || 0) >= 100
-				|| Number(this.percent || 0) >= 100;
+			return true;
 		}
 	},
 	methods: {
@@ -737,8 +735,8 @@ export default {
 				video.removeAttribute('data-title');
 				video.setAttribute('title', '');
 				video.setAttribute('data-title', '');
-				video.setAttribute('controlsList', 'nodownload nofullscreen noplaybackrate noremoteplayback');
-				video.setAttribute('controlslist', 'nodownload nofullscreen noplaybackrate noremoteplayback');
+				video.setAttribute('controlsList', 'nodownload nofullscreen noremoteplayback');
+				video.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback');
 				video.setAttribute('disablePictureInPicture', '');
 				video.setAttribute('disableRemotePlayback', '');
 				video.setAttribute('x-webkit-airplay', 'deny');
@@ -766,12 +764,7 @@ export default {
 				video.onratechange = () => {
 					this.enforceAllowedPlaybackRate(video);
 				};
-				video.onseeking = () => {
-					if (this.freePlaybackUnlocked) return;
-					const requested = this.safeSeconds(video.currentTime);
-					const allowed = Math.max(this.initialTime, this.maxVerifiedVideoTime);
-					if (Math.abs(requested - allowed) > 1.25) video.currentTime = Math.max(0, allowed);
-				};
+				video.onseeking = null;
 				this.bindNativeVideoGuardTimer();
 				this.cleanVideoTooltips();
 			});
@@ -830,8 +823,8 @@ export default {
 				el.removeAttribute('aria-label');
 				el.removeAttribute('data-title');
 				if (el.tagName && String(el.tagName).toLowerCase() === 'video') {
-					el.setAttribute('controlsList', 'nodownload nofullscreen noplaybackrate noremoteplayback');
-					el.setAttribute('controlslist', 'nodownload nofullscreen noplaybackrate noremoteplayback');
+					el.setAttribute('controlsList', 'nodownload nofullscreen noremoteplayback');
+					el.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback');
 					el.disablePictureInPicture = true;
 					el.disableRemotePlayback = true;
 				}
@@ -1127,7 +1120,7 @@ export default {
 			this.closeSpeedMenu();
 		},
 		refreshPlaybackPolicy() {
-			this.playbackRates = this.freePlaybackUnlocked ? [0.75, 1, 1.25, 1.5, 2] : [1];
+			this.playbackRates = [0.75, 1, 1.25, 1.5, 2];
 			if (!this.playbackRates.includes(Number(this.playbackRate))) this.playbackRate = 1;
 			this.applyPlaybackRate();
 		},

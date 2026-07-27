@@ -260,14 +260,18 @@ export default {
 					total: item.readDuration || item.totalText || item.learnedDuration || '0分钟',
 					totalLessons: Number(item.totalLessons || item.lessonCount || 0),
 					learnedLessons: Number(item.readStudyCount || item.learnedLessons || 0),
-					progress: Math.max(0, Math.min(100, Number(item.progress || 0))),
+					progress: this.completionPercent(
+						Number(item.readStudyCount || item.learnedLessons || 0),
+						Number(item.totalLessons || item.lessonCount || 0),
+						item.progress
+					),
 					checkins: Number(item.checkins || item.checkinDays || this.report.checkinDays || 0)
 				}));
 			}
 			const stats = this.report.learningStats || {};
 			const totalLessons = Number(this.report.totalLessons || (this.report.course && this.report.course.totalLessons) || 0);
 			const learnedLessons = Number(this.report.readStudyCount || (this.report.course && this.report.course.readStudyCount) || 0);
-			const progress = Number(this.report.progress !== undefined ? this.report.progress : (totalLessons ? Math.round(learnedLessons * 100 / totalLessons) : 0));
+			const progress = this.completionPercent(learnedLessons, totalLessons, this.report.progress);
 			const base = {
 				today: stats.todayText || '0分钟',
 				week: stats.weekText || '0分钟',
@@ -308,6 +312,14 @@ export default {
 		this.loadData();
 	},
 	methods: {
+		completionPercent(completed, total, fallback = 0) {
+			const safeTotal = Math.max(0, Number(total) || 0);
+			const safeCompleted = Math.max(0, Number(completed) || 0);
+			if (safeTotal > 0) {
+				return Math.min(100, Math.round(Math.min(safeCompleted, safeTotal) * 100 / safeTotal));
+			}
+			return Math.max(0, Math.min(100, Math.round(Number(fallback) || 0)));
+		},
 		async loadData() {
 			try {
 				this.report = await getStudyReport(this.courseId, this.userId);
