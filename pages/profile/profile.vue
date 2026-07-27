@@ -13,10 +13,19 @@
 			</view>
 			<view class="row"><text class="label">用户昵称</text><input class="input" v-model="form.name" placeholder="请输入昵称" /></view>
 			<view class="row"><text class="label">真实姓名</text><input class="input" v-model="form.realName" placeholder="请输入真实姓名" /></view>
-			<view class="row"><text class="label">手机号</text><input class="input" v-model="form.phone" placeholder="请输入手机号" /></view>
 			<view class="row"><text class="label">地址</text><input class="input" v-model="form.address" placeholder="请输入地址" /></view>
-			<view class="row"><text class="label">微信账号</text><input class="input" v-model="form.wechat" placeholder="请输入微信号" /></view>
-			<view class="row"><text class="label">登录密码</text><input class="input" v-model="form.password" password placeholder="不修改可留空" /></view>
+			<view class="row action-row" @click="goPhone">
+				<text class="label">登录手机号</text>
+				<view class="value action-value"><text>{{maskedPhone}}</text><text class="arrow">›</text></view>
+			</view>
+			<view class="row action-row" @click="goWechat">
+				<text class="label">微信账号</text>
+				<view class="value action-value"><text>{{form.wechat || '未设置'}}</text><text class="arrow">›</text></view>
+			</view>
+			<view class="row action-row" @click="goPassword">
+				<text class="label">登录密码</text>
+				<view class="value action-value"><text>修改密码</text><text class="arrow">›</text></view>
+			</view>
 			<view class="row" @click="toggleWechat"><text class="label">是否绑定微信</text><view class="value">{{form.wechatBound ? '已绑定(点击取消绑定)' : '未绑定'}}</view></view>
 			<view class="row" @click="uploadFace"><text class="label">人脸验证是否上传</text><view class="value">{{form.faceUploaded ? '已上传' : '未上传'}}<text class="arrow">›</text></view></view>
 			<view class="row">
@@ -55,6 +64,11 @@ export default {
 		avatarSrc() {
 			if (/^(blob:|file:|wxfile:|data:)/i.test(String(this.form.avatar || ''))) return this.form.avatar;
 			return this.mediaUrl(this.form.avatar);
+		},
+		maskedPhone() {
+			const phone = String(this.form.phone || '').trim()
+			if (!/^1\d{10}$/.test(phone)) return phone || '未绑定'
+			return `${phone.slice(0, 3)}****${phone.slice(-4)}`
 		}
 	},
 	onShow() {
@@ -128,15 +142,26 @@ export default {
 			if (this.avatarUploading) return
 			try {
 				await this.persistAvatarIfNeeded()
-				const payload = { ...this.form }
-				if (!payload.password) delete payload.password
+				const payload = {
+					avatar: this.form.avatar,
+					name: this.form.name,
+					realName: this.form.realName,
+					address: this.form.address,
+					wechatBound: this.form.wechatBound,
+					faceUploaded: this.form.faceUploaded,
+					answerAudioEnabled: this.form.answerAudioEnabled
+				}
 				const user = await updateProfile(payload)
-				saveSession({ user })
+				this.form = { ...this.form, ...(user || {}), password: '' }
+				saveSession({ user: this.form })
 				uni.showToast({ title: '已保存', icon: 'success' })
 			} catch (err) {
 				uni.showToast({ title: err.message || '保存失败', icon: 'none' })
 			}
 		},
+		goPhone() { uni.navigateTo({ url: '/pages/profile-phone/profile-phone' }) },
+		goPassword() { uni.navigateTo({ url: '/pages/profile-password/profile-password' }) },
+		goWechat() { uni.navigateTo({ url: '/pages/profile-wechat/profile-wechat' }) },
 		goBack() { safeNavigateBack('/pages/member/member') }
 	}
 }
@@ -153,6 +178,8 @@ page { background:#f7f8fa; }
 .label { flex-shrink:0; color:#222; font-size:28rpx; font-weight:600; }
 .value { flex:1; min-width:0; text-align:right; color:#6b7280; font-size:27rpx; }
 .input { flex:1; min-width:0; text-align:right; color:#333; font-size:27rpx; }
+.action-row { cursor:pointer; }
+.action-value { display:flex; align-items:center; justify-content:flex-end; gap:8rpx; }
 .avatar-value { display:flex; justify-content:flex-end; align-items:center; }
 .avatar { width:68rpx; height:68rpx; border-radius:50%; background:#e3edf7; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .avatar.empty { color:#7aa6d6; font-size:34rpx; }

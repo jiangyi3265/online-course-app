@@ -166,6 +166,27 @@
 			}
 		},
 		{
+			"path": "pages/profile-phone/profile-phone",
+			"style": {
+				"navigationBarTitleText": "更换登录手机号",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile-password/profile-password",
+			"style": {
+				"navigationBarTitleText": "修改登录密码",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile-wechat/profile-wechat",
+			"style": {
+				"navigationBarTitleText": "修改微信账号",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/feedback/feedback",
 			"style": {
 				"navigationBarTitleText": "意见反馈",
