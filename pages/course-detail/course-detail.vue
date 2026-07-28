@@ -949,10 +949,20 @@ page { background:#f5f7fa; }
 	object-fit:cover;
 	background:#f8fafc;
 }
-.cover-img :deep(div) {
+.cover-img :deep(div),
+.cover-img :deep(.uni-image-div) {
 	background-size:cover !important;
 	background-repeat:no-repeat !important;
 	background-position:center center !important;
+}
+.cover-img :deep(img),
+.cover-img :deep(.uni-image-div) {
+	display:block !important;
+	width:100% !important;
+	height:100% !important;
+	object-fit:cover !important;
+	visibility:visible !important;
+	opacity:1 !important;
 }
 .info-block {
 	margin:0 20rpx 18rpx;
@@ -1005,6 +1015,12 @@ page { background:#f5f7fa; }
 	}
 	.cover-poster {
 		aspect-ratio:16 / 9;
+	}
+	.cover,
+	.cover-img,
+	.cover-img :deep(img),
+	.cover-img :deep(.uni-image-div) {
+		min-height:260px;
 	}
 	.info-block {
 		margin:0 16px 14px;

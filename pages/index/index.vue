@@ -251,7 +251,17 @@ page { background:#f7f8fa; color-scheme:light; }
 .banner { padding: 20rpx 24rpx 8rpx; }
 .banner-swiper { width:100%; height:220rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
 .banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:cover; background:#eef2f7; }
-.banner-img :deep(div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.banner-img :deep(div),
+.banner-img :deep(.uni-image-div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.banner-img :deep(img),
+.banner-img :deep(.uni-image-div) {
+	display:block !important;
+	width:100% !important;
+	height:100% !important;
+	object-fit:cover !important;
+	visibility:visible !important;
+	opacity:1 !important;
+}
 
 .cats { display:flex; justify-content:space-around; padding:24rpx 0 14rpx; background:#f7f8fa; }
 .cat { min-width:0; min-height:142rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
@@ -279,7 +289,8 @@ page { background:#f7f8fa; color-scheme:light; }
 .card { width:48.5%; background:#fff; border-radius:16rpx; margin-bottom:24rpx; overflow:hidden; box-shadow:0 4rpx 12rpx rgba(0,0,0,0.04); cursor:pointer; }
 .cover { width:100%; height:auto; aspect-ratio:4 / 3; overflow:hidden; position:relative; }
 .cover-img { width:100%; height:100%; display:block; object-fit:cover; background:#f8fafc; }
-.cover-img :deep(div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.cover-img :deep(div),
+.cover-img :deep(.uni-image-div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
 .cover-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#edf5ff,#f8fbff); color:#1677ff; font-size:32rpx; font-weight:900; letter-spacing:2rpx; }
 .info { padding:16rpx 18rpx 22rpx; }
 .title { font-size:26rpx; color:rgba(0,0,0,0.9); font-weight:700; }
@@ -296,7 +307,7 @@ page { background:#f7f8fa; color-scheme:light; }
 		padding:16px 18px 6px;
 	}
 	.banner-swiper {
-		height:auto;
+		height:clamp(210px, 31.98vw, 340px);
 		aspect-ratio:1476 / 472;
 		border-radius:12px;
 	}
@@ -375,11 +386,14 @@ page { background:#f7f8fa; color-scheme:light; }
 	}
 	.cover-img :deep(img),
 	.cover-img :deep(.uni-image-div) {
+		display:block !important;
 		width:100% !important;
 		height:100% !important;
 		object-fit:cover !important;
 		background-position:center !important;
 		background-size:cover !important;
+		visibility:visible !important;
+		opacity:1 !important;
 	}
 	.info {
 		padding:12px 14px 16px;

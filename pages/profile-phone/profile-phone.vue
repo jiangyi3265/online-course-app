@@ -30,7 +30,7 @@
 						placeholder-class="placeholder"
 					/>
 				</view>
-				<view class="field">
+				<view class="field code-field">
 					<text class="field-label">验证码</text>
 					<input
 						class="field-input code-input"
@@ -200,8 +200,27 @@ page { background:#f3f7fb; }
 	.field-label { width:150px; font-size:18px; }
 	.field-value, .field-input { font-size:18px; }
 	.field-input { height:78px; }
-	.code-button { min-width:150px; height:42px; border-radius:21px; font-size:16px; }
+	.code-field {
+		display:grid;
+		grid-template-columns:150px minmax(180px, 1fr) auto;
+		column-gap:18px;
+	}
+	.code-button { min-width:136px; height:42px; padding:0 18px; border-radius:21px; font-size:16px; }
 	.notice { margin-top:18px; font-size:16px; }
 	.primary-button { height:62px; margin-top:36px; }
+}
+@media screen and (max-width:480px) {
+	.code-field {
+		display:grid;
+		grid-template-columns:156rpx minmax(0, 1fr);
+		row-gap:14rpx;
+		padding:14rpx 0;
+	}
+	.code-field .field-input { height:74rpx; }
+	.code-field .code-button {
+		grid-column:2;
+		justify-self:end;
+		min-width:220rpx;
+	}
 }
 </style>

@@ -127,7 +127,7 @@
 						<view class="reinforce-title">{{displayCourseName}}</view>
 						<view class="reinforce-sub">共{{knowledgeChapters.length ? countChapters(knowledgeChapters) : (reinforceList.length || 17)}}个知识点</view>
 					</view>
-					<view class="reinforce-time">共xx小时xx分钟</view>
+					<view class="reinforce-time">{{knowledgeDurationText}}</view>
 				</view>
 				<view class="chap-list knowledge-chapter-list" v-if="knowledgeChapters.length">
 					<view class="chap" v-for="(c,i) in knowledgeChapters" :key="i">
@@ -311,6 +311,23 @@ export default {
 		},
 		visibleQuizzes() {
 			return (this.quizzes || []).filter(item => this.isVisible(item) && this.hasPracticeQuestions(item));
+		},
+		knowledgeDurationText() {
+			const values = [];
+			const collect = rows => {
+				(Array.isArray(rows) ? rows : []).forEach(item => {
+					const children = item && (item.items || item.children);
+					if (Array.isArray(children) && children.length) {
+						collect(children);
+						return;
+					}
+					const value = item && (item.totalDuration || item.duration || item.courseDuration || item.videoDuration);
+					if (value) values.push(value);
+				});
+			};
+			collect(this.knowledgeChapters);
+			const duration = this.sumDurationText(values) || this.duration || this.realDuration || '00小时00分';
+			return `共${duration}`;
 		}
 	},
 	async onLoad(opts) {
@@ -1368,10 +1385,20 @@ page { background:#f5f7fa; }
 	object-fit:cover;
 	background:#f8fafc;
 }
-.cover-img :deep(div) {
+.cover-img :deep(div),
+.cover-img :deep(.uni-image-div) {
 	background-size:cover !important;
 	background-repeat:no-repeat !important;
 	background-position:center center !important;
+}
+.cover-img :deep(img),
+.cover-img :deep(.uni-image-div) {
+	display:block !important;
+	width:100% !important;
+	height:100% !important;
+	object-fit:cover !important;
+	visibility:visible !important;
+	opacity:1 !important;
 }
 .info-block {
 	margin:0;
@@ -1556,6 +1583,51 @@ page { background:#f5f7fa; }
 	.quiz {
 		padding:14px 16px;
 		margin-bottom:10px;
+	}
+	.minor-panel {
+		margin:18px 16px;
+		padding:24px;
+		border:1px solid #e5edf6;
+		border-radius:16px;
+		box-shadow:0 10px 28px rgba(15,23,42,.06);
+	}
+	.minor-title {
+		font-size:22px;
+		line-height:1.25;
+	}
+	.minor-text {
+		max-width:48ch;
+		margin-top:10px;
+		font-size:15px;
+		line-height:1.65;
+	}
+	.minor-btn {
+		margin-top:18px;
+		padding:10px 20px;
+		border-radius:22px;
+		font-size:14px;
+	}
+	.reinforce-section {
+		padding:0 16px 28px;
+	}
+	.reinforce-head {
+		align-items:flex-start;
+		gap:24px;
+		padding:22px 4px 16px;
+	}
+	.reinforce-title {
+		font-size:22px;
+		line-height:1.3;
+	}
+	.reinforce-sub,
+	.reinforce-time {
+		font-size:14px;
+		line-height:1.45;
+	}
+	.reinforce-time {
+		flex-shrink:0;
+		padding-top:3px;
+		white-space:nowrap;
 	}
 }
 </style>

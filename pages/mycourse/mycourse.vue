@@ -179,6 +179,15 @@ page { background:#fff; }
 	background-repeat:no-repeat !important;
 	background-position:center center !important;
 }
+.course-cover-img :deep(img),
+.course-cover-img :deep(.uni-image-div) {
+	display:block !important;
+	width:100% !important;
+	height:100% !important;
+	object-fit:contain !important;
+	visibility:visible !important;
+	opacity:1 !important;
+}
 .course-cover-fallback {
 	padding:0 18rpx;
 	text-align:center;
@@ -315,7 +324,33 @@ page { background:#fff; }
 	}
 }
 
-@media screen and (min-width: 900px) and (max-width: 1366px) {
+@media screen and (min-width: 600px) and (max-width: 1099px) {
+	.course-list {
+		display:block;
+		padding:20px 24px 88px;
+	}
+	.course-card {
+		grid-template-columns:clamp(190px, 30vw, 260px) minmax(0, 1fr);
+		min-height:168px;
+		margin-bottom:18px;
+		padding:18px;
+	}
+	.course-cover {
+		width:clamp(190px, 30vw, 260px);
+		height:clamp(134px, 21vw, 184px);
+	}
+	.course-title {
+		font-size:20px;
+		line-height:1.35;
+		white-space:normal;
+	}
+	.course-sub {
+		font-size:15px;
+		white-space:normal;
+	}
+}
+
+@media screen and (min-width: 1100px) and (max-width: 1366px) {
 	.course-list {
 		display:grid;
 		grid-template-columns:repeat(2, minmax(0, 1fr));

@@ -48,7 +48,7 @@
 					<view><text>学校</text><strong>{{item.schoolName || '--'}}</strong></view>
 					<view><text>地区</text><strong>{{item.region || '--'}}</strong></view>
 					<view><text>激活日期</text><strong>{{formatDate(item.activatedAt)}}</strong></view>
-					<view><text>到期时间</text><strong>{{formatDate(item.expiresAt)}}</strong></view>
+					<view><text>{{item.authorizationClosed ? '关闭时间' : '到期时间'}}</text><strong>{{formatDate(item.authorizationClosed ? (item.authorizationClosedAt || item.closedAt || item.expiresAt) : item.expiresAt)}}</strong></view>
 				</view>
 			</view>
 		</view>

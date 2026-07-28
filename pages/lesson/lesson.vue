@@ -211,6 +211,7 @@ export default {
 			videoPreparing: false,
 			videoPrepareTimer: null,
 			videoPrepareAttempts: 0,
+			hlsAttachAttempts: 0,
 			usesHlsJs: false,
 			hlsPlayer: null,
 			lessonLocked: false,
@@ -413,6 +414,7 @@ export default {
 		setProtectedVideoSource(source = '') {
 			this.destroyHlsPlayer();
 			this.resumePositionApplied = false;
+			this.hlsAttachAttempts = 0;
 			this.videoUrl = source;
 			if (!source) return;
 			this.$nextTick(() => this.configureHlsPlayback());
@@ -422,7 +424,17 @@ export default {
 			if (!source || !/\.m3u8(?:$|[?#])/i.test(source)) return;
 			this.$nextTick(() => {
 				const video = this.nativeVideoElement();
-				if (!video) return;
+				if (!video) {
+					this.hlsAttachAttempts += 1;
+					if (this.hlsAttachAttempts <= 20) {
+						setTimeout(() => this.configureHlsPlayback(), 100);
+					} else {
+						this.videoErrorMessage = '视频组件初始化失败，请点击重新加载。';
+						this.videoError = true;
+					}
+					return;
+				}
+				this.hlsAttachAttempts = 0;
 				const nativeHls = typeof video.canPlayType === 'function'
 					&& !!video.canPlayType('application/vnd.apple.mpegurl');
 				const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
@@ -716,7 +728,13 @@ export default {
 		},
 		nativeVideoElement() {
 			if (typeof document === 'undefined') return null;
-			return document.querySelector('#lessonVideo video') || document.querySelector('uni-video#lessonVideo video');
+			const direct = document.querySelector('video#lessonVideo');
+			const byId = document.getElementById('lessonVideo');
+			if (direct) return direct;
+			if (byId && String(byId.tagName || '').toLowerCase() === 'video') return byId;
+			return document.querySelector('#lessonVideo video')
+				|| document.querySelector('uni-video#lessonVideo video')
+				|| document.querySelector('.video-wrap video');
 		},
 		setNativeVideoControls(enabled) {
 			const video = this.nativeVideoElement();
@@ -978,17 +996,22 @@ export default {
 		},
 		applySeekFromEvent(e) {
 			if (!this.freePlaybackUnlocked || !this.durationSeconds || typeof document === 'undefined') return;
-			const clientX = this.getEventClientX(e);
 			const track = document.querySelector('.player-progress-track');
-			if (typeof clientX !== 'number' || !track || !track.getBoundingClientRect) return;
+			if (!track || !track.getBoundingClientRect) return;
 			const rect = track.getBoundingClientRect();
 			if (!rect.width) return;
-			const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			const point = this.getEventPosition(e);
+			if (!point) return;
+			const offset = typeof point.clientX === 'number'
+				? point.clientX - rect.left
+				: point.localX;
+			if (typeof offset !== 'number') return;
+			const ratio = Math.max(0, Math.min(1, offset / rect.width));
 			this.seekToSeconds(this.durationSeconds * ratio, ratio);
 			this.markPlayerActivity();
 		},
-		getEventClientX(e) {
-			if (!e) return undefined;
+		getEventPosition(e) {
+			if (!e) return null;
 			let clientX;
 			const nativeEvent = e && e.detail && e.detail.originalEvent ? e.detail.originalEvent : e;
 			if (nativeEvent && typeof nativeEvent.clientX === 'number') clientX = nativeEvent.clientX;
@@ -998,10 +1021,9 @@ export default {
 			if (typeof clientX !== 'number' && nativeEvent && nativeEvent.touches && nativeEvent.touches.length) {
 				clientX = nativeEvent.touches[0].clientX;
 			}
-			if (typeof clientX !== 'number' && e && e.detail && typeof e.detail.x === 'number') {
-				clientX = e.detail.x;
-			}
-			return clientX;
+			if (typeof clientX === 'number') return { clientX };
+			if (e && e.detail && typeof e.detail.x === 'number') return { localX:e.detail.x };
+			return null;
 		},
 		seekToSeconds(seconds, ratio = null) {
 			const safeSeconds = Math.max(0, Math.min(Number(seconds) || 0, this.durationSeconds || 0));
@@ -2290,6 +2312,48 @@ page { background:#fff; }
 	.video-wrap:-moz-full-screen {
 		position:fixed !important;
 		inset:0 !important;
+	}
+}
+
+@media screen and (min-width: 600px) and (max-width: 1100px) {
+	.lesson-player,
+	.video-wrap {
+		width:100%;
+	}
+	.video-wrap {
+		min-height:clamp(300px, 56.25vw, 560px);
+		aspect-ratio:16 / 9;
+	}
+	.video-player,
+	.video-player :deep(video),
+	.video-wrap :deep(video),
+	.video-wrap :deep(.uni-video-video) {
+		display:block !important;
+		width:100% !important;
+		height:100% !important;
+		min-height:100% !important;
+		object-fit:contain !important;
+		visibility:visible !important;
+		opacity:1 !important;
+		background:#0f172a !important;
+	}
+	.player-controls {
+		padding:16px 18px;
+	}
+	.player-progress-track {
+		height:38px;
+	}
+	.control-time,
+	.desktop-speed-item {
+		font-size:14px;
+	}
+	.desktop-speed-menu {
+		bottom:50px;
+		width:92px;
+	}
+	.desktop-speed-item {
+		height:38px;
+		line-height:38px;
 	}
 }
 
