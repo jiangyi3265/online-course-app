@@ -94,6 +94,9 @@ export default {
 page { background:#f6f8fb; }
 .page { min-height:100vh; background:#f6f8fb; }
 .nav {
+	position:sticky;
+	top:0;
+	z-index:1000;
 	height:88rpx;
 	padding:0 24rpx;
 	display:flex;

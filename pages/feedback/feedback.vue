@@ -113,7 +113,7 @@ export default {
 <style lang="scss">
 page { background:#f3f4f6; }
 .page { min-height:100vh; background:#f3f4f6; padding-bottom:42rpx; }
-.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; }
+.nav { position:sticky; top:0; z-index:1000; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #e8edf3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; }
 .nav-title { font-size:32rpx; font-weight:800; color:#222; }
 .top-space { height:220rpx; background:#777; }

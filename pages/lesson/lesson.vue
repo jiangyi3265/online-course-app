@@ -14,7 +14,6 @@
 					id="lessonVideo"
 					class="video-player"
 					:src="videoElementSrc"
-					:poster="poster"
 					:initial-time="initialTime"
 					:controls="false"
 					controlslist="nodownload nofullscreen noremoteplayback"
@@ -25,7 +24,7 @@
 					x5-playsinline
 					x5-video-player-type="h5-page"
 					x5-video-player-fullscreen="false"
-					preload="metadata"
+					preload="auto"
 					title=""
 					data-title=""
 					:muted="muted"
@@ -34,6 +33,8 @@
 					:show-center-play-btn="false"
 					:enable-progress-gesture="freePlaybackUnlocked"
 					@loadedmetadata="onLoadedMeta"
+					@loadeddata="onLoadedData"
+					@canplay="onCanPlay"
 					@play="onPlay"
 					@pause="onPause"
 					@click="onVideoTap"
@@ -43,13 +44,6 @@
 					@fullscreenchange="onNativeFullscreenChange"
 					@error="onVideoError"
 				></video>
-				<image
-					v-if="showPosterCover"
-					class="poster-cover"
-					:src="poster"
-					mode="aspectFill"
-					@click.stop="toggleVideoPlayback"
-				/>
 				<view v-if="showTapPlayLayer" class="tap-play-layer" @click.stop="toggleVideoPlayback">
 					<view class="tap-play-button">▶</view>
 				</view>
@@ -437,11 +431,10 @@ export default {
 				this.hlsAttachAttempts = 0;
 				const nativeHls = typeof video.canPlayType === 'function'
 					&& !!video.canPlayType('application/vnd.apple.mpegurl');
-				const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
-				const prefersNativeHls = /iP(?:hone|ad|od)|Macintosh.*Mobile/i.test(userAgent);
-				if (nativeHls && (prefersNativeHls || !Hls.isSupported())) {
+				if (nativeHls) {
 					this.usesHlsJs = false;
 					this.lockNativeVideoPlayback();
+					try { video.load(); } catch (err) { /* native HLS will load on play */ }
 					return;
 				}
 				if (!Hls.isSupported()) {
@@ -457,6 +450,8 @@ export default {
 					const player = new Hls({
 						enableWorker: false,
 						lowLatencyMode: false,
+						startLevel: -1,
+						capLevelToPlayerSize: true,
 						backBufferLength: 30,
 						maxBufferLength: 24,
 						maxBufferSize: 24 * 1024 * 1024,
@@ -765,7 +760,7 @@ export default {
 				video.setAttribute('x5-video-player-fullscreen', 'false');
 				video.disablePictureInPicture = true;
 				video.disableRemotePlayback = true;
-				video.preload = 'metadata';
+				video.preload = 'auto';
 				(video.querySelectorAll ? Array.from(video.querySelectorAll('source')) : []).forEach(source => {
 					source.removeAttribute('title');
 					source.removeAttribute('download');
@@ -908,6 +903,28 @@ export default {
 			this.applyInitialPlaybackPosition();
 			this.applyPlaybackRate();
 			this.applyVolume();
+		},
+		onLoadedData() {
+			this.videoPreparing = false;
+			this.ensureFirstVideoFrame();
+		},
+		onCanPlay() {
+			this.videoPreparing = false;
+			this.videoError = false;
+			this.ensureFirstVideoFrame();
+		},
+		ensureFirstVideoFrame() {
+			const video = this.nativeVideoElement();
+			// A zero-second resume is still allowed to seek a tiny amount so browsers
+			// decode and paint the first real frame instead of leaving a black canvas.
+			if (!video || this.videoPlaying || this.initialTime > 0) return;
+			if (Number(video.readyState || 0) < 2 || Number(video.currentTime || 0) > 0.12) return;
+			const duration = Number(video.duration || 0);
+			const target = duration > 0 ? Math.min(0.08, Math.max(0, duration - 0.02)) : 0.05;
+			try {
+				video.currentTime = target;
+				video.pause();
+			} catch (err) { /* some embedded browsers render the first frame without seeking */ }
 		},
 		onPlay() {
 			this.videoPlaying = true;
@@ -1597,6 +1614,11 @@ page { background:#fff; }
 	height:100%;
 	background:#0f172a;
 	display:block;
+	object-fit:contain;
+	-webkit-transform:translateZ(0);
+	transform:translateZ(0);
+	-webkit-backface-visibility:hidden;
+	backface-visibility:hidden;
 	cursor:pointer;
 	-webkit-user-select:none;
 	user-select:none;
@@ -1932,6 +1954,7 @@ page { background:#fff; }
 }
 .desktop-speed-wrap {
 	position:relative;
+	z-index:14;
 }
 .desktop-speed-menu {
 	position:absolute;
@@ -2336,6 +2359,10 @@ page { background:#fff; }
 		visibility:visible !important;
 		opacity:1 !important;
 		background:#0f172a !important;
+		-webkit-transform:translateZ(0) !important;
+		transform:translateZ(0) !important;
+		-webkit-backface-visibility:hidden !important;
+		backface-visibility:hidden !important;
 	}
 	.player-controls {
 		padding:16px 18px;
@@ -2354,6 +2381,45 @@ page { background:#fff; }
 	.desktop-speed-item {
 		height:38px;
 		line-height:38px;
+	}
+}
+
+@media screen and (max-width: 599px) {
+	.player-controls {
+		padding:10rpx 12rpx 12rpx;
+	}
+	.player-control-row {
+		gap:8rpx;
+	}
+	.control-button {
+		display:flex !important;
+		align-items:center;
+		justify-content:center;
+		min-width:54rpx;
+		height:50rpx;
+		line-height:normal;
+		flex-shrink:0;
+	}
+	.rate-button {
+		min-width:78rpx;
+		padding:0 8rpx;
+		font-size:22rpx;
+		box-sizing:border-box;
+	}
+	.desktop-speed-wrap {
+		display:block !important;
+		flex-shrink:0;
+	}
+	.desktop-speed-menu {
+		bottom:56rpx;
+		width:110rpx;
+		z-index:20;
+	}
+	.control-time {
+		font-size:20rpx;
+	}
+	.volume-button {
+		display:none !important;
 	}
 }
 

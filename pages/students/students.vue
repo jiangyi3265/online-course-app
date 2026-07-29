@@ -346,7 +346,7 @@ page { background:#eef3f7; }
 .nav {
 	position:sticky;
 	top:0;
-	z-index:20;
+	z-index:1000;
 	height:92rpx;
 	background:rgba(251,253,255,.96);
 	backdrop-filter:saturate(140%) blur(10px);
@@ -541,6 +541,47 @@ page { background:#eef3f7; }
 	border:1rpx dashed #cbd6e2;
 	border-radius:16rpx;
 	line-height:1.6;
+}
+@media screen and (min-width: 600px) and (max-width: 1100px) {
+	.page {
+		padding:0 clamp(20px, 4vw, 44px) 56px;
+		background:linear-gradient(180deg,#f8fbfe 0%,#eef3f8 100%);
+	}
+	.nav {
+		height:64px;
+		margin:0 clamp(-44px, -4vw, -20px) 24px;
+	}
+	.back { left:18px; width:44px; height:44px; line-height:40px; font-size:34px; }
+	.nav-title { font-size:22px; }
+	.panel {
+		margin:0 0 24px;
+		padding:26px;
+		border-radius:18px;
+	}
+	.panel-title { font-size:22px; }
+	.panel-sub,
+	.course-line { font-size:16px; }
+	.input,
+	.code-btn,
+	.primary { height:52px; line-height:52px; font-size:16px; }
+	.study-filter { padding:18px; border-radius:14px; }
+	.filter-title { font-size:18px; }
+	.filter-count,
+	.filter-chip { font-size:15px; }
+	.filter-chip { min-height:40px; padding:0 18px; }
+	.student-card { padding:24px; margin-top:18px; border-radius:18px; }
+	.student-avatar { width:56px; height:56px; font-size:23px; }
+	.student-name { font-size:22px; }
+	.student-id,
+	.source-tag { font-size:15px; }
+	.student-meta { gap:12px; padding:18px; }
+	.meta-item { min-height:76px; padding:13px 15px; }
+	.meta-item text,
+	.metric small { font-size:14px; }
+	.meta-item strong { font-size:17px; }
+	.metric { min-height:78px; padding:14px 8px; }
+	.metric text { font-size:22px; }
+	.link-btn { min-height:44px; padding:0 18px; font-size:16px; }
 }
 @media screen and (max-width: 430px) {
 	.panel {

@@ -3,7 +3,12 @@
 		<view class="course-list" v-if="logined">
 			<view class="course-card" v-for="(c,i) in courses" :key="i">
 				<view class="course-cover">
+					<!-- #ifdef H5 -->
+					<img v-if="c.cover && !c.coverError" class="course-cover-img" :src="c.cover" draggable="false" @error="markCourseCoverError(c)" />
+					<!-- #endif -->
+					<!-- #ifndef H5 -->
 					<image v-if="c.cover && !c.coverError" class="course-cover-img" :src="c.cover" mode="aspectFit" @error="markCourseCoverError(c)" />
+					<!-- #endif -->
 					<view v-else class="course-cover-fallback">{{courseInitial(c)}}</view>
 				</view>
 				<view class="course-info">

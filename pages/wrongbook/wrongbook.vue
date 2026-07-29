@@ -478,7 +478,7 @@ export default {
 .nav {
 	position: sticky;
 	top: 0;
-	z-index: 20;
+	z-index: 1000;
 	height: 96rpx;
 	display: flex;
 	align-items: center;
@@ -832,5 +832,48 @@ export default {
 .retry-meta {
 	color: #667085;
 	margin-bottom: 18rpx;
+}
+@media screen and (min-width: 600px) and (max-width: 1100px) {
+	.page {
+		padding:0 clamp(20px, 4vw, 44px) 56px;
+		background:linear-gradient(180deg,#f8fbfe 0%,#eef3f8 100%);
+	}
+	.nav {
+		height:64px;
+		margin:0 clamp(-44px, -4vw, -20px) 24px;
+		background:rgba(255,255,255,.97);
+	}
+	.back { left:18px; width:44px; height:44px; line-height:40px; font-size:34px; }
+	.nav-title { font-size:22px; }
+	.action-grid { gap:16px; margin-bottom:18px; }
+	.action-card { min-height:146px; padding:22px; gap:16px; border-radius:18px; }
+	.action-mark { flex-basis:42px; height:42px; border-radius:12px; font-size:19px; }
+	.action-title { font-size:22px; }
+	.action-sub { margin-top:8px; font-size:16px; line-height:1.55; }
+	.summary-strip { padding:12px; gap:10px; border-radius:16px; }
+	.summary-item { min-height:88px; border-radius:12px; }
+	.summary-item text { font-size:15px; }
+	.summary-item strong { font-size:26px; }
+	.summary-item small { font-size:14px; }
+	.source-filter { gap:12px; margin-bottom:18px; }
+	.source-chip { height:48px; font-size:17px; border-radius:12px; }
+	.panel { padding:22px; border-radius:18px; }
+	.panel-title,
+	.source-title,
+	.record-total { font-size:22px; }
+	.question-card,
+	.record-card { padding:22px; border-radius:18px; }
+	.tag { padding:7px 12px; font-size:15px; }
+	.stem { font-size:21px; line-height:1.6; }
+	.option-row,
+	.answer,
+	.detail-answer { font-size:17px; }
+	.record-time,
+	.record-meta { font-size:15px; }
+	.record-name,
+	.record-score { font-size:19px; }
+	.row-actions view,
+	.primary-btn,
+	.detail-actions button { height:44px; font-size:15px; }
 }
 </style>

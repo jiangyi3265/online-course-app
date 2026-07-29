@@ -244,7 +244,7 @@ export default {
 <style lang="scss">
 page { background:#f5f7fa; }
 .page { min-height:100vh; background:#f5f7fa; padding-bottom:40rpx; }
-.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
+.nav { position:sticky; top:0; z-index:1000; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; font-weight:700; }
 .tabs { display:flex; margin:24rpx; background:#fff; border-radius:14rpx; padding:8rpx; border:1rpx solid #e8edf3; }

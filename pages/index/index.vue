@@ -4,7 +4,12 @@
 		<view class="banner">
 			<swiper class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
 				<swiper-item v-for="item in homeBanners" :key="item.id || item.imageUrl">
+					<!-- #ifdef H5 -->
+					<img class="banner-img" :src="item.imageUrl" draggable="false" @click="openBanner(item)" @error.stop="onBannerError(item)" />
+					<!-- #endif -->
+					<!-- #ifndef H5 -->
 					<image class="banner-img" :src="item.imageUrl" mode="aspectFill" @click="openBanner(item)" @error.stop="onBannerError(item)" />
+					<!-- #endif -->
 				</swiper-item>
 			</swiper>
 		</view>
@@ -13,7 +18,12 @@
 		<view class="cats">
 			<view class="cat" v-for="(c,i) in cats" :key="i" @click="goTab(i)">
 				<view class="cat-icon" :class="['cat-tone-' + (i + 1), { 'is-fallback': c.iconError }]">
+					<!-- #ifdef H5 -->
+					<img v-if="c.icon && !c.iconError" class="cat-img" :src="catIconSrc(c)" draggable="false" @error.stop="onCatIconError(c)" />
+					<!-- #endif -->
+					<!-- #ifndef H5 -->
 					<image v-if="c.icon && !c.iconError" class="cat-img" :src="catIconSrc(c)" mode="aspectFit" @error.stop="onCatIconError(c)" />
+					<!-- #endif -->
 					<text v-else class="cat-icon-letter">{{catSymbol(c, i)}}</text>
 				</view>
 				<text class="cat-text">{{c.text}}</text>
@@ -23,7 +33,12 @@
 		<view class="tool-strip">
 			<view class="tool-card" @click="goVocabulary">
 				<view class="tool-mark">
+					<!-- #ifdef H5 -->
+					<img class="tool-mark-image" src="/static/system-icons/vocabulary.png" draggable="false" />
+					<!-- #endif -->
+					<!-- #ifndef H5 -->
 					<image class="tool-mark-image" src="/static/system-icons/vocabulary.png" mode="aspectFit" />
+					<!-- #endif -->
 				</view>
 				<view class="tool-info">
 					<view class="tool-title">外语词汇</view>
@@ -37,7 +52,12 @@
 		<view class="grid">
 			<view class="card" v-for="(it,i) in list" :key="i" @click="goDetail(it)">
 				<view class="cover">
+					<!-- #ifdef H5 -->
+					<img v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" draggable="false" @error.stop="onCourseCoverError(it)" />
+					<!-- #endif -->
+					<!-- #ifndef H5 -->
 					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFill" @error.stop="onCourseCoverError(it)" />
+					<!-- #endif -->
 					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
 				</view>
 				<view class="info">

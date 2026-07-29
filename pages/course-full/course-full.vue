@@ -8,7 +8,12 @@
 
 		<!-- 封面 -->
 		<view class="cover" :class="coverClass">
+			<!-- #ifdef H5 -->
+			<img v-if="cover" class="cover-img" :src="cover" @load="onCoverLoad" @error="onCoverError" />
+			<!-- #endif -->
+			<!-- #ifndef H5 -->
 			<image v-if="cover" class="cover-img" :src="cover" :mode="coverMode" @load="onCoverLoad" @error="onCoverError" />
+			<!-- #endif -->
 			<view v-else class="cover-fallback" :style="{background: bg}">
 				<view class="cover-title">{{title}}</view>
 			</view>
@@ -288,26 +293,22 @@ export default {
 			return this.versions.slice(0, 2);
 		},
 		versionSummaries() {
+			const labels = ['复习加强', '技巧绝招'];
 			const statsRows = this.versionStats.slice(0, 2);
-			if (statsRows.length) {
-				const labels = ['复习加强', '技巧绝招'];
-				return statsRows.map((item, index) => ({
-					label: item.label || item.name || item.versionName || labels[index] || '课程',
-					total: Number(item.totalLessons || item.lessonCount || item.total || 0),
-					duration: item.totalDuration || item.duration || item.courseDuration || '00小时00分'
-				})).filter(item => item.total || item.duration);
-			}
+			if (statsRows.length) return statsRows.map((item, index) => ({
+				label: item.label || item.name || item.versionName || labels[index] || '课程',
+				total: Number(item.totalLessons || item.lessonCount || item.total || 0),
+				duration: item.totalDuration || item.duration || item.courseDuration || '00小时00分'
+			})).filter(item => item.total || this.durationTextSeconds(item.duration) > 0);
 			return this.visibleVersions.map((version, index) => {
-				const title = index === 0 ? '复习加强' : '技巧绝招';
 				const chapters = (version && version.chapters) || [];
 				const rawChapters = (version && version.rawChapters) || chapters;
-				const declaredTotal = this.countDeclaredChapters(rawChapters);
 				return {
-					label: title,
-					total: declaredTotal || this.countChapters(chapters) || (index === 0 ? this.total : Number(version.totalLessons || version.lessonCount || 0)),
+					label: labels[index] || '课程',
+					total: this.countDeclaredChapters(rawChapters) || this.countChapters(chapters) || Number(version.totalLessons || version.lessonCount || 0),
 					duration: this.versionDuration(version, index)
 				};
-			}).filter(item => item.total || item.duration);
+			}).filter(item => item.total || this.durationTextSeconds(item.duration) > 0);
 		},
 		visibleQuizzes() {
 			return (this.quizzes || []).filter(item => this.isVisible(item) && this.hasPracticeQuestions(item));
@@ -418,6 +419,7 @@ export default {
 		},
 		applyRemoteCourse(course) {
 			const activeVersion = this.courseLoaded ? this.versionIndex : 0;
+			const fallbackCourse = isGaokaoMath(course.title || this.title) ? getGaokaoMathCourse('full') : {};
 			this.courseId = course.id || this.courseId;
 			this.reinforceLoaded = false;
 			this.reinforceList = [];
@@ -425,16 +427,35 @@ export default {
 			this.courseName = stripCourseYear(course.courseName || this.courseName);
 			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
-			this.setCover(course.detailCover || course.cover || this.cover);
-			this.versionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
-			const stats = this.resolveCourseStats(course);
+			this.setCover(course.detailCover || course.cover || fallbackCourse.detailCover || fallbackCourse.cover || this.cover);
+			const remoteVersionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
+			const fallbackVersionStats = this.normalizeVersionStats(
+				fallbackCourse.versionStats || fallbackCourse.courseVersionStats || fallbackCourse.versions || []
+			);
+			this.versionStats = [0, 1].map(index => {
+				const remote = remoteVersionStats[index] || {};
+				const fallback = fallbackVersionStats[index] || {};
+				const remoteDuration = remote.totalDuration || remote.duration || remote.courseDuration || '';
+				return {
+					...fallback,
+					...remote,
+					label: remote.label || fallback.label || (index === 0 ? '复习加强' : '技巧绝招'),
+					totalLessons: Number(remote.totalLessons || remote.lessonCount || remote.total || 0)
+						|| Number(fallback.totalLessons || fallback.lessonCount || fallback.total || 0),
+					totalDuration: this.durationTextSeconds(remoteDuration) > 0
+						? remoteDuration
+						: (fallback.totalDuration || fallback.duration || fallback.courseDuration || '')
+				};
+			}).filter(item => item.totalLessons > 0 || this.durationTextSeconds(item.totalDuration) > 0);
+			const stats = this.resolveCourseStats(course, fallbackCourse);
 			this.total = stats.totalLessons;
 			this.duration = stats.totalDuration || '00小时00分';
 			this.realDuration = course.practiceDuration || this.realDuration;
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
-			this.versions = this.normalizeVersions(course, Array.isArray(course.chapters) ? course.chapters : []);
+			const versionCourse = this.countCourseLessons(course) > 0 ? course : fallbackCourse;
+			this.versions = this.normalizeVersions(versionCourse, Array.isArray(versionCourse.chapters) ? versionCourse.chapters : []);
 			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = Array.isArray(course.quizzes) ? course.quizzes : [];
 			this.applyCourseAccess(course);
@@ -463,8 +484,11 @@ export default {
 		},
 		onCoverLoad(event) {
 			const detail = (event && event.detail) || {};
-			if (detail.width && detail.height) {
-				this.coverRatio = detail.width / detail.height;
+			const target = (event && event.target) || {};
+			const width = Number(detail.width || target.naturalWidth || target.width || 0);
+			const height = Number(detail.height || target.naturalHeight || target.height || 0);
+			if (width && height) {
+				this.coverRatio = width / height;
 			}
 		},
 		onCoverError() {
@@ -505,6 +529,7 @@ export default {
 			this.updatedAt = course.updatedAt || this.updatedAt;
 			this.setCover(course.detailCover || course.cover);
 			this.versionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
+			if (!this.versionStats.length) this.versionStats = this.normalizeVersionStats(course.versions || []);
 			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons;
 			this.duration = stats.totalDuration || course.totalDuration || '00小时00分';
@@ -586,21 +611,26 @@ export default {
 		normalizeVersionStats(rows = []) {
 			return (Array.isArray(rows) ? rows : [])
 				.slice(0, 2)
-				.map((item = {}, index) => ({
-					...item,
-					label: item.label || item.name || item.versionName || (index === 0 ? '复习加强' : '技巧绝招'),
-					totalLessons: Number(item.totalLessons || item.lessonCount || item.total || 0),
-					totalDuration: item.totalDuration || item.duration || item.courseDuration || '00小时00分'
-				}))
-				.filter(item => item.totalLessons || item.totalDuration);
+				.map((item = {}, index) => {
+					const totalDuration = item.totalDuration || item.duration || item.courseDuration || '';
+					return {
+						...item,
+						label: item.label || item.name || item.versionName || (index === 0 ? '复习加强' : '技巧绝招'),
+						totalLessons: Number(item.totalLessons || item.lessonCount || item.total || 0),
+						totalDuration
+					};
+				})
+				.filter(item => item.totalLessons > 0 || this.durationTextSeconds(item.totalDuration) > 0);
 		},
-		resolveCourseStats(course = {}) {
-			const statTotal = this.versionStats.reduce((sum, item) => sum + (Number(item.totalLessons) || 0), 0);
-			const statDuration = this.sumDurationText(this.versionStats.map(item => item.totalDuration || item.duration || item.courseDuration));
-			const totalLessons = statTotal || this.countCourseLessons(course) || Number(course.totalLessons || 0);
+		resolveCourseStats(course = {}, fallbackCourse = {}) {
+			const actualLessons = this.countCourseLessons(course);
+			const fallbackLessons = this.countCourseLessons(fallbackCourse);
+			const totalLessons = actualLessons || Number(course.totalLessons || 0) || fallbackLessons || Number(fallbackCourse.totalLessons || 0);
+			const courseDuration = this.durationTextSeconds(course.totalDuration) > 0 ? course.totalDuration : '';
+			const fallbackDuration = this.durationTextSeconds(fallbackCourse.totalDuration) > 0 ? fallbackCourse.totalDuration : '';
 			return {
 				totalLessons,
-				totalDuration: statDuration || course.totalDuration || ''
+				totalDuration: courseDuration || fallbackDuration || ''
 			};
 		},
 		sumDurationText(values = []) {
@@ -608,7 +638,7 @@ export default {
 			return seconds > 0 ? this.secondsToDurationText(seconds) : '';
 		},
 		durationTextSeconds(value = '') {
-			const text = String(value || '');
+			const text = String(value || '').trim();
 			if (!text) return 0;
 			let total = 0;
 			const hour = text.match(/(\d+)\s*(?:小时|时|h)/i);
@@ -662,10 +692,12 @@ export default {
 		},
 		versionDuration(version = {}, index = 0) {
 			const stat = this.versionStats[index] || {};
-			if (stat.totalDuration || stat.duration || stat.courseDuration) {
-				return stat.totalDuration || stat.duration || stat.courseDuration;
-			}
-			return version.duration || version.totalDuration || version.courseDuration || (index === 0 ? this.duration : this.realDuration) || '00小时00分';
+			const statDuration = stat.totalDuration || stat.duration || stat.courseDuration || '';
+			if (this.durationTextSeconds(statDuration) > 0) return statDuration;
+			const versionValue = version.duration || version.totalDuration || version.courseDuration || '';
+			if (this.durationTextSeconds(versionValue) > 0) return versionValue;
+			const fallback = index === 0 ? this.duration : this.realDuration;
+			return this.durationTextSeconds(fallback) > 0 ? fallback : '00小时00分';
 		},
 		progressText(item) {
 			if (item.type === 2) return `${item.read || 0}/${item.total || 0}`;
