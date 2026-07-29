@@ -10,12 +10,13 @@
 				<view class="section-title">{{pageTitle}}</view>
 				<view class="section-sub">{{readOnly ? '推荐绑定学生的学习情况汇总，此处只允许查看统计。' : '所有已开通科目的学习情况汇总。'}}</view>
 			</view>
-			<view class="readonly-tag" v-if="readOnly">只读查看</view>
-		</view>
-
-		<view class="readonly-banner" v-if="readOnly">
-			<view class="readonly-banner-title">只读权限</view>
-			<view class="readonly-banner-text">可查看学习时长、打卡记录和各科报告。</view>
+			<view class="section-meta">
+				<view class="readonly-tag" v-if="readOnly">只读查看</view>
+				<view class="today-time">
+					<text class="today-time-label">今日时间：</text>
+					<text class="today-time-value">{{currentTimeText}}</text>
+				</view>
+			</view>
 		</view>
 
 		<view class="time-summary">
@@ -133,7 +134,9 @@ export default {
 			expandedSummary: {},
 			activeCourses: [],
 			checkinRecords: [],
-			showCheckinRecords: false
+			showCheckinRecords: false,
+			currentTimeText: '',
+			clockTimer: null
 		}
 	},
 	computed: {
@@ -179,6 +182,7 @@ export default {
 		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || opts.readonly === true;
 	},
 	async onShow() {
+		this.startClock();
 		if (!isLoggedIn()) {
 			uni.showToast({ title:'请先登录', icon:'none' });
 			return;
@@ -188,7 +192,27 @@ export default {
 		this.checkinRecords = this.sharedCheckins(uni.getStorageSync(CHECKIN_KEY) || []);
 		await this.loadRemoteData();
 	},
+	onHide() {
+		this.stopClock();
+	},
+	onUnload() {
+		this.stopClock();
+	},
 	methods: {
+		refreshCurrentTime() {
+			const now = new Date();
+			this.currentTimeText = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${now.getHours()}点${now.getMinutes()}分`;
+		},
+		startClock() {
+			this.stopClock();
+			this.refreshCurrentTime();
+			this.clockTimer = setInterval(() => this.refreshCurrentTime(), 30000);
+		},
+		stopClock() {
+			if (!this.clockTimer) return;
+			clearInterval(this.clockTimer);
+			this.clockTimer = null;
+		},
 		async loadRemoteData() {
 			try {
 				this.studySummary = await getStudySummaryApi();
@@ -348,12 +372,14 @@ page { background:#f5f7fa; }
 .back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
 .nav-title { font-size:30rpx; color:#222; font-weight:800; }
 .section-head { padding:28rpx 30rpx 18rpx; display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; }
+.section-head > view:first-child { flex:1; min-width:0; }
 .section-title { font-size:34rpx; font-weight:900; color:#222; }
 .section-sub { margin-top:10rpx; color:#596272; font-size:24rpx; line-height:1.5; }
+.section-meta { flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:12rpx; }
 .readonly-tag { flex-shrink:0; margin-top:4rpx; padding:8rpx 16rpx; border-radius:999rpx; background:#eef6ff; color:#1677ff; font-size:23rpx; font-weight:900; }
-.readonly-banner { margin:0 24rpx 20rpx; padding:22rpx 24rpx; border-radius:12rpx; background:#f8fafc; border:1rpx solid #e1e8f0; box-sizing:border-box; }
-.readonly-banner-title { color:#1f2933; font-size:26rpx; font-weight:900; }
-.readonly-banner-text { margin-top:8rpx; color:#667085; font-size:23rpx; line-height:1.5; }
+.today-time { min-height:52rpx; padding:0 16rpx; display:flex; align-items:center; border:1rpx solid #dfe7f0; border-radius:12rpx; background:#fff; box-sizing:border-box; white-space:nowrap; }
+.today-time-label { color:#758197; font-size:22rpx; font-weight:700; }
+.today-time-value { color:#1f2937; font-size:23rpx; font-weight:900; }
 .time-summary { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; padding:0 24rpx 20rpx; }
 .time-card { min-height:112rpx; background:#fff; border:1rpx solid #eef0f3; border-radius:8rpx; padding:22rpx; display:flex; flex-direction:column; justify-content:center; box-shadow:0 3rpx 10rpx rgba(0,0,0,0.03); box-sizing:border-box; }
 .checkin-card { grid-column:1 / -1; flex-direction:row; align-items:center; justify-content:space-between; }
@@ -456,6 +482,10 @@ page { background:#eef3f7; }
 .readonly-tag {
 	background:#eaf3ff;
 	border:1rpx solid #cfe2ff;
+}
+.today-time {
+	background:rgba(255,255,255,.86);
+	box-shadow:0 8rpx 18rpx rgba(31,41,51,.04);
 }
 .time-summary {
 	grid-template-columns:repeat(4, minmax(0, 1fr));
@@ -703,7 +733,19 @@ page { background:#eef3f7; }
 	display:flex;
 	align-items:center;
 }
-@media screen and (max-width: 520px) {
+@media screen and (max-width: 900px) {
+	.section-head {
+		flex-wrap:wrap;
+	}
+	.section-meta {
+		width:100%;
+		flex-direction:row;
+		align-items:center;
+		justify-content:space-between;
+	}
+	.today-time {
+		margin-left:auto;
+	}
 	.course-report {
 		grid-template-columns:1fr;
 	}
