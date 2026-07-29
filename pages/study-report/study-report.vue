@@ -3,8 +3,11 @@
 		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">学习报告</view></view>
 
 		<view class="course-card">
-			<view class="course-label">课程名字：</view>
-			<view class="course-name">{{courseTitle}}</view>
+			<view class="course-main">
+				<view class="course-label">课程名字：</view>
+				<view class="course-name">{{courseTitle}}</view>
+			</view>
+			<view class="report-current-time">{{currentTimeText}}</view>
 		</view>
 
 		<view class="panel learning-panel" :class="{collapsed: !showLearningRecords}">
@@ -188,7 +191,9 @@ export default {
 			showOfflineReviews: false,
 			recordDateFilter: '',
 			selectedPractice: null,
-			offlineReviews: []
+			offlineReviews: [],
+			currentTimeText: '',
+			clockTimer: null
 		}
 	},
 	computed: {
@@ -309,9 +314,33 @@ export default {
 		this.userId = opts.studentId || opts.userId || '';
 		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || opts.readonly === true;
 		this.offlineReviews = uni.getStorageSync(REVIEW_KEY) || [];
+		this.refreshCurrentTime();
 		this.loadData();
 	},
+	onShow() {
+		this.startClock();
+	},
+	onHide() {
+		this.stopClock();
+	},
+	onUnload() {
+		this.stopClock();
+	},
 	methods: {
+		refreshCurrentTime() {
+			const now = new Date();
+			this.currentTimeText = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日${now.getHours()}点${now.getMinutes()}分`;
+		},
+		startClock() {
+			this.stopClock();
+			this.refreshCurrentTime();
+			this.clockTimer = setInterval(() => this.refreshCurrentTime(), 30000);
+		},
+		stopClock() {
+			if (!this.clockTimer) return;
+			clearInterval(this.clockTimer);
+			this.clockTimer = null;
+		},
 		completionPercent(completed, total, fallback = 0) {
 			const safeTotal = Math.max(0, Number(total) || 0);
 			const safeCompleted = Math.max(0, Number(completed) || 0);
@@ -620,9 +649,25 @@ page { background:#f5f7fa; }
 }
 .nav-title { font-size:30rpx; font-weight:700; }
 .course-card, .panel, .detail-panel { margin:24rpx; padding:26rpx; background:#fff; border-radius:16rpx; border:1rpx solid #edf0f4; }
-.course-card { display:flex; align-items:center; gap:14rpx; flex-wrap:wrap; }
-.course-label { color:#697386; font-size:24rpx; font-weight:700; }
-.course-name { color:#222; font-size:32rpx; font-weight:900; line-height:1.25; }
+.course-card { display:flex; align-items:center; justify-content:space-between; gap:20rpx; }
+.course-main { min-width:0; display:flex; align-items:center; gap:14rpx; }
+.course-label { flex-shrink:0; color:#697386; font-size:24rpx; font-weight:700; }
+.course-name { min-width:0; color:#222; font-size:32rpx; font-weight:900; line-height:1.25; }
+.report-current-time {
+	flex-shrink:0;
+	min-height:52rpx;
+	display:flex;
+	align-items:center;
+	padding:0 18rpx;
+	border:1rpx solid #dfe7f0;
+	border-radius:12rpx;
+	background:#f8fafc;
+	color:#1f2937;
+	font-size:23rpx;
+	font-weight:800;
+	white-space:nowrap;
+	box-sizing:border-box;
+}
 .summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14rpx; padding:0 24rpx; }
 .summary-item { background:#fff; border:1rpx solid #edf0f4; border-radius:16rpx; padding:22rpx 14rpx; min-height:150rpx; box-sizing:border-box; }
 .summary-label { color:#596272; font-size:24rpx; font-weight:700; }
@@ -826,6 +871,9 @@ page { background:#f5f7fa; }
 .suggestion:last-child { border-bottom:0; }
 .empty { color:#8a94a3; font-size:26rpx; padding:20rpx 0; }
 @media screen and (max-width: 420px) {
+	.course-card { align-items:flex-start; flex-wrap:wrap; }
+	.course-main { width:100%; flex-wrap:wrap; }
+	.report-current-time { margin-left:auto; }
 	.track-grid { grid-template-columns:1fr; }
 	.report-metrics { grid-template-columns:1fr 1fr; }
 	.video-record,
