@@ -892,4 +892,30 @@ page { background:#f5f7fa; }
 		max-height:560rpx;
 	}
 }
+@media screen and (min-width: 600px) and (max-width: 1100px) {
+	.course-card { padding:18px 20px; }
+	.course-main { gap:10px; }
+	.course-label { font-size:14px; }
+	.course-name { font-size:20px; }
+	.report-current-time {
+		min-height:36px;
+		padding:0 12px;
+		border-radius:10px;
+		font-size:14px;
+	}
+	.summary-value {
+		margin-top:5px;
+		font-size:20px !important;
+		line-height:1.2;
+	}
+	.summary-label { font-size:14px; }
+	.summary-tip { font-size:12px; }
+	.report-metrics { gap:10px; }
+	.report-metric {
+		min-height:82px;
+		padding:12px;
+		font-size:13px;
+	}
+	.metric-value { margin-top:5px; font-size:20px; line-height:1.2; }
+}
 </style>

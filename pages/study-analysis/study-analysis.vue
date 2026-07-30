@@ -759,4 +759,42 @@ page { background:#eef3f7; }
 		grid-template-columns:1fr;
 	}
 }
+@media screen and (min-width: 600px) and (max-width: 1100px) {
+	.section-head {
+		padding:22px 24px 14px;
+		align-items:center;
+		flex-wrap:nowrap;
+	}
+	.section-title { font-size:24px; }
+	.section-sub { font-size:14px; line-height:1.55; }
+	.section-meta {
+		width:auto;
+		flex-direction:column;
+		align-items:flex-end;
+		justify-content:flex-start;
+		gap:8px;
+	}
+	.readonly-tag { min-height:34px; padding:0 12px; font-size:13px; }
+	.today-time {
+		min-height:38px;
+		margin-left:0;
+		padding:0 12px;
+		border-radius:10px;
+	}
+	.today-time-label { font-size:13px; }
+	.today-time-value { font-size:14px; }
+	.time-summary {
+		grid-template-columns:repeat(4, minmax(0, 1fr));
+		gap:10px;
+		padding:0 20px 16px;
+	}
+	.time-card {
+		min-height:84px;
+		padding:14px;
+		border-radius:12px;
+	}
+	.time-value { font-size:21px; line-height:1.2; }
+	.time-label { font-size:13px; line-height:1.35; }
+	.checkin-card { min-height:90px; }
+}
 </style>

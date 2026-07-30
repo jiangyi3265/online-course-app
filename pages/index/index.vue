@@ -2,16 +2,17 @@
 	<view class="page">
 		<!-- Hero Banner -->
 		<view class="banner">
-			<swiper class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
+			<swiper v-if="bannerReady && homeBanners.length" class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
 				<swiper-item v-for="item in homeBanners" :key="item.id || item.imageUrl">
 					<!-- #ifdef H5 -->
 					<img class="banner-img" :src="item.imageUrl" draggable="false" @click="openBanner(item)" @error.stop="onBannerError(item)" />
 					<!-- #endif -->
 					<!-- #ifndef H5 -->
-					<image class="banner-img" :src="item.imageUrl" mode="aspectFill" @click="openBanner(item)" @error.stop="onBannerError(item)" />
+					<image class="banner-img" :src="item.imageUrl" mode="aspectFit" @click="openBanner(item)" @error.stop="onBannerError(item)" />
 					<!-- #endif -->
 				</swiper-item>
 			</swiper>
+			<view v-else class="banner-swiper banner-skeleton" aria-hidden="true"></view>
 		</view>
 
 		<!-- 4 categories -->
@@ -91,9 +92,8 @@ export default {
 				{ icon:'/static/system-icons/home/gk-trial.png?v=2026072502', iconError:false, symbol:'听', text:'高考试听' },
 				{ icon:'/static/system-icons/home/gk-course.png?v=2026072502', iconError:false, symbol:'课', text:'高考课程' }
 			],
-			homeBanners: [
-				{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }
-			],
+			homeBanners: [],
+			bannerReady: false,
 			list: [
 				{ full:'中考语文', learn:1086, cover:'/static/courses/zk-yuwen.jpg', kind:'trial', isTry:true },
 				{ full:'中考数学', learn:1456, cover:'/static/courses/zk-shuxue.jpg', kind:'trial', isTry:true },
@@ -139,6 +139,9 @@ export default {
 				else this.homeBanners = [{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }];
 			} catch (err) {
 				console.warn('前端配置接口不可用，使用默认首页图', err);
+				this.homeBanners = [{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }];
+			} finally {
+				this.bannerReady = true;
 			}
 		},
 		async loadCourses() {
@@ -270,18 +273,20 @@ page { background:#f7f8fa; color-scheme:light; }
 
 .banner { padding: 20rpx 24rpx 8rpx; }
 .banner-swiper { width:100%; height:220rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
-.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:cover; background:#eef2f7; }
+.banner-skeleton { background:linear-gradient(110deg,#eef2f7 8%,#f8fafc 18%,#eef2f7 33%); background-size:200% 100%; animation:banner-loading 1.2s linear infinite; }
+.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:contain; background:#eef2f7; }
 .banner-img :deep(div),
-.banner-img :deep(.uni-image-div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.banner-img :deep(.uni-image-div) { background-size:contain !important; background-repeat:no-repeat !important; background-position:center center !important; }
 .banner-img :deep(img),
 .banner-img :deep(.uni-image-div) {
 	display:block !important;
 	width:100% !important;
 	height:100% !important;
-	object-fit:cover !important;
+	object-fit:contain !important;
 	visibility:visible !important;
 	opacity:1 !important;
 }
+@keyframes banner-loading { to { background-position-x:-200%; } }
 
 .cats { display:flex; justify-content:space-around; padding:24rpx 0 14rpx; background:#f7f8fa; }
 .cat { min-width:0; min-height:142rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
@@ -327,8 +332,7 @@ page { background:#f7f8fa; color-scheme:light; }
 		padding:16px 18px 6px;
 	}
 	.banner-swiper {
-		height:clamp(210px, 31.98vw, 340px);
-		aspect-ratio:1476 / 472;
+		height:clamp(160px, calc((100vw - 36px) / 3.127), 230px);
 		border-radius:12px;
 	}
 	.banner-img {

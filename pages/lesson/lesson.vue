@@ -44,6 +44,11 @@
 					@fullscreenchange="onNativeFullscreenChange"
 					@error="onVideoError"
 				></video>
+				<view
+					v-if="!videoError && !lessonLocked && playbackRates.length > 1"
+					class="mobile-speed-pill"
+					@click.stop="cyclePlaybackRate"
+				>{{rateLabel(playbackRate)}} 倍速</view>
 				<view v-if="showTapPlayLayer" class="tap-play-layer" @click.stop="toggleVideoPlayback">
 					<view class="tap-play-button">▶</view>
 				</view>
@@ -295,7 +300,7 @@ export default {
 		this.exitWebFullscreen(false);
 	},
 	onHide() {
-		this.saveLocalResumeSnapshot(true);
+		this.flushProgressOnExit();
 		this.closeSpeedMenu();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
@@ -303,7 +308,6 @@ export default {
 		this.setNativeVideoControls(false);
 		this.unbindNativeVideoGuards();
 		this.exitWebFullscreen(false);
-		this.persistProgress(false);
 	},
 	computed: {
 		videoElementSrc() {
@@ -1158,6 +1162,13 @@ export default {
 			this.applyPlaybackRate();
 			this.closeSpeedMenu();
 		},
+		cyclePlaybackRate() {
+			const rates = Array.isArray(this.playbackRates) && this.playbackRates.length
+				? this.playbackRates
+				: [1];
+			const currentIndex = rates.findIndex(rate => Number(rate) === Number(this.playbackRate));
+			this.setPlaybackRate(rates[(currentIndex + 1 + rates.length) % rates.length]);
+		},
 		refreshPlaybackPolicy() {
 			this.playbackRates = [0.75, 1, 1.25, 1.5, 2];
 			if (!this.playbackRates.includes(Number(this.playbackRate))) this.playbackRate = 1;
@@ -1669,8 +1680,11 @@ page { background:#fff; }
 	display:flex;
 	align-items:center;
 	justify-content:center;
-	background:linear-gradient(180deg, rgba(15,23,42,.08), rgba(15,23,42,.38));
+	background:linear-gradient(180deg, rgba(15,23,42,.02), rgba(15,23,42,.18));
 	cursor:pointer;
+}
+.mobile-speed-pill {
+	display:none;
 }
 .tap-play-button {
 	width:92rpx;
@@ -2385,6 +2399,27 @@ page { background:#fff; }
 }
 
 @media screen and (max-width: 599px) {
+	.mobile-speed-pill {
+		position:absolute;
+		right:16rpx;
+		bottom:82rpx;
+		z-index:22;
+		display:flex;
+		align-items:center;
+		justify-content:center;
+		min-width:104rpx;
+		height:46rpx;
+		padding:0 14rpx;
+		box-sizing:border-box;
+		border:1px solid rgba(255,255,255,.42);
+		border-radius:24rpx;
+		background:rgba(15,23,42,.76);
+		color:#fff;
+		font-size:21rpx;
+		font-weight:700;
+		line-height:1;
+		backdrop-filter:blur(8px);
+	}
 	.player-controls {
 		padding:10rpx 12rpx 12rpx;
 	}

@@ -32,16 +32,18 @@
 				</view>
 				<view class="field code-field">
 					<text class="field-label">验证码</text>
-					<input
-						class="field-input code-input"
-						type="number"
-						maxlength="6"
-						v-model.trim="smsCode"
-						placeholder="请输入验证码"
-						placeholder-class="placeholder"
-					/>
-					<view class="code-button" :class="{disabled: countdown > 0 || sending}" @click="sendCode">
-						{{countdown > 0 ? `${countdown}秒后重试` : (sending ? '发送中' : '获取验证码')}}
+					<view class="code-control">
+						<input
+							class="field-input code-input"
+							type="number"
+							maxlength="6"
+							v-model.trim="smsCode"
+							placeholder="请输入验证码"
+							placeholder-class="placeholder"
+						/>
+						<view class="code-button" :class="{disabled: countdown > 0 || sending}" @click="sendCode">
+							{{countdown > 0 ? `${countdown}秒后重试` : (sending ? '发送中' : '获取验证码')}}
+						</view>
 					</view>
 				</view>
 			</view>
@@ -176,7 +178,8 @@ page { background:#f3f7fb; }
 .field-label { width:156rpx; flex-shrink:0; color:#263348; font-size:27rpx; font-weight:800; }
 .field-value { flex:1; color:#546278; font-size:28rpx; }
 .field-input { flex:1; min-width:0; height:104rpx; color:#172033; font-size:28rpx; }
-.code-input { padding-right:10rpx; }
+.code-control { flex:1; min-width:0; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:12rpx; }
+.code-input { width:100%; padding-right:10rpx; box-sizing:border-box; }
 .placeholder { color:#a5afbd; }
 .code-button { flex-shrink:0; min-width:178rpx; height:62rpx; padding:0 20rpx; display:flex; align-items:center; justify-content:center; border-radius:31rpx; background:#e5f2ff; color:#1675d1; font-size:25rpx; font-weight:800; cursor:pointer; }
 .code-button.disabled { color:#8c99aa; background:#edf1f5; pointer-events:none; }
@@ -202,9 +205,10 @@ page { background:#f3f7fb; }
 	.field-input { height:78px; }
 	.code-field {
 		display:grid;
-		grid-template-columns:150px minmax(180px, 1fr) auto;
+		grid-template-columns:150px minmax(0, 1fr);
 		column-gap:18px;
 	}
+	.code-control { gap:14px; }
 	.code-button { min-width:136px; height:42px; padding:0 18px; border-radius:21px; font-size:16px; }
 	.notice { margin-top:18px; font-size:16px; }
 	.primary-button { height:62px; margin-top:36px; }
@@ -213,14 +217,10 @@ page { background:#f3f7fb; }
 	.code-field {
 		display:grid;
 		grid-template-columns:156rpx minmax(0, 1fr);
-		row-gap:14rpx;
 		padding:14rpx 0;
 	}
-	.code-field .field-input { height:74rpx; }
-	.code-field .code-button {
-		grid-column:2;
-		justify-self:end;
-		min-width:220rpx;
-	}
+	.code-control { gap:10rpx; }
+	.code-control .field-input { height:74rpx; }
+	.code-control .code-button { min-width:202rpx; height:66rpx; padding:0 14rpx; font-size:23rpx; }
 }
 </style>

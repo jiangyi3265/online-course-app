@@ -575,10 +575,19 @@ page { background:#eef3f7; }
 	.student-id,
 	.source-tag { font-size:15px; }
 	.student-meta { gap:12px; padding:18px; }
-	.meta-item { min-height:76px; padding:13px 15px; }
+	.meta-item { min-height:70px; padding:12px 14px; }
 	.meta-item text,
 	.metric small { font-size:14px; }
-	.meta-item strong { font-size:17px; }
+	.meta-item strong { font-size:16px; }
+	.meta-date strong,
+	.meta-study strong {
+		font-size:15px;
+		line-height:1.4;
+		white-space:normal;
+		overflow:visible;
+		text-overflow:clip;
+		word-break:keep-all;
+	}
 	.metric { min-height:78px; padding:14px 8px; }
 	.metric text { font-size:22px; }
 	.link-btn { min-height:44px; padding:0 18px; font-size:16px; }

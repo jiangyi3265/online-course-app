@@ -196,6 +196,7 @@ export default {
 			permissionFeature: '该功能',
 			cover: '',
 			coverRatio: 0,
+			routeCoverFallback: '',
 			courseId: 'gk-math-trial'
 		}
 	},
@@ -204,7 +205,7 @@ export default {
 			return this.isPosterCover ? 'cover-poster' : 'cover-banner';
 		},
 		coverMode() {
-			return this.isPosterCover ? 'aspectFit' : 'aspectFill';
+			return 'aspectFit';
 		},
 		isPosterCover() {
 			if (!this.cover) return false;
@@ -251,11 +252,13 @@ export default {
 			this.courseId = this.resolveCourseId(this.title, 'trial');
 		}
 		if (opts && opts.bg) this.bg = this.decodeRouteText(opts.bg);
-		if (opts && opts.cover) this.setCover(this.decodeRouteText(opts.cover));
+		if (opts && opts.cover) this.routeCoverFallback = this.decodeRouteText(opts.cover);
 		if (opts && opts.id) {
 			await this.loadCourse(opts.id);
 		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
 			this.applyMathCourse();
+		} else if (this.routeCoverFallback) {
+			this.setCover(this.routeCoverFallback);
 		}
 		if (!this.courseVersions.length) this.courseVersions = this.normalizeVersions({}, this.chapters);
 		this.coverTitle = this.title;
@@ -284,6 +287,7 @@ export default {
 			} catch (err) {
 				console.warn('课程详情接口不可用，使用本地详情', err);
 				if (isGaokaoMath(this.title)) this.applyMathCourse();
+				else if (this.routeCoverFallback) this.setCover(this.routeCoverFallback);
 			}
 		},
 		applyRemoteCourse(course) {
@@ -293,7 +297,7 @@ export default {
 			this.courseName = stripCourseYear(course.courseName || this.courseName);
 			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
-			this.setCover(course.detailCover || course.cover || fallbackCourse.detailCover || fallbackCourse.cover || this.cover);
+			this.setCover(course.detailCover || course.cover || fallbackCourse.detailCover || fallbackCourse.cover || this.routeCoverFallback || this.cover);
 			const stats = this.resolveCourseStats(course, fallbackCourse);
 			this.totalLessons = stats.totalLessons || this.totalLessons;
 			this.totalDuration = stats.totalDuration || this.totalDuration;
@@ -970,14 +974,14 @@ page { background:#f5f7fa; }
 	background:#f8fafc;
 }
 .cover-banner { height:auto; aspect-ratio:1476 / 472; }
-.cover-poster { height:auto; aspect-ratio:4 / 3; }
+.cover-poster { height:auto; aspect-ratio:16 / 9; }
 .cover-img {
-	object-fit:cover;
+	object-fit:contain;
 	background:#f8fafc;
 }
 .cover-img :deep(div),
 .cover-img :deep(.uni-image-div) {
-	background-size:cover !important;
+	background-size:contain !important;
 	background-repeat:no-repeat !important;
 	background-position:center center !important;
 }
@@ -986,7 +990,7 @@ page { background:#f5f7fa; }
 	display:block !important;
 	width:100% !important;
 	height:100% !important;
-	object-fit:cover !important;
+	object-fit:contain !important;
 	visibility:visible !important;
 	opacity:1 !important;
 }
@@ -1038,15 +1042,6 @@ page { background:#f5f7fa; }
 	.cover {
 		margin:14px 16px 0;
 		border-radius:14px 14px 0 0;
-	}
-	.cover-poster {
-		aspect-ratio:16 / 9;
-	}
-	.cover,
-	.cover-img,
-	.cover-img :deep(img),
-	.cover-img :deep(.uni-image-div) {
-		min-height:260px;
 	}
 	.info-block {
 		margin:0 16px 14px;
