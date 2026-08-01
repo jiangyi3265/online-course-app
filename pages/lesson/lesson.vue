@@ -435,7 +435,11 @@ export default {
 				this.hlsAttachAttempts = 0;
 				const nativeHls = typeof video.canPlayType === 'function'
 					&& !!video.canPlayType('application/vnd.apple.mpegurl');
-				if (nativeHls) {
+				const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+				const reliableNativeHls = /iP(?:hone|ad|od)|Macintosh.*Mobile/i.test(userAgent);
+				// 部分 Android 平板会声称支持原生 HLS，但实际只能解码音轨，表现为有声黑屏。
+				// 只在 Apple 浏览器或 MSE 不可用时走原生 HLS，其余浏览器交给 hls.js。
+				if (nativeHls && (reliableNativeHls || !Hls.isSupported())) {
 					this.usesHlsJs = false;
 					this.lockNativeVideoPlayback();
 					try { video.load(); } catch (err) { /* native HLS will load on play */ }
@@ -2373,10 +2377,10 @@ page { background:#fff; }
 		visibility:visible !important;
 		opacity:1 !important;
 		background:#0f172a !important;
-		-webkit-transform:translateZ(0) !important;
-		transform:translateZ(0) !important;
-		-webkit-backface-visibility:hidden !important;
-		backface-visibility:hidden !important;
+		-webkit-transform:none !important;
+		transform:none !important;
+		-webkit-backface-visibility:visible !important;
+		backface-visibility:visible !important;
 	}
 	.player-controls {
 		padding:16px 18px;

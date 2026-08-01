@@ -1055,6 +1055,14 @@ page { background:#f5f7fa; }
 		font-size:20px;
 		line-height:1.3;
 	}
+	.update-meta {
+		gap:6px;
+		padding:5px 9px;
+		border-radius:8px;
+		font-size:12px;
+		line-height:1.25;
+		white-space:nowrap;
+	}
 	.info-meta,
 	.course-intro {
 		margin-top:8px;

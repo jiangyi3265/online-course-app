@@ -759,6 +759,23 @@ page { background:#eef3f7; }
 		grid-template-columns:1fr;
 	}
 }
+@media screen and (max-width: 599px) {
+	.section-head {
+		flex-direction:column;
+		align-items:stretch;
+	}
+	.section-meta {
+		width:100%;
+		flex-direction:row;
+		align-items:center;
+		justify-content:flex-start;
+		flex-wrap:wrap;
+	}
+	.today-time {
+		margin-left:0;
+		margin-right:auto;
+	}
+}
 @media screen and (min-width: 600px) and (max-width: 1100px) {
 	.section-head {
 		padding:22px 24px 14px;

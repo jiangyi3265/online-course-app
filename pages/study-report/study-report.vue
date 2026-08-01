@@ -863,9 +863,17 @@ page { background:#f5f7fa; }
 .question-result.wrong { color:#e5484d; }
 .question-result.review { color:#1677ff; }
 .question-line { color:#596272; font-size:24rpx; line-height:1.5; margin-top:8rpx; }
-.record-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12rpx; margin-bottom:10rpx; }
-.record-grid view { background:#f8fafc; border-radius:12rpx; padding:16rpx 8rpx; text-align:center; }
-.record-grid text { display:block; color:#1677ff; font-size:27rpx; font-weight:900; }
+.record-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12rpx; margin-bottom:10rpx; }
+.record-grid view { min-width:0; background:#f8fafc; border-radius:12rpx; padding:16rpx 6rpx; text-align:center; }
+.record-grid text {
+	display:block;
+	color:#1677ff;
+	font-size:20rpx;
+	font-weight:900;
+	font-variant-numeric:tabular-nums;
+	letter-spacing:-.4rpx;
+	white-space:nowrap;
+}
 .record-grid small { display:block; color:#8a94a3; font-size:20rpx; margin-top:6rpx; }
 .suggestion { padding:16rpx 0; border-bottom:1rpx solid #eef0f3; color:#333; font-size:27rpx; line-height:1.5; }
 .suggestion:last-child { border-bottom:0; }
@@ -903,6 +911,8 @@ page { background:#f5f7fa; }
 		border-radius:10px;
 		font-size:14px;
 	}
+	.record-grid text { font-size:14px; letter-spacing:-.35px; }
+	.record-grid small { font-size:12px; }
 	.summary-value {
 		margin-top:5px;
 		font-size:20px !important;

@@ -177,7 +177,7 @@ page { background:#f3f7fb; }
 .field:last-child { border-bottom:0; }
 .field-label { width:156rpx; flex-shrink:0; color:#263348; font-size:27rpx; font-weight:800; }
 .field-value { flex:1; color:#546278; font-size:28rpx; }
-.field-input { flex:1; min-width:0; height:104rpx; color:#172033; font-size:28rpx; }
+.field-input { flex:1; min-width:0; width:100%; height:104rpx; color:#172033; font-size:28rpx; }
 .code-control { flex:1; min-width:0; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:12rpx; }
 .code-input { width:100%; padding-right:10rpx; box-sizing:border-box; }
 .placeholder { color:#a5afbd; }
@@ -188,7 +188,7 @@ page { background:#f3f7fb; }
 .primary-button { max-width:920rpx; height:88rpx; margin:44rpx auto 0; display:flex; align-items:center; justify-content:center; border-radius:18rpx; background:#278de4; color:#f9fcff; font-size:30rpx; font-weight:900; box-shadow:0 12rpx 28rpx rgba(39,141,228,.22); cursor:pointer; }
 .primary-button:active { transform:translateY(1px); opacity:.92; }
 .primary-button.disabled { opacity:.62; pointer-events:none; }
-@media screen and (min-width:768px) {
+@media screen and (min-width:600px) {
 	.nav { height:64px; }
 	.back { left:28px; width:44px; height:44px; font-size:30px; }
 	.nav-title { font-size:22px; }
@@ -199,15 +199,15 @@ page { background:#f3f7fb; }
 	.intro-title { font-size:24px; }
 	.intro-text { margin-top:6px; font-size:17px; }
 	.form-panel { padding:0 34px; }
-	.field { min-height:78px; }
-	.field-label { width:150px; font-size:18px; }
-	.field-value, .field-input { font-size:18px; }
-	.field-input { height:78px; }
-	.code-field {
+	.field {
+		min-height:78px;
 		display:grid;
 		grid-template-columns:150px minmax(0, 1fr);
 		column-gap:18px;
 	}
+	.field-label { width:150px; font-size:18px; }
+	.field-value, .field-input { font-size:18px; }
+	.field-input { height:78px; }
 	.code-control { gap:14px; }
 	.code-button { min-width:136px; height:42px; padding:0 18px; border-radius:21px; font-size:16px; }
 	.notice { margin-top:18px; font-size:16px; }

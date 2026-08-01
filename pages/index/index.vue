@@ -3,7 +3,7 @@
 		<!-- Hero Banner -->
 		<view class="banner">
 			<swiper v-if="bannerReady && homeBanners.length" class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
-				<swiper-item v-for="item in homeBanners" :key="item.id || item.imageUrl">
+				<swiper-item v-for="item in homeBanners" :key="item.renderKey || item.id || item.imageUrl">
 					<!-- #ifdef H5 -->
 					<img class="banner-img" :src="item.imageUrl" draggable="false" @click="openBanner(item)" @error.stop="onBannerError(item)" />
 					<!-- #endif -->
@@ -126,16 +126,24 @@ export default {
 		async loadFrontendSettings() {
 			try {
 				const settings = await getFrontendSettings();
+				const settingsVersion = settings && (settings.updatedAt || settings.version || settings.savedAt);
 				const banners = this.bannerItems(settings && settings.homeBanners);
 				const usableBanners = banners
 					.map((item, index) => ({
 						...item,
 						id: item.id || `banner-${index}`,
-						imageUrl: this.firstMediaUrl([item.imageUrl, item.url, item.image, item.src, item.cover]),
+						imageUrl: this.withAssetVersion(
+							this.firstMediaUrl([item.imageUrl, item.url, item.image, item.src, item.cover]),
+							item.updatedAt || item.version || settingsVersion
+						),
+						renderKey: `${item.id || index}-${item.updatedAt || item.version || settingsVersion || 'current'}`,
 						imageError: false
 					}))
 					.filter(item => item.imageUrl);
-				if (usableBanners.length) this.homeBanners = usableBanners;
+				if (usableBanners.length) {
+					await this.preloadBanners(usableBanners);
+					this.homeBanners = usableBanners;
+				}
 				else this.homeBanners = [{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }];
 			} catch (err) {
 				console.warn('前端配置接口不可用，使用默认首页图', err);
@@ -180,6 +188,28 @@ export default {
 		},
 		firstMediaUrl(values = [], fallback = '') {
 			return resolveMediaList(values)[0] || fallback;
+		},
+		withAssetVersion(url = '', version = '') {
+			const source = String(url || '').trim();
+			const stamp = String(version || '').trim();
+			if (!source || !stamp || /^(data:|blob:)/i.test(source)) return source;
+			return `${source}${source.includes('?') ? '&' : '?'}wk_asset=${encodeURIComponent(stamp)}`;
+		},
+		preloadBanners(items = []) {
+			if (typeof Image === 'undefined') return Promise.resolve();
+			return Promise.all(items.map(item => new Promise(resolve => {
+				const image = new Image();
+				let settled = false;
+				const finish = () => {
+					if (settled) return;
+					settled = true;
+					resolve();
+				};
+				image.onload = finish;
+				image.onerror = finish;
+				image.src = item.imageUrl;
+				setTimeout(finish, 3000);
+			})));
 		},
 		bannerItems(value) {
 			if (Array.isArray(value)) return value.map(item => typeof item === 'string' ? { imageUrl: item } : item).filter(Boolean);
@@ -272,17 +302,17 @@ page { background:#f7f8fa; color-scheme:light; }
 .page { padding-bottom:130rpx; background:#f7f8fa; min-height:100vh; color:#111827; }
 
 .banner { padding: 20rpx 24rpx 8rpx; }
-.banner-swiper { width:100%; height:220rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
+.banner-swiper { width:100%; height:auto; aspect-ratio:16 / 5; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
 .banner-skeleton { background:linear-gradient(110deg,#eef2f7 8%,#f8fafc 18%,#eef2f7 33%); background-size:200% 100%; animation:banner-loading 1.2s linear infinite; }
-.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:contain; background:#eef2f7; }
+.banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:cover; object-position:center; background:#eef2f7; }
 .banner-img :deep(div),
-.banner-img :deep(.uni-image-div) { background-size:contain !important; background-repeat:no-repeat !important; background-position:center center !important; }
+.banner-img :deep(.uni-image-div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }
 .banner-img :deep(img),
 .banner-img :deep(.uni-image-div) {
 	display:block !important;
 	width:100% !important;
 	height:100% !important;
-	object-fit:contain !important;
+	object-fit:cover !important;
 	visibility:visible !important;
 	opacity:1 !important;
 }
@@ -296,7 +326,7 @@ page { background:#f7f8fa; color-scheme:light; }
 .cat-tone-3 { background:linear-gradient(135deg,#fff3e7,#ffe6cc); color:#ff7a00; }
 .cat-tone-4 { background:linear-gradient(135deg,#f1edff,#e5dcff); color:#7c3aed; }
 .cat-img { width:86rpx; height:86rpx; display:block; position:relative; z-index:1; opacity:1; }
-.cat:nth-child(2) .cat-img { transform:scale(1.1); }
+.cat:nth-child(2) .cat-img { transform:scale(1.2); }
 .cat-icon-letter { position:relative; z-index:1; font-size:30rpx; line-height:1; font-weight:900; opacity:1; transition:opacity .18s ease; }
 .cat-img + .cat-icon-letter { position:relative; opacity:1; }
 .cat-icon.is-fallback .cat-icon-letter { position:relative; opacity:1; }
@@ -332,7 +362,8 @@ page { background:#f7f8fa; color-scheme:light; }
 		padding:16px 18px 6px;
 	}
 	.banner-swiper {
-		height:clamp(160px, calc((100vw - 36px) / 3.127), 230px);
+		height:auto;
+		aspect-ratio:16 / 5;
 		border-radius:12px;
 	}
 	.banner-img {
@@ -399,7 +430,6 @@ page { background:#f7f8fa; color-scheme:light; }
 		border-radius:12px;
 	}
 	.cover {
-		min-height:180px;
 		aspect-ratio:4 / 3;
 	}
 	.cover-img {

@@ -1504,9 +1504,10 @@ page { background:#f5f7fa; }
 	}
 	.update-meta {
 		gap:6px;
-		padding:6px 10px;
+		padding:5px 9px;
 		border-radius:8px;
-		font-size:13px;
+		font-size:12px;
+		line-height:1.25;
 		white-space:nowrap;
 	}
 	.version-stats {

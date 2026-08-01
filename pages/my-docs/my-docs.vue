@@ -787,8 +787,24 @@ export default {
 
 <style lang="scss">
 page { background:#f5f7fa; }
-.page { min-height:100vh; background:#f5f7fa; padding-bottom:50rpx; }
-.nav { position:relative; height:90rpx; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
+.page { min-height:100vh; background:#f5f7fa; padding-top:90rpx; padding-bottom:50rpx; box-sizing:border-box; }
+.nav {
+	position:fixed;
+	top:0;
+	left:50%;
+	transform:translateX(-50%);
+	z-index:120;
+	width:100%;
+	max-width:var(--wk-app-width, 100vw);
+	height:90rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	border-bottom:1rpx solid #eef0f3;
+	background:rgba(255,255,255,.97);
+	box-shadow:0 6rpx 20rpx rgba(30,58,92,.05);
+	backdrop-filter:blur(14rpx);
+}
 .back {
 	position:absolute;
 	left:0;
@@ -1049,6 +1065,12 @@ page { background:#f5f7fa; }
 	.doc-title-line { flex-direction:column; gap:8rpx; }
 	.doc-actions { width:124rpx; margin-left:12rpx; }
 	.score-line { grid-template-columns:1fr; }
+}
+@media screen and (min-width: 600px) {
+	.page { padding-top:56px; }
+	.nav { height:56px; }
+	.back { width:64px; height:56px; font-size:38px; }
+	.nav-title { font-size:18px; }
 }
 .empty { display:flex; flex-direction:column; align-items:center; padding-top:200rpx; }
 .empty-img { width:520rpx; }
