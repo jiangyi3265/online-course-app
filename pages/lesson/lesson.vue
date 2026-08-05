@@ -1616,7 +1616,7 @@ page { background:#fff; }
 .video-wrap {
 	position:relative;
 	width:100%;
-	aspect-ratio:16 / 9;
+	height:56.25vw;
 	background:#0f172a;
 	overflow:hidden;
 	-webkit-user-select:none;
@@ -2362,8 +2362,9 @@ page { background:#fff; }
 		width:100%;
 	}
 	.video-wrap {
-		min-height:clamp(300px, 56.25vw, 560px);
-		aspect-ratio:16 / 9;
+		height:56.25vw;
+		min-height:337.5px;
+		max-height:618.75px;
 	}
 	.video-player,
 	.video-player :deep(video),
@@ -2399,6 +2400,14 @@ page { background:#fff; }
 	.desktop-speed-item {
 		height:38px;
 		line-height:38px;
+	}
+}
+
+@media screen and (min-width: 1367px) {
+	.video-wrap {
+		height:337.5px;
+		min-height:337.5px;
+		max-height:337.5px;
 	}
 }
 

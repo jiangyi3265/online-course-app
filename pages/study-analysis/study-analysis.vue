@@ -800,6 +800,36 @@ page { background:#eef3f7; }
 	}
 	.today-time-label { font-size:13px; }
 	.today-time-value { font-size:14px; }
+	.report-panel {
+		margin:0 24px 20px;
+		padding:22px 24px;
+		border-radius:16px;
+	}
+	.report-panel .panel-title {
+		font-size:20px;
+		line-height:1.35;
+	}
+	.panel-note {
+		margin-top:6px;
+		font-size:15px;
+		line-height:1.55;
+	}
+	.course-report-grid {
+		gap:14px;
+		margin-top:16px;
+	}
+	.course-report {
+		padding:16px;
+		border-radius:14px;
+	}
+	.course-name {
+		min-height:52px;
+		font-size:18px;
+	}
+	.outline-btn {
+		min-height:48px;
+		font-size:16px;
+	}
 	.time-summary {
 		grid-template-columns:repeat(4, minmax(0, 1fr));
 		gap:10px;

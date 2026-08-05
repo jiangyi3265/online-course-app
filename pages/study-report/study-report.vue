@@ -911,6 +911,16 @@ page { background:#f5f7fa; }
 		border-radius:10px;
 		font-size:14px;
 	}
+	.panel-title {
+		font-size:20px;
+		line-height:1.35;
+	}
+	.detail-sub {
+		margin-top:-4px;
+		margin-bottom:14px;
+		font-size:15px;
+		line-height:1.5;
+	}
 	.record-grid text { font-size:14px; letter-spacing:-.35px; }
 	.record-grid small { font-size:12px; }
 	.summary-value {
