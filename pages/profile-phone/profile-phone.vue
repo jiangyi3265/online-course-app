@@ -172,14 +172,14 @@ page { background:#f3f7fb; }
 .intro-copy { min-width:0; }
 .intro-title { font-size:34rpx; line-height:1.3; font-weight:900; color:#152238; }
 .intro-text { margin-top:8rpx; max-width:62ch; color:#6b778c; font-size:25rpx; line-height:1.55; }
-.form-panel { max-width:920rpx; margin:0 auto; padding:0 30rpx; background:#fafdff; border:1rpx solid #dde6f0; border-radius:20rpx; box-shadow:0 16rpx 42rpx rgba(50,75,110,.07); }
+.form-panel { max-width:980rpx; margin:0 auto; padding:0 30rpx; background:#fafdff; border:1rpx solid #dde6f0; border-radius:20rpx; box-shadow:0 16rpx 42rpx rgba(50,75,110,.07); }
 .field { min-height:104rpx; display:flex; align-items:center; gap:22rpx; border-bottom:1rpx solid #e8edf3; }
 .field:last-child { border-bottom:0; }
 .field-label { width:156rpx; flex-shrink:0; color:#263348; font-size:27rpx; font-weight:800; }
 .field-value { flex:1; color:#546278; font-size:28rpx; }
 .field-input { flex:1; min-width:0; width:100%; height:104rpx; color:#172033; font-size:28rpx; }
 .code-control { flex:1; min-width:0; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:12rpx; }
-.code-input { width:100%; padding-right:10rpx; box-sizing:border-box; }
+.code-input { width:100%; min-width:0; padding-right:10rpx; box-sizing:border-box; }
 .placeholder { color:#a5afbd; }
 .code-button { flex-shrink:0; min-width:178rpx; height:62rpx; padding:0 20rpx; display:flex; align-items:center; justify-content:center; border-radius:31rpx; background:#e5f2ff; color:#1675d1; font-size:25rpx; font-weight:800; cursor:pointer; }
 .code-button.disabled { color:#8c99aa; background:#edf1f5; pointer-events:none; }
@@ -192,35 +192,38 @@ page { background:#f3f7fb; }
 	.nav { height:64px; }
 	.back { left:28px; width:44px; height:44px; font-size:30px; }
 	.nav-title { font-size:22px; }
-	.content { padding:52px clamp(40px, 7vw, 88px) 72px; }
+	.content { padding:44px 48px 72px; }
 	.intro, .form-panel, .notice, .primary-button { width:100%; max-width:none; box-sizing:border-box; }
 	.intro { margin-bottom:28px; }
 	.intro-icon { width:64px; height:64px; border-radius:18px; font-size:24px; }
 	.intro-title { font-size:24px; }
 	.intro-text { margin-top:6px; font-size:17px; }
-	.form-panel { padding:0 34px; }
+	.form-panel { padding:8px 38px; }
 	.field {
 		min-height:78px;
 		display:grid;
-		grid-template-columns:150px minmax(0, 1fr);
-		column-gap:18px;
+		grid-template-columns:132px minmax(0, 1fr);
+		column-gap:22px;
 	}
-	.field-label { width:150px; font-size:18px; }
+	.field-label { width:132px; font-size:18px; }
 	.field-value, .field-input { font-size:18px; }
 	.field-input { height:78px; }
-	.code-control { gap:14px; }
-	.code-button { min-width:136px; height:42px; padding:0 18px; border-radius:21px; font-size:16px; }
+	.code-control { grid-template-columns:minmax(150px, 1fr) 150px; gap:18px; }
+	.code-button { width:150px; min-width:150px; height:44px; padding:0 16px; border-radius:22px; font-size:16px; box-sizing:border-box; }
 	.notice { margin-top:18px; font-size:16px; }
 	.primary-button { height:62px; margin-top:36px; }
 }
 @media screen and (max-width:480px) {
+	.content { padding-left:22rpx; padding-right:22rpx; }
+	.form-panel { padding-left:24rpx; padding-right:24rpx; }
 	.code-field {
 		display:grid;
-		grid-template-columns:156rpx minmax(0, 1fr);
+		grid-template-columns:138rpx minmax(0, 1fr);
 		padding:14rpx 0;
 	}
-	.code-control { gap:10rpx; }
+	.field-label { width:138rpx; }
+	.code-control { grid-template-columns:minmax(0, 1fr) 190rpx; gap:10rpx; }
 	.code-control .field-input { height:74rpx; }
-	.code-control .code-button { min-width:202rpx; height:66rpx; padding:0 14rpx; font-size:23rpx; }
+	.code-control .code-button { width:190rpx; min-width:190rpx; height:66rpx; padding:0 10rpx; font-size:22rpx; }
 }
 </style>

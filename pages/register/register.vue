@@ -14,29 +14,35 @@
 			<view class="invite-tip" v-if="inviteId || invitePhone">推荐人：{{invitePhone || '--'}} / ID {{inviteId || '--'}}</view>
 
 			<view class="input-row">
-				<text class="input-icon">👤</text>
+				<AppFieldIcon class="field-icon" type="user" />
 				<input class="input" maxlength="16" placeholder="请输入昵称" v-model.trim="name" placeholder-class="ph" />
 			</view>
 
 			<view class="input-row">
-				<text class="input-icon">📱</text>
+				<AppFieldIcon class="field-icon" type="phone" />
 				<input class="input" type="number" maxlength="11" placeholder="请输入手机号" v-model.trim="phone" placeholder-class="ph" />
 			</view>
 
 			<view class="input-row">
-				<text class="input-icon">🔑</text>
+				<AppFieldIcon class="field-icon" type="code" />
 				<input class="input" type="number" maxlength="6" placeholder="验证码" v-model.trim="smsCode" placeholder-class="ph" />
 				<text class="code-btn" @click="getCode">获取验证码</text>
 			</view>
 
 			<view class="input-row">
-				<text class="input-icon">🔒</text>
-				<input class="input" type="password" maxlength="32" placeholder="请输入密码" v-model="password" placeholder-class="ph" />
+				<AppFieldIcon class="field-icon" type="lock" />
+				<input class="input" :type="showPassword ? 'text' : 'password'" maxlength="32" placeholder="请输入密码" v-model="password" placeholder-class="ph" />
+				<view class="visibility-button" :class="{active: showPassword}" role="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click.stop="showPassword = !showPassword">
+					<view class="eye-icon"><view class="eye-pupil"></view></view>
+				</view>
 			</view>
 
 			<view class="input-row">
-				<text class="input-icon">✓</text>
-				<input class="input" type="password" maxlength="32" placeholder="请再次输入密码" v-model="confirmPassword" placeholder-class="ph" />
+				<AppFieldIcon class="field-icon" type="check" />
+				<input class="input" :type="showConfirmPassword ? 'text' : 'password'" maxlength="32" placeholder="请再次输入密码" v-model="confirmPassword" placeholder-class="ph" />
+				<view class="visibility-button" :class="{active: showConfirmPassword}" role="button" :aria-label="showConfirmPassword ? '隐藏密码' : '显示密码'" @click.stop="showConfirmPassword = !showConfirmPassword">
+					<view class="eye-icon"><view class="eye-pupil"></view></view>
+				</view>
 			</view>
 
 			<view class="agree-row">
@@ -58,9 +64,11 @@
 </template>
 
 <script>
+	import AppFieldIcon from '@/components/app-field-icon.vue'
 	import { bindReferrer, decodeRouteText, register, saveSession, sendSmsCode } from '@/common/api.js'
 
 	export default {
+		components: { AppFieldIcon },
 		data() {
 			return {
 				name: '',
@@ -68,6 +76,8 @@
 				smsCode: '',
 				password: '',
 				confirmPassword: '',
+				showPassword: false,
+				showConfirmPassword: false,
 				agree: true,
 				loading: false,
 				invitePhone: '',
@@ -246,19 +256,58 @@ page {
 	box-sizing: border-box;
 }
 
-.input-icon {
-	width: 48rpx;
-	font-size: 30rpx;
+.field-icon {
 	color: #5c7cfa;
-	text-align: center;
+	margin-right:18rpx;
 }
 
 .input {
 	flex: 1;
+	min-width:0;
 	height: 88rpx;
-	margin-left: 18rpx;
 	font-size: 30rpx;
 	color: #16233a;
+}
+.visibility-button {
+	width:64rpx;
+	height:64rpx;
+	margin-left:8rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	flex:0 0 64rpx;
+	color:#8294aa;
+	cursor:pointer;
+}
+.visibility-button.active { color:#4f74ef; }
+.eye-icon {
+	position:relative;
+	width:34rpx;
+	height:21rpx;
+	border:3rpx solid currentColor;
+	border-radius:50%;
+	box-sizing:border-box;
+}
+.eye-pupil {
+	position:absolute;
+	left:50%;
+	top:50%;
+	width:9rpx;
+	height:9rpx;
+	border-radius:50%;
+	background:currentColor;
+	transform:translate(-50%,-50%);
+}
+.visibility-button:not(.active) .eye-icon::after {
+	content:'';
+	position:absolute;
+	left:-5rpx;
+	top:8rpx;
+	width:40rpx;
+	height:3rpx;
+	border-radius:3rpx;
+	background:currentColor;
+	transform:rotate(-42deg);
 }
 .code-btn {
 	flex-shrink:0;
@@ -384,14 +433,16 @@ page {
 		border-width:1px;
 		border-radius:12px;
 	}
-	.input-icon {
-		width:30px;
-		font-size:20px;
-	}
+	.field-icon { margin-right:12px; }
 	.input {
 		height:54px;
-		margin-left:12px;
 		font-size:16px;
+	}
+	.visibility-button {
+		width:44px;
+		height:44px;
+		margin-left:4px;
+		flex-basis:44px;
 	}
 	.code-btn,
 	.agree-row {

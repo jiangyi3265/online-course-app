@@ -19,13 +19,16 @@
 
 			<template v-if="!resetMode">
 			<view class="input-row">
-				<text class="iconfont icon-phone">📱</text>
+				<AppFieldIcon class="field-icon" type="phone" />
 				<input class="input" type="number" maxlength="11" placeholder="请输入手机号" v-model="phone" placeholder-class="ph" />
 			</view>
 
 			<view class="input-row">
-				<text class="iconfont icon-lock">🔒</text>
-				<input class="input" type="password" placeholder="请输入密码" v-model="password" placeholder-class="ph" />
+				<AppFieldIcon class="field-icon" type="lock" />
+				<input class="input" :type="showPassword ? 'text' : 'password'" placeholder="请输入密码" v-model="password" placeholder-class="ph" />
+				<view class="visibility-button" :class="{active: showPassword}" role="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click.stop="showPassword = !showPassword">
+					<view class="eye-icon"><view class="eye-pupil"></view></view>
+				</view>
 			</view>
 
 			<view class="forget" @click="onForget">忘记密码?</view>
@@ -51,21 +54,27 @@
 			<template v-else>
 				<view class="reset-tip">忘记密码后，输入注册手机号、验证码和新密码即可重置。</view>
 				<view class="input-row">
-					<text class="iconfont icon-phone">📱</text>
+					<AppFieldIcon class="field-icon" type="phone" />
 					<input class="input" type="number" maxlength="11" placeholder="请输入手机号" v-model="reset.phone" placeholder-class="ph" />
 				</view>
 				<view class="input-row">
-					<text class="iconfont icon-lock">🔑</text>
+					<AppFieldIcon class="field-icon" type="code" />
 					<input class="input" type="number" maxlength="6" placeholder="验证码" v-model="reset.smsCode" placeholder-class="ph" />
 					<text class="code-btn" @click="getResetCode">获取验证码</text>
 				</view>
 				<view class="input-row">
-					<text class="iconfont icon-lock">🔒</text>
-					<input class="input" type="password" placeholder="请输入新密码" v-model="reset.password" placeholder-class="ph" />
+					<AppFieldIcon class="field-icon" type="lock" />
+					<input class="input" :type="showResetPassword ? 'text' : 'password'" placeholder="请输入新密码" v-model="reset.password" placeholder-class="ph" />
+					<view class="visibility-button" :class="{active: showResetPassword}" role="button" :aria-label="showResetPassword ? '隐藏密码' : '显示密码'" @click.stop="showResetPassword = !showResetPassword">
+						<view class="eye-icon"><view class="eye-pupil"></view></view>
+					</view>
 				</view>
 				<view class="input-row">
-					<text class="iconfont icon-lock">✓</text>
-					<input class="input" type="password" placeholder="确认新密码" v-model="reset.confirmPassword" placeholder-class="ph" />
+					<AppFieldIcon class="field-icon" type="check" />
+					<input class="input" :type="showResetConfirmPassword ? 'text' : 'password'" placeholder="确认新密码" v-model="reset.confirmPassword" placeholder-class="ph" />
+					<view class="visibility-button" :class="{active: showResetConfirmPassword}" role="button" :aria-label="showResetConfirmPassword ? '隐藏密码' : '显示密码'" @click.stop="showResetConfirmPassword = !showResetConfirmPassword">
+						<view class="eye-icon"><view class="eye-pupil"></view></view>
+					</view>
 				</view>
 				<button class="login-btn" @click="submitReset">保存</button>
 				<view class="register-row">
@@ -78,13 +87,18 @@
 </template>
 
 <script>
+	import AppFieldIcon from '@/components/app-field-icon.vue'
 	import { bindReferrer, decodeRouteText, login, resetPassword, saveSession, sendSmsCode } from '@/common/api.js'
 	import { resumeSessionTimeout, startAuthenticatedSession } from '@/common/session-timeout.js'
 	export default {
+		components: { AppFieldIcon },
 		data() {
 			return {
 				phone: '',
 				password: '',
+				showPassword: false,
+				showResetPassword: false,
+				showResetConfirmPassword: false,
 				agree: true,
 				resetMode: false,
 				reset: {
@@ -514,17 +528,58 @@ page {
 	padding: 0 30rpx;
 	margin-bottom: 30rpx;
 }
-.iconfont {
-	font-size: 32rpx;
+.field-icon {
 	margin-right: 16rpx;
 	color: #2d8cf0;
 }
 .input {
 	flex: 1;
+	min-width: 0;
 	height: 88rpx;
 	font-size: 28rpx;
 	color: #333;
 	background: transparent;
+}
+.visibility-button {
+	width:64rpx;
+	height:64rpx;
+	margin-left:8rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	flex:0 0 64rpx;
+	color:#7f96ad;
+	cursor:pointer;
+}
+.visibility-button.active { color:#2d8cf0; }
+.eye-icon {
+	position:relative;
+	width:34rpx;
+	height:21rpx;
+	border:3rpx solid currentColor;
+	border-radius:50%;
+	box-sizing:border-box;
+}
+.eye-pupil {
+	position:absolute;
+	left:50%;
+	top:50%;
+	width:9rpx;
+	height:9rpx;
+	border-radius:50%;
+	background:currentColor;
+	transform:translate(-50%,-50%);
+}
+.visibility-button:not(.active) .eye-icon::after {
+	content:'';
+	position:absolute;
+	left:-5rpx;
+	top:8rpx;
+	width:40rpx;
+	height:3rpx;
+	border-radius:3rpx;
+	background:currentColor;
+	transform:rotate(-42deg);
 }
 .reset-tip {
 	margin: 12rpx 0 26rpx;
@@ -675,9 +730,14 @@ page {
 		border-width:1px;
 		border-radius:30px;
 	}
-	.iconfont {
+	.field-icon {
 		margin-right:12px;
-		font-size:20px;
+	}
+	.visibility-button {
+		width:44px;
+		height:44px;
+		margin-left:4px;
+		flex-basis:44px;
 	}
 	.input {
 		height:56px;

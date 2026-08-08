@@ -879,7 +879,7 @@ page { background:#f5f7fa; }
 @media screen and (max-width: 420px) {
 	.course-card { align-items:flex-start; flex-wrap:wrap; }
 	.course-main { width:100%; flex-wrap:wrap; }
-	.report-current-time { margin-left:auto; }
+	.report-current-time { margin-left:0; margin-right:auto; }
 	.track-grid { grid-template-columns:1fr; }
 	.report-metrics { grid-template-columns:1fr 1fr; }
 	.video-record,
