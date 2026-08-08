@@ -4,8 +4,8 @@
 			<view v-for="(t,i) in tabs" :key="i" class="tab-item" :class="{active: activeTab===i}" @click="activeTab=i">{{t}}</view>
 		</view>
 
-		<scroll-view scroll-y class="list">
-			<view class="row" v-for="(it,i) in currentList" :key="i" @click="goDetail(it)">
+		<scroll-view v-if="loadState === 'success' && currentList.length" scroll-y class="list">
+			<view class="row" v-for="it in currentList" :key="it.renderKey || it.id" @click="goDetail(it)">
 				<view class="cover">
 					<image v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" mode="aspectFit" @error="markCoverError(it)" />
 					<view v-else class="cover-fallback">{{coverFallbackText(it)}}</view>
@@ -25,6 +25,15 @@
 			<view class="end-tip">—暂无更多课程—</view>
 			<view class="list-spacer"></view>
 		</scroll-view>
+		<app-data-state v-else-if="loadState === 'loading'" type="loading" />
+		<app-data-state
+			v-else-if="loadState === 'error'"
+			type="error"
+			title="课程分类暂时无法加载"
+			description="请检查网络后重新加载。"
+			@retry="loadTabs"
+		/>
+		<app-data-state v-else type="empty" title="该分类暂无课程" description="课程发布后会显示在这里。" />
 
 		<tab-bar active="home" />
 	</view>
@@ -32,60 +41,17 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { GAOKAO_MATH_TRIAL, GAOKAO_MATH_FULL, stripCourseYear } from '@/common/course-data.js'
+import AppDataState from '@/components/app-data-state.vue'
+import { stripCourseYear } from '@/common/course-data.js'
 import { getCourses, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
-const ZK = {
-	yuwen:'/static/courses/zk-yuwen.jpg', shuxue:'/static/courses/zk-shuxue.jpg',
-	yingyu:'/static/courses/zk-yingyu.jpg', wuli:'/static/courses/zk-wuli.jpg',
-	huaxue:'/static/courses/zk-huaxue.jpg'
-};
-const GK = {
-	yuwen:'/static/courses/gk-yuwen.jpg', shuxue:'/static/courses/gk-shuxue.jpg',
-	yingyu:'/static/courses/gk-yingyu.jpg', wuli:'/static/courses/gk-wuli.jpg',
-	huaxue:'/static/courses/gk-huaxue.jpg', shengwu:'/static/courses/gk-huaxue.jpg',
-	lishi:'/static/courses/gk-dili-full.jpg', zhengzhi:'/static/courses/gk-dili-full.jpg',
-	dili:'/static/courses/gk-dili-full.jpg'
-};
 export default {
-	components: { TabBar },
+	components: { TabBar, AppDataState },
 	data() {
 		return {
 			activeTab: 0,
 			tabs: ['中考试听','中考课程','高考试听','高考课程'],
-			data: {
-				0: [
-					{ full:'中考语文', suffix:'试…', sub:'《中考语文》试听课', cover: ZK.yuwen, isTry:true },
-					{ full:'中考数学', suffix:'试…', sub:'《中考数学》试听课', cover: ZK.shuxue, isTry:true },
-					{ full:'中考英语', suffix:'试…', sub:'《中考英语》试听课', cover: ZK.yingyu, isTry:true },
-					{ full:'中考物理', suffix:'试…', sub:'《中考物理》试听课', cover: ZK.wuli,   isTry:true },
-					{ full:'中考化学', suffix:'试…', sub:'《中考化学》试听课', cover: ZK.huaxue, isTry:true }
-				],
-				1: [
-					{ full:'中考语文', suffix:'', sub:'《中考语文》', cover: ZK.yuwen },
-					{ full:'中考数学', suffix:'', sub:'《中考数学》', cover: ZK.shuxue },
-					{ full:'中考英语', suffix:'', sub:'《中考英语》', cover: ZK.yingyu },
-					{ full:'中考物理', suffix:'', sub:'《中考物理》', cover: ZK.wuli },
-					{ full:'中考化学', suffix:'', sub:'《中考化学》', cover: ZK.huaxue }
-				],
-				2: [
-					{ full:'高考语文', suffix:'试…', sub:'《高考语文》试听课', cover: GK.yuwen, isTry:true },
-					{ full:'高考数学', suffix:'试…', sub:GAOKAO_MATH_TRIAL.courseName, cover: GAOKAO_MATH_TRIAL.cover, isTry:true, subject:'gaokao-math', kind:'trial' },
-					{ full:'高考英语', suffix:'试…', sub:'《高考英语》试听课', cover: GK.yingyu, isTry:true },
-					{ full:'高考物理', suffix:'试…', sub:'《高考物理》试听课', cover: GK.wuli, isTry:true },
-					{ full:'高考化学', suffix:'试…', sub:'《高考化学》试听课', cover: GK.huaxue, isTry:true }
-				],
-				3: [
-					{ full:'高考语文', suffix:'', sub:'《高考语文》', cover: GK.yuwen },
-					{ full:'高考数学', suffix:'', sub:GAOKAO_MATH_FULL.introduction, cover: GAOKAO_MATH_FULL.cover, subject:'gaokao-math', kind:'full' },
-					{ full:'高考英语', suffix:'', sub:'《高考英语》', cover: GK.yingyu },
-					{ full:'高考物理', suffix:'', sub:'《高考物理》', cover: GK.wuli },
-					{ full:'高考化学', suffix:'', sub:'《高考化学》', cover: GK.huaxue },
-					{ full:'高考生物', suffix:'', sub:'《高考生物》', cover: GK.shengwu },
-					{ full:'高考历史', suffix:'', sub:'《高考历史》', cover: GK.lishi },
-					{ full:'高考政治', suffix:'', sub:'《高考政治》', cover: GK.zhengzhi },
-					{ full:'高考地理', suffix:'', sub:'《高考地理》', cover: GK.dili }
-				]
-			}
+			loadState: 'loading',
+			data: { 0: [], 1: [], 2: [], 3: [] }
 		}
 	},
 	computed: { currentList() { return this.data[this.activeTab] || []; } },
@@ -95,25 +61,33 @@ export default {
 	},
 	methods: {
 		async loadTabs() {
+			this.loadState = 'loading';
 			try {
 				const tabs = await Promise.all([0, 1, 2, 3].map(tab => getCourses({ tab })));
 				tabs.forEach((list, tab) => {
-					this.data[tab] = list.map(item => ({
+					this.data[tab] = (list || []).map(item => {
+						const cover = this.safeMediaUrl(item.cover);
+						return {
 						id: item.id,
 						full: stripCourseYear(item.full),
 						suffix: item.isTry ? '试听课' : '',
 						sub: stripCourseYear(item.sub),
 						intro: stripCourseYear(item.introduction || item.intro || item.description || ''),
-						cover: this.safeMediaUrl(item.cover),
+						cover,
 						coverError: false,
+						renderKey: `${item.id || item.full}-${cover}-${item.updatedAt || item.version || 'current'}`,
 						isTry: item.isTry,
 						available: !!(item.available || item.activated || item.hasAccess),
 						subject: item.subject,
 						kind: item.kind
-					}));
+						};
+					});
 				});
+				this.loadState = 'success';
 			} catch (err) {
-				console.warn('课程分类接口不可用，使用本地课程数据', err);
+				console.warn('课程分类接口不可用', err);
+				this.data = { 0: [], 1: [], 2: [], 3: [] };
+				this.loadState = 'error';
 			}
 		},
 		openLabel(it) {

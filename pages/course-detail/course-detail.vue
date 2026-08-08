@@ -27,6 +27,15 @@
 			</view>
 		</view>
 
+		<app-data-state v-if="loadState === 'loading'" type="loading" />
+		<app-data-state
+			v-else-if="loadState === 'error'"
+			type="error"
+			:title="loadError || '课程详情暂时无法加载'"
+			description="请检查网络后重新加载。"
+			@retry="retryLoadCourse"
+		/>
+		<template v-else>
 		<!-- 封面 -->
 		<view class="cover" :class="coverClass">
 			<!-- #ifdef H5 -->
@@ -114,8 +123,8 @@
 								</view>
 							</view>
 								<view class="ch-actions">
-									<view class="btn-go locked" @click.stop="goLesson(c, s)">{{s.type===2 ? '去练习' : '去学习'}}</view>
-								<view class="btn-ai locked" @click.stop="goAi(c.title)">AI问答</view>
+									<view class="btn-go" @click.stop="goLesson(c, s)">{{s.type===2 ? '去练习' : '去学习'}}</view>
+								<view class="btn-ai" @click.stop="goAi(c.title)">AI问答</view>
 							</view>
 						</view>
 					</block>
@@ -157,25 +166,28 @@
 
 			<view style="height:60rpx"></view>
 		</view>
+		</template>
 	</view>
 </template>
 
 <script>
-import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
+import AppDataState from '@/components/app-data-state.vue'
+import { cleanCourseDisplayName, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, resolveMediaUrl } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 export default {
+	components: { AppDataState },
 	inheritAttrs: false,
 	data() {
 		return {
-			title: '中考语文',
-			courseName: '《中考语文》试听课',
+			title: '',
+			courseName: '',
 			courseIntro: '',
-			updatedAt: '2026-05-26T10:11:00',
-			coverTitle: '中考语文',
+			updatedAt: '',
+			coverTitle: '课程',
 			bg: 'linear-gradient(135deg,#c94f7c 0%,#7e3a6b 100%)',
-			totalLessons: 3,
-			totalDuration: '01小时29分',
+			totalLessons: 0,
+			totalDuration: '',
 			practiceDuration: '',
 			progress: 0,
 			learntCount: 0,
@@ -183,21 +195,19 @@ export default {
 			activeTab: 0,
 			detailTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
-			versionChips: ['复习加强课', '技巧绝招'],
+			versionChips: [],
 			courseVersions: [],
-			chapters: [
-				{ title:'选材与加工高分技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
-				{ title:'课外文言文做题技巧', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] },
-				{ title:'词句的理解与赏析', open:true, audition:true, children:[{ name:'技巧干货', type:1, total:1, read:0 }] }
-			],
+			chapters: [],
 			quizzes: [],
 			showLogin: false,
 			showPermission: false,
 			permissionFeature: '该功能',
 			cover: '',
 			coverRatio: 0,
-			routeCoverFallback: '',
-			courseId: 'gk-math-trial'
+			courseId: '',
+			requestedCourseId: '',
+			loadState: 'loading',
+			loadError: ''
 		}
 	},
 	computed: {
@@ -232,7 +242,7 @@ export default {
 		},
 		versionSummaries() {
 			return this.courseVersions.slice(0, 2).map((version, index) => {
-				const title = index === 0 ? '复习加强' : '技巧绝招';
+				const title = String((version && version.name) || `课程内容${index + 1}`).trim();
 				const chapters = (version && version.chapters) || [];
 				return {
 					label: title,
@@ -252,16 +262,14 @@ export default {
 			this.courseId = this.resolveCourseId(this.title, 'trial');
 		}
 		if (opts && opts.bg) this.bg = this.decodeRouteText(opts.bg);
-		if (opts && opts.cover) this.routeCoverFallback = this.decodeRouteText(opts.cover);
 		if (opts && opts.id) {
-			await this.loadCourse(opts.id);
-		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
-			this.applyMathCourse();
-		} else if (this.routeCoverFallback) {
-			this.setCover(this.routeCoverFallback);
+			this.requestedCourseId = this.decodeRouteText(opts.id);
+			await this.loadCourse(this.requestedCourseId);
+		} else {
+			this.loadState = 'error';
+			this.loadError = '课程参数不完整，请返回首页重新进入';
 		}
-		if (!this.courseVersions.length) this.courseVersions = this.normalizeVersions({}, this.chapters);
-		this.coverTitle = this.title;
+		this.coverTitle = this.title || '课程';
 	},
 	onReady() {
 		this.clearEncodedPageTitle();
@@ -281,34 +289,41 @@ export default {
 			return text;
 		},
 		async loadCourse(id) {
+			this.loadState = 'loading';
+			this.loadError = '';
 			try {
 				const course = await getCourse(id);
 				this.applyRemoteCourse(course);
+				this.loadState = 'success';
 			} catch (err) {
-				console.warn('课程详情接口不可用，使用本地详情', err);
-				if (isGaokaoMath(this.title)) this.applyMathCourse();
-				else if (this.routeCoverFallback) this.setCover(this.routeCoverFallback);
+				console.warn('课程详情接口不可用', err);
+				this.loadState = 'error';
+				this.loadError = (err && err.message) || '课程详情暂时无法加载';
 			}
 		},
 		applyRemoteCourse(course) {
-			const fallbackCourse = isGaokaoMath(`${course.title || ''}${this.title}`) ? getGaokaoMathCourse('trial') : {};
 			this.courseId = course.id || this.courseId;
 			this.title = course.title || this.title;
 			this.courseName = stripCourseYear(course.courseName || this.courseName);
 			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
 			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
-			this.setCover(course.detailCover || course.cover || fallbackCourse.detailCover || fallbackCourse.cover || this.routeCoverFallback || this.cover);
-			const stats = this.resolveCourseStats(course, fallbackCourse);
+			this.setCover(course.detailCover || course.cover || '');
+			const stats = this.resolveCourseStats(course);
 			this.totalLessons = stats.totalLessons || this.totalLessons;
 			this.totalDuration = stats.totalDuration || this.totalDuration;
-			this.practiceDuration = course.practiceDuration || fallbackCourse.practiceDuration || this.practiceDuration;
+			this.practiceDuration = course.practiceDuration || '';
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
-			const versionCourse = Array.isArray(course.versions) && course.versions.length ? course : fallbackCourse;
-			this.courseVersions = this.normalizeVersions(versionCourse, course.chapters || fallbackCourse.chapters || this.chapters);
-			this.setVersion(0);
+			this.courseVersions = this.normalizeVersions(course, course.chapters || []);
+			this.versionChips = this.courseVersions.map((version, index) => String(version.name || `课程内容${index + 1}`));
+			if (this.courseVersions.length) this.setVersion(0);
+			else this.chapters = [];
 			this.quizzes = course.quizzes || [];
+		},
+		retryLoadCourse() {
+			if (this.requestedCourseId) this.loadCourse(this.requestedCourseId);
+			else this.goBack();
 		},
 		collapseCheckinPanel() {},
 		goBack() { safeNavigateBack('/pages/index/index'); },
@@ -332,25 +347,6 @@ export default {
 			this.cover = '';
 			this.coverRatio = 0;
 		},
-		applyMathCourse() {
-			const course = getGaokaoMathCourse('trial');
-			this.courseId = 'gk-math-trial';
-			this.title = course.title;
-			this.courseName = stripCourseYear(course.courseName);
-			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
-			this.updatedAt = course.updatedAt || this.updatedAt;
-			this.setCover(course.detailCover || course.cover);
-			const stats = this.resolveCourseStats(course);
-			this.totalLessons = stats.totalLessons || course.totalLessons;
-			this.totalDuration = stats.totalDuration || course.totalDuration;
-			this.practiceDuration = course.practiceDuration;
-			this.progress = course.progress;
-			this.learntCount = course.readStudyCount;
-			this.learntDuration = course.readDuration;
-			this.courseVersions = this.normalizeVersions(course, course.chapters || this.chapters);
-			this.setVersion(0);
-			this.quizzes = course.quizzes;
-		},
 		toggle(i) {
 			this.chapters[i].open = !this.chapters[i].open;
 		},
@@ -368,16 +364,11 @@ export default {
 			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
 			const normalized = source.map((item, index) => ({
 				...(typeof item === 'object' ? item : { name: item }),
-				name: index === 0 ? '复习加强课' : '技巧绝招',
+				name: String((item && item.name) || `课程内容${index + 1}`),
 				chapters: (item && item.chapters) || baseChapters
 			}));
-			while (normalized.length < 2) {
-				normalized.push({
-					name: normalized.length === 0 ? '复习加强课' : '技巧绝招',
-					chapters: baseChapters
-				});
-			}
-			return normalized.slice(0, 2);
+			if (!normalized.length && baseChapters.length) normalized.push({ name:'试听内容', chapters:baseChapters });
+			return normalized;
 		},
 		resolveCourseId(title = '', kind = 'trial') {
 			const level = /中考/.test(title) ? 'zk' : 'gk';
@@ -451,10 +442,12 @@ export default {
 			this.requireFullCourseFeature('学习报告');
 		},
 		goAi(context) {
-			this.requestPermission('AI问答');
+			uni.navigateTo({ url:`/pages/ai-chat/ai-chat?context=${encodeURIComponent(context || this.courseName)}` });
 		},
 		goQuiz(q) {
-			this.requestPermission('章节测评');
+			const ids = Array.isArray(q && q.questionIds) ? q.questionIds.join(',') : '';
+			const title = String((q && (q.name || q.title)) || '章节测评');
+			uni.navigateTo({ url:`/pages/practice/practice?type=quiz&quizId=${encodeURIComponent(title)}&title=${encodeURIComponent(title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(ids)}` });
 		},
 		goWrongBook() {
 			this.requestPermission('错题与巩固');
@@ -464,7 +457,9 @@ export default {
 		},
 		goLesson(chapter, item) {
 			if (item && Number(item.type) === 2) {
-				this.requestPermission('练习功能');
+				const title = String(item.questionBankName || item.name || chapter.title || '章节练习');
+				const questionIds = Array.isArray(item.questionIds) ? item.questionIds : [];
+				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(chapter.title || title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
 			const lessonId = String((chapter && chapter.title) || (item && item.name) || '').trim();
@@ -486,7 +481,8 @@ export default {
 			});
 		},
 		formatCourseDate(value) {
-			const raw = value ? String(value) : '2026-05-26';
+			const raw = value ? String(value) : '';
+			if (!raw) return '--';
 			const match = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
 			if (!match) return raw;
 			return `${match[1]}年${match[2].padStart(2, '0')}月${match[3].padStart(2, '0')}日`;
@@ -499,11 +495,7 @@ export default {
 			return this.versionChips[index] || (index === 0 ? '复习加强课' : '技巧绝招');
 		},
 		childName(item, chapter = {}) {
-			if (this.versionIndex === 0) {
-				return item.type === 2 ? '复习测试' : '复习加强';
-			}
-			if (this.versionIndex === 1) return item.type === 2 ? '真题讲练' : '技巧绝招';
-			return item.name;
+			return item.name || (item.type === 2 ? '章节练习' : chapter.title || '课程内容');
 		},
 		requireFullCourseFeature(feature = '该功能') {
 			this.showPermissionDenied(feature);
@@ -559,7 +551,22 @@ page { background:#f5f7fa; }
 	transition:background-color .2s ease, transform .2s ease;
 }
 .back:active { background:#f1f5f9; transform:scale(.96); }
-.nav-title { min-width:0; text-align:center; font-size:30rpx; color:#111827; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nav-title {
+	position:absolute;
+	left:50%;
+	transform:translateX(-50%);
+	width:max-content;
+	max-width:calc(100% - 192rpx);
+	min-width:0;
+	text-align:center;
+	font-size:30rpx;
+	color:#111827;
+	font-weight:900;
+	white-space:nowrap;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	pointer-events:none;
+}
 .nav-spacer { width:96rpx; height:100%; }
 
 /* 封面 */
@@ -1036,7 +1043,7 @@ page { background:#f5f7fa; }
 		font-size:38px;
 	}
 	.nav-title {
-		max-width:420px;
+		max-width:calc(100% - 128px);
 		font-size:18px;
 	}
 	.cover {

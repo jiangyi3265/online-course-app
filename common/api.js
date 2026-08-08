@@ -508,7 +508,7 @@ export function markWrongMastered(id) {
 	})
 }
 
-export function getWrongBookSummary(courseId = 'gk-math-full', userId = '') {
+export function getWrongBookSummary(courseId = '', userId = '') {
 	return request('/wrongbook/summary', { params: { courseId, userId } })
 }
 
@@ -524,7 +524,7 @@ export function getWrongRetry(count = 5, source = '', courseId = '', userId = ''
 	return request('/wrongbook/retry', { params: { count, source, courseId, userId } })
 }
 
-export function getReinforce(courseId = 'gk-math-full') {
+export function getReinforce(courseId = '') {
 	return request('/reinforce', { params: { courseId } })
 }
 

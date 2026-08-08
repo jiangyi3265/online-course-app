@@ -1,9 +1,13 @@
 <template>
 	<view class="page">
-		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">高中数学</view></view>
+		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">知识巩固</view></view>
+		<AppDataState v-if="loadState === 'loading'" type="loading" title="正在加载知识点" description="请稍候。" />
+		<AppDataState v-else-if="loadState === 'error'" type="error" title="知识点加载失败" :description="loadError" @retry="loadData" />
+		<AppDataState v-else-if="loadState === 'empty'" type="empty" title="暂无知识巩固内容" description="当前课程还没有配置知识点。" :retryable="false" />
+		<template v-else>
 		<view class="summary">
 			<view></view>
-			<view class="summary-text">共{{list.length || 17}}个知识点<br />共xx小时xx分钟</view>
+			<view class="summary-text">共{{list.length}}个知识点</view>
 		</view>
 		<view class="row" v-for="item in list" :key="item.id">
 			<view class="badge">知</view>
@@ -13,22 +17,27 @@
 			</view>
 			<view class="btn" @click="start(item)">去学习</view>
 		</view>
+		</template>
 	</view>
 </template>
 
 <script>
 import { getReinforce } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
+import AppDataState from '@/components/app-data-state.vue'
 export default {
-	data() { return { courseId:'gk-math-full', list:[] } },
-	onLoad(opts = {}) { this.courseId = opts.courseId || 'gk-math-full'; this.loadData(); },
+	components: { AppDataState },
+	data() { return { courseId:'', list:[], loadState:'loading', loadError:'' } },
+	onLoad(opts = {}) { this.courseId = opts.courseId || ''; this.loadData(); },
 	methods: {
 		async loadData() {
-			try { this.list = await getReinforce(this.courseId); }
-			catch (err) { uni.showToast({ title: err.message || '加载失败', icon:'none' }); }
+			if (!this.courseId) { this.loadState='error'; this.loadError='缺少课程编号，无法读取知识点。'; return; }
+			this.loadState='loading'; this.loadError='';
+			try { this.list = await getReinforce(this.courseId); this.loadState=this.list.length ? 'success' : 'empty'; }
+			catch (err) { this.list=[]; this.loadState='error'; this.loadError=err.message || '知识点暂时无法读取，请稍后重试。'; }
 		},
 		start(item) { uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&chapterTitle=${encodeURIComponent('复习加强')}&categoryTitle=${encodeURIComponent('复习加强课')}` }); },
-		formatDateTime(value) { return value ? String(value).replace('T', ' ').slice(0, 19) : '2026-01-25 19:57:51'; },
+		formatDateTime(value) { return value ? String(value).replace('T', ' ').slice(0, 19) : '--'; },
 		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); }
 	}
 }

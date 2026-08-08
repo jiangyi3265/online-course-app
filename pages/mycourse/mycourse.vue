@@ -1,7 +1,7 @@
 <template>
 	<view class="page">
-		<view class="course-list" v-if="logined">
-			<view class="course-card" v-for="(c,i) in courses" :key="i">
+		<view class="course-list" v-if="logined && loadState === 'success' && courses.length">
+			<view class="course-card" v-for="c in courses" :key="c.renderKey || c.id">
 				<view class="course-cover">
 					<!-- #ifdef H5 -->
 					<img v-if="c.cover && !c.coverError" class="course-cover-img" :src="c.cover" draggable="false" @error="markCourseCoverError(c)" />
@@ -23,10 +23,23 @@
 			</view>
 			<view class="course-list-spacer"></view>
 		</view>
-
+		<app-data-state v-else-if="logined && loadState === 'loading'" type="loading" />
+		<app-data-state
+			v-else-if="logined && loadState === 'error'"
+			type="error"
+			title="课程数据暂时无法加载"
+			description="请检查网络后重新加载。"
+			@retry="loadCourses"
+		/>
+		<app-data-state
+			v-else-if="logined"
+			type="empty"
+			title="你目前没有正在学习中的正式课程"
+			description="课程开通后会显示在这里。"
+		/>
 		<view class="empty" v-else>
 			<image class="ill-img" src="/static/empty-noLogin.png" mode="widthFix" />
-			<view class="tip">{{ logined ? '暂无课程授权记录' : '您还未登录~' }}</view>
+			<view class="tip">您还未登录</view>
 		</view>
 
 		<!-- 登录提示弹窗 -->
@@ -48,33 +61,45 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
+import AppDataState from '@/components/app-data-state.vue'
+import { stripCourseYear } from '@/common/course-data.js'
 import { getMyCourses, isLoggedIn, resolveMediaUrl, isUsableMediaUrl } from '@/common/api.js'
 export default {
-	components: { TabBar },
-	data() { return { logined:false, showModal:false, courses: AUTHORIZED_COURSES } },
+	components: { TabBar, AppDataState },
+	data() { return { logined:false, showModal:false, loadState:'loading', courses:[] } },
 	async onShow() {
 		this.logined = isLoggedIn();
-		if (!this.logined) this.showModal = true;
+		if (!this.logined) {
+			this.courses = [];
+			this.loadState = 'empty';
+			this.showModal = true;
+		}
 		else await this.loadCourses();
 	},
 	methods: {
 		async loadCourses() {
+			this.loadState = 'loading';
 			try {
 				const list = await getMyCourses();
-				this.courses = list.map(item => ({
+				this.courses = (list || []).map(item => {
+					const cover = this.safeMediaUrl(item.cover);
+					return {
 					id: item.id,
 					title: stripCourseYear(item.courseName || item.sub || `《${item.full}》`),
 					sub: stripCourseYear(item.sub),
 					expiry: item.expiry,
-					cover: this.safeMediaUrl(item.cover, this.fallbackCourseCover(item)),
-					coverFallbackTried: false,
+					cover,
 					coverError: false,
+					renderKey: `${item.id || item.courseName || item.full}-${cover}-${item.updatedAt || item.version || 'current'}`,
 					subject: item.subject,
 					kind: item.kind
-				}));
+					};
+				});
+				this.loadState = this.courses.length ? 'success' : 'empty';
 			} catch (err) {
-				console.warn('我的课程接口不可用，使用本地授权课程', err);
+				console.warn('我的课程接口不可用', err);
+				this.courses = [];
+				this.loadState = 'error';
 			}
 		},
 		goLogin() {
@@ -82,47 +107,26 @@ export default {
 			uni.navigateTo({ url:'/pages/login/login' });
 		},
 		openCourse(c) {
-			if (c.id || c.subject === 'gaokao-math') {
-				const idPart = c.id ? `id=${encodeURIComponent(c.id)}&` : '';
+			if (c.id) {
 				const title = c.title || c.sub || '课程';
-				uni.navigateTo({ url:`/pages/course-full/course-full?${idPart}title=${encodeURIComponent(title)}&subject=${c.subject || 'gaokao-math'}&kind=${c.kind || 'full'}` });
+				uni.navigateTo({ url:`/pages/course-full/course-full?id=${encodeURIComponent(c.id)}&title=${encodeURIComponent(title)}&kind=${c.kind || 'full'}` });
 				return;
 			}
-			this.toast('点击学习');
+			this.toast('课程编号缺失，请刷新后重试');
 		},
 		openReport(c) {
-			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(c.id || 'gk-math-full')}` });
+			if (!c.id) {
+				this.toast('课程编号缺失，请刷新后重试');
+				return;
+			}
+			uni.navigateTo({ url:`/pages/study-report/study-report?courseId=${encodeURIComponent(c.id)}` });
 		},
 		markCourseCoverError(course) {
-			if (!course.coverFallbackTried) {
-				const fallback = this.fallbackCourseCover(course);
-				if (fallback && fallback !== course.cover) {
-					course.coverFallbackTried = true;
-					course.cover = fallback;
-					course.coverError = false;
-					return;
-				}
-			}
 			course.coverError = true;
 		},
-		safeMediaUrl(url = '', fallback = '') {
-			const resolved = resolveMediaUrl(url || fallback);
-			return isUsableMediaUrl(resolved) ? resolved : fallback;
-		},
-		fallbackCourseCover(course = {}) {
-			const text = `${course.title || ''}${course.sub || ''}${course.courseName || ''}${course.full || ''}`;
-			const level = /中考/.test(text) ? 'zk' : 'gk';
-			const subjectMap = [
-				['数学', level === 'gk' ? 'shuxue-full' : 'shuxue'],
-				['语文', 'yuwen'],
-				['英语', level === 'gk' ? 'yingyu-full' : 'yingyu'],
-				['物理', level === 'gk' ? 'wuli-full' : 'wuli'],
-				['化学', 'huaxue'],
-				['地理', 'dili-full']
-			];
-			const found = subjectMap.find(([name]) => text.includes(name));
-			const subject = found ? found[1] : (level === 'gk' ? 'shuxue-full' : 'shuxue');
-			return `/static/courses/${level}-${subject}.jpg`;
+		safeMediaUrl(url = '') {
+			const resolved = resolveMediaUrl(url);
+			return isUsableMediaUrl(resolved) ? resolved : '';
 		},
 		courseInitial(course = {}) {
 			const name = String(course.title || course.sub || '课').replace(/[《》]/g, '').trim();

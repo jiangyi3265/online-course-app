@@ -4,6 +4,10 @@
 			<view class="back" @click="goBack">‹</view>
 			<view class="nav-title">{{title}}</view>
 		</view>
+		<AppDataState v-if="loadState === 'loading'" type="loading" title="正在加载练习" description="正在读取题目，请稍候。" />
+		<AppDataState v-else-if="loadState === 'error'" type="error" title="练习加载失败" :description="loadError || '题目暂时无法读取，请稍后重试。'" @retry="loadData" />
+		<AppDataState v-else-if="loadState === 'empty'" type="empty" title="暂无练习题目" description="当前练习还没有配置题目，请返回课程选择其他内容。" :retryable="false" />
+		<template v-else>
 
 		<view class="hero">
 			<view class="hero-title">{{modeText}}</view>
@@ -310,6 +314,7 @@
 			<view class="submit" :class="{submitted: result}" @click="submit">{{result ? '已提交' : '提交答案'}}</view>
 			<view v-if="result" class="footer-back" @click="goBack">返回上一页</view>
 		</view>
+		</template>
 	</view>
 </template>
 
@@ -317,12 +322,13 @@
 import { decodeRouteText, getFavorites, getPractice, getQuiz, getReinforcePractice, getWrongRetry, isUsableMediaUrl, normalizeMediaList, resolveMediaList, resolveMediaUrl, submitPractice, submitPracticeSelfReview, submitQuiz, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
+import AppDataState from '@/components/app-data-state.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
 
 export default {
 	inheritAttrs: false,
-	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
+	components: { AnalysisViewer, AppDataState, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {
 			type: 'practice',
@@ -332,7 +338,9 @@ export default {
 			pointId: '',
 			count: 5,
 			source: '全部',
-			courseId: 'gk-math-full',
+			courseId: '',
+			loadState: 'loading',
+			loadError: '',
 			questionIds: [],
 			sourceWrongIds: [],
 			questions: [],
@@ -398,12 +406,19 @@ export default {
 		this.pointId = opts.pointId || '';
 		this.count = Number(opts.count || 5);
 		this.source = decodeRouteText(opts.source || '全部');
-		this.courseId = decodeRouteText(opts.courseId || 'gk-math-full');
+		this.courseId = decodeRouteText(opts.courseId || '');
 		this.questionIds = String(decodeRouteText(opts.questionIds || '')).split(',').map(item => item.trim()).filter(Boolean);
 		this.loadData();
 	},
 	methods: {
 		async loadData() {
+			if (!(this.type === 'reinforce' && this.pointId) && !this.courseId) {
+				this.loadState = 'error';
+				this.loadError = '缺少课程编号，无法读取练习题目。';
+				return;
+			}
+			this.loadState = 'loading';
+			this.loadError = '';
 			try {
 				const practiceLookupTitle = this.practiceTitle || this.title;
 				const usePracticeLookup = this.type === 'reinforce' && !this.pointId;
@@ -425,13 +440,16 @@ export default {
 				this.selfReviews = {};
 				this.reviewVisible = {};
 				this.result = null;
+				this.loadState = this.questions.length ? 'success' : 'empty';
 				this.syncFavoriteState();
 				if (this.type === 'wrongRetry' && this.questions.length === 0) {
 					uni.showToast({ title: '当前没有可重练的错题', icon: 'none' });
 				}
 			} catch (err) {
 				const msg = (err && err.message) || '加载失败';
-				uni.showToast({ title: msg, icon: 'none' });
+				this.questions = [];
+				this.loadState = 'error';
+				this.loadError = msg;
 				if (/95%|解锁|顺序/.test(msg)) setTimeout(() => uni.navigateBack({ fail: () => {} }), 1200);
 			}
 		},
@@ -499,7 +517,7 @@ export default {
 					type: 'question',
 					targetId: q.id,
 					title: q.stem,
-					courseId: this.courseId || 'gk-math-full'
+					courseId: this.courseId
 				});
 				q.favorited = !!result.favorited;
 				if (this.$forceUpdate) this.$forceUpdate();
@@ -803,7 +821,11 @@ export default {
 		},
 		reload() { this.loadData(); },
 		goWrongBook() {
-			uni.navigateTo({ url: `/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId || 'gk-math-full')}` });
+			if (!this.courseId) {
+				uni.showToast({ title:'课程编号缺失，请返回后重试', icon:'none' });
+				return;
+			}
+			uni.navigateTo({ url: `/pages/wrongbook/wrongbook?courseId=${encodeURIComponent(this.courseId)}` });
 		},
 		goBack() {
 			safeNavigateBack('/pages/index/index');

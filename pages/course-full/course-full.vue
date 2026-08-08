@@ -6,6 +6,22 @@
 			<view class="nav-title">{{displayCourseName}}</view>
 		</view>
 
+		<AppDataState
+			v-if="loadState === 'loading'"
+			type="loading"
+			title="正在加载课程"
+			description="正在读取课程内容，请稍候。"
+		/>
+		<AppDataState
+			v-else-if="loadState === 'error'"
+			type="error"
+			title="课程加载失败"
+			:description="loadError || '课程数据暂时无法读取，请稍后重试。'"
+			@retry="retryLoadCourse"
+		/>
+
+		<template v-else>
+
 		<!-- 封面 -->
 		<view class="cover" :class="coverClass">
 			<!-- #ifdef H5 -->
@@ -122,7 +138,7 @@
 
 			<view class="minor-panel" v-if="tab===2">
 				<view class="minor-title">错题与巩固</view>
-				<view class="minor-text">当前课程错题共25道，可继续巩固薄弱题型。</view>
+				<view class="minor-text">查看本课程学习过程中产生的错题与巩固记录。</view>
 				<view class="minor-btn" @click="goWrongBook">进入错题与巩固</view>
 			</view>
 
@@ -130,7 +146,7 @@
 				<view class="reinforce-head">
 					<view>
 						<view class="reinforce-title">{{displayCourseName}}</view>
-						<view class="reinforce-sub">共{{knowledgeChapters.length ? countChapters(knowledgeChapters) : (reinforceList.length || 17)}}个知识点</view>
+						<view class="reinforce-sub">共{{knowledgeChapters.length ? countChapters(knowledgeChapters) : reinforceList.length}}个知识点</view>
 					</view>
 					<view class="reinforce-time">{{knowledgeDurationText}}</view>
 				</view>
@@ -195,6 +211,7 @@
 				<view class="active" @click="goActivate">激活课程</view>
 			</view>
 		</view>
+		</template>
 
 		<view class="auth-mask" v-if="showAuth">
 			<view class="auth-modal">
@@ -208,34 +225,32 @@
 </template>
 
 <script>
-import { cleanCourseDisplayName, getGaokaoMathCourse, isGaokaoMath, stripCourseYear } from '@/common/course-data.js'
+import { cleanCourseDisplayName, stripCourseYear } from '@/common/course-data.js'
 import { getCourse, getLessonLocks, getReinforce, resolveMediaUrl } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
+import AppDataState from '@/components/app-data-state.vue'
 export default {
 	inheritAttrs: false,
+	components: { AppDataState },
 	data() {
 		return {
-			title: '中考语文',
-			courseName: '《中考语文》',
+			title: '',
+			courseName: '',
 			courseIntro: '',
-			updatedAt: '2026-05-26T10:15:00',
+			updatedAt: '',
 			bg: 'linear-gradient(135deg,#c94f7c 0%,#7e3a6b 100%)',
-			total: 105,
-			duration: '20小时37分',
-			realDuration: '02小时23分',
+			total: 0,
+			duration: '',
+			realDuration: '',
 			progress: 0,
 			learntCount: 0,
 			learntDuration: '00小时00分',
 			cover: '',
 			coverRatio: 0,
-			routeCoverFallback: '',
 			tab: 0,
 			projectTabs: ['技巧干货','章节扫雷','错题与巩固','知识巩固'],
 			versionIndex: 0,
-			versions: [
-				{ name:'复习加强课', chapters: [] },
-				{ name:'技巧绝招', chapters: [] }
-			],
+			versions: [],
 			locked: true,
 			showFooter: true,
 			showAuth: false,
@@ -245,7 +260,10 @@ export default {
 			localUnlockedVideos: [],
 			localUnlockedPractices: [],
 			wechatId: 'DYR7314',
-			courseId: 'gk-math-full',
+			courseId: '',
+			requestedCourseId: '',
+			loadState: 'loading',
+			loadError: '',
 			courseLoaded: false,
 			reinforceList: [],
 			reinforceLoaded: false,
@@ -336,19 +354,14 @@ export default {
 		if (opts && opts.title) {
 			this.title = stripCourseYear(this.decodeRouteText(opts.title));
 			this.courseName = `《${this.title}》`;
-			this.courseId = this.resolveCourseId(this.title, 'full');
 		}
 		if (opts && opts.bg) this.bg = this.decodeRouteText(opts.bg);
-		if (opts && opts.cover) this.routeCoverFallback = this.decodeRouteText(opts.cover);
 		if (opts && opts.id) {
-			await this.loadCourse(opts.id);
-		} else if ((opts && opts.subject === 'gaokao-math') || isGaokaoMath(this.title)) {
-			this.applyMathCourse();
-		} else if (this.routeCoverFallback) {
-			this.setCover(this.routeCoverFallback);
-		}
-		if (!this.versions.some(item => item.chapters && item.chapters.length)) {
-			this.versions = this.normalizeVersions({}, this.chapters);
+			this.requestedCourseId = this.decodeRouteText(opts.id);
+			await this.loadCourse(this.requestedCourseId);
+		} else {
+			this.loadState = 'error';
+			this.loadError = '缺少课程编号，无法读取课程内容。';
 		}
 	},
 	onShow() {
@@ -412,61 +425,44 @@ export default {
 			return remoteList.includes(title);
 		},
 		async loadCourse(id) {
+			this.loadState = 'loading';
+			this.loadError = '';
 			try {
 				const course = await getCourse(id);
+				if (!course || !course.id) throw new Error('课程数据为空');
 				this.applyRemoteCourse(course);
+				this.loadState = 'success';
 			} catch (err) {
-				console.warn('正式课接口不可用，使用本地详情', err);
-				if (isGaokaoMath(this.title)) this.applyMathCourse();
-				else if (this.routeCoverFallback) this.setCover(this.routeCoverFallback);
+				console.warn('正式课程加载失败', err);
+				this.courseLoaded = false;
+				this.loadState = 'error';
+				this.loadError = (err && err.message) || '课程数据暂时无法读取，请稍后重试。';
 			}
+		},
+		retryLoadCourse() {
+			if (!this.requestedCourseId) return;
+			this.loadCourse(this.requestedCourseId);
 		},
 		applyRemoteCourse(course) {
 			const activeVersion = this.courseLoaded ? this.versionIndex : 0;
-			const fallbackCourse = isGaokaoMath(course.title || this.title) ? getGaokaoMathCourse('full') : {};
 			this.courseId = course.id || this.courseId;
 			this.reinforceLoaded = false;
 			this.reinforceList = [];
-			this.title = course.title || this.title;
-			this.courseName = stripCourseYear(course.courseName || this.courseName);
+			this.title = course.title || '';
+			this.courseName = stripCourseYear(course.courseName || course.title || '');
 			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
-			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || this.updatedAt;
-			this.setCover(
-				course.detailCover ||
-				course.cover ||
-				fallbackCourse.detailCover ||
-				fallbackCourse.cover ||
-				this.routeCoverFallback ||
-				this.cover
-			);
+			this.updatedAt = course.updatedAt || course.updateTime || course.createdAt || '';
+			this.setCover(course.detailCover || course.cover || '');
 			const remoteVersionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
-			const fallbackVersionStats = this.normalizeVersionStats(
-				fallbackCourse.versionStats || fallbackCourse.courseVersionStats || fallbackCourse.versions || []
-			);
-			this.versionStats = [0, 1].map(index => {
-				const remote = remoteVersionStats[index] || {};
-				const fallback = fallbackVersionStats[index] || {};
-				const remoteDuration = remote.totalDuration || remote.duration || remote.courseDuration || '';
-				return {
-					...fallback,
-					...remote,
-					label: remote.label || fallback.label || (index === 0 ? '复习加强' : '技巧绝招'),
-					totalLessons: Number(remote.totalLessons || remote.lessonCount || remote.total || 0)
-						|| Number(fallback.totalLessons || fallback.lessonCount || fallback.total || 0),
-					totalDuration: this.durationTextSeconds(remoteDuration) > 0
-						? remoteDuration
-						: (fallback.totalDuration || fallback.duration || fallback.courseDuration || '')
-				};
-			}).filter(item => item.totalLessons > 0 || this.durationTextSeconds(item.totalDuration) > 0);
-			const stats = this.resolveCourseStats(course, fallbackCourse);
+			this.versionStats = remoteVersionStats;
+			const stats = this.resolveCourseStats(course);
 			this.total = stats.totalLessons;
-			this.duration = stats.totalDuration || '00小时00分';
-			this.realDuration = course.practiceDuration || this.realDuration;
+			this.duration = stats.totalDuration || '';
+			this.realDuration = course.practiceDuration || '';
 			this.progress = course.progress || 0;
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
-			const versionCourse = this.countCourseLessons(course) > 0 ? course : fallbackCourse;
-			this.versions = this.normalizeVersions(versionCourse, Array.isArray(versionCourse.chapters) ? versionCourse.chapters : []);
+			this.versions = this.normalizeVersions(course, Array.isArray(course.chapters) ? course.chapters : []);
 			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
 			this.quizzes = Array.isArray(course.quizzes) ? course.quizzes : [];
 			this.applyCourseAccess(course);
@@ -503,10 +499,6 @@ export default {
 			}
 		},
 		onCoverError() {
-			if (this.routeCoverFallback && this.cover !== resolveMediaUrl(this.routeCoverFallback)) {
-				this.setCover(this.routeCoverFallback);
-				return;
-			}
 			this.cover = '';
 			this.coverRatio = 0;
 		},
@@ -532,35 +524,6 @@ export default {
 			if (this.$set) this.$set(lesson, 'open', !lesson.open);
 			else lesson.open = !lesson.open;
 		},
-		applyMathCourse() {
-			const activeVersion = this.courseLoaded ? this.versionIndex : 0;
-			const course = getGaokaoMathCourse('full');
-			this.courseId = 'gk-math-full';
-			this.reinforceLoaded = false;
-			this.reinforceList = [];
-			this.title = course.title;
-			this.courseName = stripCourseYear(course.courseName);
-			this.courseIntro = String(course.introduction || course.intro || course.description || '').trim();
-			this.updatedAt = course.updatedAt || this.updatedAt;
-			this.setCover(course.detailCover || course.cover);
-			this.versionStats = this.normalizeVersionStats(course.versionStats || course.courseVersionStats || []);
-			if (!this.versionStats.length) this.versionStats = this.normalizeVersionStats(course.versions || []);
-			const stats = this.resolveCourseStats(course);
-			this.total = stats.totalLessons;
-			this.duration = stats.totalDuration || course.totalDuration || '00小时00分';
-			this.realDuration = course.practiceDuration;
-			this.progress = course.progress;
-			this.learntCount = course.readStudyCount;
-			this.learntDuration = course.readDuration;
-			this.versions = this.normalizeVersions(course, course.chapters || this.chapters);
-			this.knowledgeChapters = (this.versions[2] && this.versions[2].chapters) || [];
-			this.quizzes = course.quizzes;
-			this.locked = false;
-			this.showFooter = false;
-			this.setVersion(Math.min(activeVersion, Math.max(0, this.versions.length - 1)));
-			this.courseLoaded = true;
-			this.loadLessonLocks();
-		},
 		setVersion(i) {
 			this.collapseCheckinPanel();
 			this.versionIndex = i;
@@ -573,20 +536,11 @@ export default {
 			const normalized = source.length
 				? source.map((item, index) => ({
 					...(typeof item === 'object' ? item : { name: item }),
-					name: index === 0 ? '复习加强课' : (index === 1 ? '技巧绝招' : '知识巩固'),
+					name: String((item && item.name) || `课程内容${index + 1}`),
 					chapters: item && Array.isArray(item.chapters) ? item.chapters : []
 				}))
-				: [{ name: '复习加强课', chapters: baseChapters }];
-			while (normalized.length < 3) {
-				normalized.push({
-					name: normalized.length === 0 ? '复习加强课' : (normalized.length === 1 ? '技巧绝招' : '知识巩固'),
-					chapters: []
-				});
-			}
-			normalized[0].name = '复习加强课';
-			normalized[1].name = '技巧绝招';
-			normalized[2].name = '知识巩固';
-			return normalized.slice(0, 3).map((version, index) => ({
+				: (baseChapters.length ? [{ name: '课程内容', chapters: baseChapters }] : []);
+			return normalized.map((version, index) => ({
 				...version,
 				rawChapters: version.chapters || [],
 				chapters: this.visibleCourseChapters(version.chapters || [], index)
@@ -947,13 +901,14 @@ export default {
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(recordLabel(videoLabel))}&lessonId=${encodeURIComponent(rawTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}` });
 		},
 		formatCourseDate(value) {
-			const raw = value ? String(value) : '2026-05-26';
+			const raw = value ? String(value) : '';
+			if (!raw) return '--';
 			const match = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
 			if (!match) return raw;
 			return `${match[1]}年${match[2].padStart(2, '0')}月${match[3].padStart(2, '0')}日`;
 		},
 		formatDateTime(value) {
-			return value ? String(value).replace('T', ' ').slice(0, 19) : '2026-01-25 19:57:51';
+			return value ? String(value).replace('T', ' ').slice(0, 19) : '--';
 		},
 		toast(title) { uni.showToast({ title, icon:'none' }); }
 	}

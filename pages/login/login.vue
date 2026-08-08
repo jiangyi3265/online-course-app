@@ -210,23 +210,13 @@
 					this.finishLogin();
 					return;
 				} catch (err) {
-					console.warn('登录接口不可用，尝试本地账号兜底', err);
+					console.warn('登录接口不可用', err);
+					uni.showToast({
+						title: (err && err.message) || '登录服务暂时无法使用，请稍后重试',
+						icon: 'none',
+						duration: 2600
+					});
 				}
-
-				const accounts = [
-					{ phone: '13800138000', password: '123456', name: '张同学', id: '56596' },
-					{ phone: '13900139000', password: '123456', name: '李同学', id: '56597' },
-					{ phone: '18888888888', password: '888888', name: '王老师', id: '10001' }
-				];
-				const matched = accounts.find(a => a.phone === this.phone && a.password === this.password);
-				if (!matched) {
-					uni.showToast({ title: '账号或密码错误', icon: 'none' });
-					return;
-				}
-
-				uni.setStorageSync('userInfo', { name: matched.name, id: matched.id, phone: matched.phone, tenantId: matched.tenantId || 52, role: matched.role || 'student' });
-				uni.setStorageSync('logined', true);
-				this.finishLogin();
 			}
 		}
 	}

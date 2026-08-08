@@ -246,7 +246,7 @@ export default {
 		},
 		primaryCourseId(item = {}) {
 			const courses = item.courses || item.openCourses || [];
-			return item.primaryCourseId || (courses[0] && (courses[0].id || courses[0].courseId)) || 'gk-math-full';
+			return item.primaryCourseId || (courses[0] && (courses[0].id || courses[0].courseId)) || '';
 		},
 		viewAnalysis(item) {
 			const url = `/pages/study-analysis/study-analysis?studentId=${encodeURIComponent(item.id || '')}&studentName=${encodeURIComponent(item.name || '学生')}&courseId=${encodeURIComponent(this.primaryCourseId(item))}&readonly=1`;

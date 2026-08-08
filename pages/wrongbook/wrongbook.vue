@@ -4,6 +4,10 @@
 			<view class="back" @click="goBack">‹</view>
 			<view class="nav-title">错题与巩固</view>
 		</view>
+		<view class="data-error" v-if="loadError">
+			<text>{{loadError}}</text>
+			<view class="data-error-retry" @click="retryLoad">重新加载</view>
+		</view>
 
 		<view class="action-grid">
 			<view class="action-card" :class="{active: mode === 'review'}" @click="setMode('review')">
@@ -185,10 +189,11 @@ export default {
 			source: '全部',
 			statusFilter: 'all',
 			sources: ['全部', '最新错题', '章节扫雷', '复习测试', '真题讲练', '错题重练'],
-			courseId: 'gk-math-full',
+			courseId: '',
 			studentId: '',
 			readOnly: false,
 			course: {},
+			loadError: '',
 			summary: {},
 			wrongList: [],
 			weakList: [],
@@ -238,7 +243,9 @@ export default {
 				const data = await getWrongBookSummary(this.courseId, this.studentId)
 				this.summary = data || {}
 				this.course = { ...this.course, ...(data.course || data.courseInfo || {}) }
-			} catch (err) {}
+			} catch (err) {
+				this.loadError = (err && err.message) || '错题统计暂时无法读取，请稍后重试。'
+			}
 		},
 		async loadCurrent() {
 			if (this.mode === 'review') return this.loadWrongBook()
@@ -251,6 +258,7 @@ export default {
 				this.wrongList = this.scopeCourseItems(await getWrongBook(this.source, this.courseId, this.studentId))
 			} catch (err) {
 				this.wrongList = []
+				this.loadError = (err && err.message) || '错题数据暂时无法读取，请稍后重试。'
 			}
 		},
 		async loadRecords() {
@@ -259,6 +267,7 @@ export default {
 				this.records = this.scopeCourseRecords(await getWrongBookRecords(this.source, this.courseId, this.studentId))
 			} catch (err) {
 				this.records = { total: 0, courseCounts: [], records: [] }
+				this.loadError = (err && err.message) || '测试记录暂时无法读取，请稍后重试。'
 			}
 		},
 		async loadWeak() {
@@ -266,6 +275,7 @@ export default {
 				this.weakList = this.scopeCourseItems(await getWeakWrongBook(this.source, this.courseId, this.studentId))
 			} catch (err) {
 				this.weakList = []
+				this.loadError = (err && err.message) || '短板题库暂时无法读取，请稍后重试。'
 			}
 		},
 		async loadRetry() {
@@ -273,7 +283,13 @@ export default {
 				this.retryPaper = await getWrongRetry(this.retryCount, this.source, this.courseId, this.studentId)
 			} catch (err) {
 				this.retryPaper = { questions: [], sourceWrongIds: [], availableCount: 0, count: 0 }
+				this.loadError = (err && err.message) || '错题重练暂时无法读取，请稍后重试。'
 			}
+		},
+		retryLoad() {
+			this.loadError = ''
+			this.loadSummary()
+			this.loadCurrent()
 		},
 		setMode(mode) {
 			this.mode = mode
@@ -468,6 +484,8 @@ export default {
 </script>
 
 <style lang="scss">
+.data-error { margin:20rpx 28rpx 0; padding:18rpx 20rpx; display:flex; align-items:center; justify-content:space-between; gap:18rpx; border:1rpx solid #f3c7c7; border-radius:10rpx; background:#fff5f5; color:#a33a3a; font-size:23rpx; line-height:1.45; }
+.data-error-retry { flex-shrink:0; padding:10rpx 16rpx; border-radius:8rpx; background:#fff; color:#1677ff; font-weight:800; cursor:pointer; }
 .page {
 	min-height: 100vh;
 	background: #f4f7fb;

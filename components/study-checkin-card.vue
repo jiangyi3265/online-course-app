@@ -1,6 +1,7 @@
 <template>
 	<view class="checkin-wrap">
 		<view class="checkin-card">
+			<view class="sync-warning" v-if="loadError">{{ loadError }}</view>
 			<view class="hero-row">
 				<view class="sub">每天上传学习内容，有助于规划师了解你的学习情况</view>
 			</view>
@@ -110,7 +111,7 @@ const emptyCheckinForm = () => CONTENT_FIELDS.reduce((form, field) => {
 
 export default {
 	props: {
-		courseId: { type: String, default: 'gk-math-full' },
+		courseId: { type: String, default: '' },
 		studentId: { type: String, default: '' },
 		readOnly: { type: Boolean, default: false }
 	},
@@ -120,7 +121,8 @@ export default {
 			currentRecord: null,
 			checkinForm: emptyCheckinForm(),
 			images: [],
-			records: []
+			records: [],
+			loadError: ''
 		}
 	},
 	computed: {
@@ -166,6 +168,7 @@ export default {
 			return media && isUsableMediaUrl(media) ? media : '';
 		},
 		async loadRecords() {
+			this.loadError = '';
 			const stored = uni.getStorageSync(CHECKIN_KEY) || [];
 			this.records = Array.isArray(stored) ? stored : [];
 			try {
@@ -175,7 +178,8 @@ export default {
 					uni.setStorageSync(CHECKIN_KEY, this.records);
 				}
 			} catch (err) {
-				console.warn('学习打卡接口不可用，使用本地缓存', err);
+				console.warn('学习打卡接口不可用', err);
+				this.loadError = '服务器记录暂时无法同步，当前仅显示本机已缓存的打卡记录。';
 			}
 			const todayRecord = this.courseRecords.find(item => item.date === this.todayKey());
 			this.currentRecord = todayRecord || null;
@@ -289,7 +293,10 @@ export default {
 					record.imageCount = record.images.length;
 				}
 			} catch (err) {
-				console.warn('学习打卡保存接口不可用，先保存到本地', err);
+				console.warn('学习打卡保存接口不可用', err);
+				uni.setStorageSync(`studyCheckinDraft:${this.scopeStudentId()}:${this.courseId}:${record.date}`, record);
+				uni.showToast({ title: '提交失败，内容已保留，请稍后重试', icon: 'none', duration: 3000 });
+				return;
 			}
 			const stored = uni.getStorageSync(CHECKIN_KEY) || [];
 			const next = (Array.isArray(stored) ? stored : []).filter(item => !(this.sameScope(item) && this.recordDate(item) === record.date));
@@ -410,6 +417,7 @@ export default {
 <style lang="scss">
 .checkin-wrap { padding:24rpx; background:#f5f7fa; }
 .checkin-card { max-width:640rpx; margin:0 auto; padding:28rpx; border-radius:10rpx; background:#d9f3ff; border:1rpx solid #b6e7fb; box-sizing:border-box; }
+.sync-warning { margin-bottom:20rpx; padding:16rpx 18rpx; border:1rpx solid #f4d6a7; border-radius:8rpx; background:#fff8e8; color:#8a5b12; font-size:23rpx; line-height:1.5; }
 .hero-row { display:flex; align-items:center; }
 .sub { width:100%; color:#111827; font-size:22rpx; line-height:1.4; font-weight:700; white-space:nowrap; }
 .date-row { margin-top:24rpx; min-height:86rpx; display:flex; align-items:center; padding:0 28rpx; border-radius:8rpx 8rpx 0 0; background:#80d9f2; color:#111827; font-size:34rpx; font-weight:900; }

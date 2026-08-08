@@ -2,7 +2,7 @@
 	<view class="page">
 		<!-- Hero Banner -->
 		<view class="banner">
-			<swiper v-if="bannerReady && homeBanners.length" class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
+			<swiper v-if="bannerState === 'success' && homeBanners.length" class="banner-swiper" circular autoplay interval="3500" duration="450" indicator-dots indicator-color="rgba(255,255,255,.65)" indicator-active-color="#1677ff">
 				<swiper-item v-for="item in homeBanners" :key="item.renderKey || item.id || item.imageUrl">
 					<!-- #ifdef H5 -->
 					<img class="banner-img" :src="item.imageUrl" draggable="false" @click="openBanner(item)" @error.stop="onBannerError(item)" />
@@ -12,6 +12,10 @@
 					<!-- #endif -->
 				</swiper-item>
 			</swiper>
+			<view v-else-if="bannerState === 'error'" class="banner-swiper banner-message" @click="loadFrontendSettings">
+				<text>首页图片暂时无法加载，点击重试</text>
+			</view>
+			<view v-else-if="bannerState === 'empty'" class="banner-swiper banner-message"><text>暂无轮播内容</text></view>
 			<view v-else class="banner-swiper banner-skeleton" aria-hidden="true"></view>
 		</view>
 
@@ -50,8 +54,8 @@
 		</view>
 
 		<!-- 课程网格 -->
-		<view class="grid">
-			<view class="card" v-for="(it,i) in list" :key="i" @click="goDetail(it)">
+		<view class="grid" v-if="coursesState === 'success' && list.length">
+			<view class="card" v-for="it in list" :key="it.renderKey || it.id" @click="goDetail(it)">
 				<view class="cover">
 					<!-- #ifdef H5 -->
 					<img v-if="it.cover && !it.coverError" class="cover-img" :src="it.cover" draggable="false" @error.stop="onCourseCoverError(it)" />
@@ -71,6 +75,15 @@
 				</view>
 			</view>
 		</view>
+		<app-data-state v-else-if="coursesState === 'loading'" type="loading" />
+		<app-data-state
+			v-else-if="coursesState === 'error'"
+			type="error"
+			title="课程数据暂时无法加载"
+			description="请检查网络后重新加载。"
+			@retry="loadCourses"
+		/>
+		<app-data-state v-else type="empty" title="暂无已发布的试听课程" description="课程发布后会显示在这里。" />
 
 		<view style="height:140rpx"></view>
 
@@ -80,10 +93,11 @@
 
 <script>
 import TabBar from '@/components/tab-bar.vue'
-import { GAOKAO_MATH_TRIAL, stripCourseYear } from '@/common/course-data.js'
+import AppDataState from '@/components/app-data-state.vue'
+import { stripCourseYear } from '@/common/course-data.js'
 import { getCourses, getFrontendSettings, resolveMediaList, resolveMediaUrl } from '@/common/api.js'
 export default {
-	components: { TabBar },
+	components: { TabBar, AppDataState },
 	data() {
 		return {
 			cats: [
@@ -93,19 +107,9 @@ export default {
 				{ icon:'/static/system-icons/home/gk-course.png?v=2026072502', iconError:false, symbol:'课', text:'高考课程' }
 			],
 			homeBanners: [],
-			bannerReady: false,
-			list: [
-				{ full:'中考语文', learn:1086, cover:'/static/courses/zk-yuwen.jpg', kind:'trial', isTry:true },
-				{ full:'中考数学', learn:1456, cover:'/static/courses/zk-shuxue.jpg', kind:'trial', isTry:true },
-				{ full:'中考英语', learn:1289, cover:'/static/courses/zk-yingyu.jpg', kind:'trial', isTry:true },
-				{ full:'中考物理', learn:1176, cover:'/static/courses/zk-wuli.jpg', kind:'trial', isTry:true },
-				{ full:'中考化学', learn:1237, cover:'/static/courses/zk-huaxue.jpg', kind:'trial', isTry:true },
-				{ full:'高考语文', learn:1078, cover:'/static/courses/gk-yuwen.jpg', kind:'trial', isTry:true },
-				{ full:'高考数学', learn:GAOKAO_MATH_TRIAL.studyCount, cover:GAOKAO_MATH_TRIAL.cover, subject:'gaokao-math', kind:'trial', isTry:true },
-				{ full:'高考英语', learn:1360, cover:'/static/courses/gk-yingyu.jpg', kind:'trial', isTry:true },
-				{ full:'高考物理', learn:1121, cover:'/static/courses/gk-wuli.jpg', kind:'trial', isTry:true },
-				{ full:'高考化学', learn:980,  cover:'/static/courses/gk-huaxue.jpg', kind:'trial', isTry:true }
-			]
+			bannerState: 'loading',
+			coursesState: 'loading',
+			list: []
 		}
 	},
 	onLoad() {
@@ -124,6 +128,7 @@ export default {
 			if (typeof document !== 'undefined') document.title = '元知智学';
 		},
 		async loadFrontendSettings() {
+			this.bannerState = 'loading';
 			try {
 				const settings = await getFrontendSettings();
 				const settingsVersion = settings && (settings.updatedAt || settings.version || settings.savedAt);
@@ -143,34 +148,41 @@ export default {
 				if (usableBanners.length) {
 					await this.preloadBanners(usableBanners);
 					this.homeBanners = usableBanners;
+					this.bannerState = 'success';
 				}
-				else this.homeBanners = [{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }];
+				else {
+					this.homeBanners = [];
+					this.bannerState = 'empty';
+				}
 			} catch (err) {
-				console.warn('前端配置接口不可用，使用默认首页图', err);
-				this.homeBanners = [{ id:'default', imageUrl:'/static/home-banner.png', linkUrl:'' }];
-			} finally {
-				this.bannerReady = true;
+				console.warn('前端配置接口不可用', err);
+				this.homeBanners = [];
+				this.bannerState = 'error';
 			}
 		},
 		async loadCourses() {
+			this.coursesState = 'loading';
 			try {
 				const courses = await getCourses({ kind: 'trial' });
-				if (!courses || !courses.length) return;
-				this.list = courses.map(item => ({
+				this.list = (courses || []).map(item => {
+					const cover = this.firstMediaUrl([item.cover, item.coverUrl, item.imageUrl, item.image, item.thumbnail]);
+					return {
 					id: item.id,
 					full: stripCourseYear(item.full),
 					learn: item.studyCount || item.learn || 0,
-					cover: this.firstMediaUrl(
-						[item.cover, item.coverUrl, item.imageUrl, item.image, item.thumbnail],
-						this.localCourseCover(item.full || item.title || item.name)
-					),
+					cover,
 					coverError: false,
+					renderKey: `${item.id || item.full || item.title}-${cover}-${item.updatedAt || item.version || 'current'}`,
 					subject: item.subject,
 					kind: item.kind,
 					isTry: item.isTry
-				}));
+					};
+				});
+				this.coursesState = this.list.length ? 'success' : 'empty';
 			} catch (err) {
-				console.warn('课程接口不可用，使用本地课程数据', err);
+				console.warn('课程接口不可用', err);
+				this.list = [];
+				this.coursesState = 'error';
 			}
 		},
 		openBanner(item = {}) {
@@ -183,8 +195,9 @@ export default {
 			uni.navigateTo({ url, fail: () => uni.switchTab({ url, fail: () => uni.redirectTo({ url }) }) });
 		},
 		onBannerError(item = {}) {
-			item.imageUrl = '/static/home-banner.png';
 			item.imageError = true;
+			const hasUsableBanner = this.homeBanners.some(banner => !banner.imageError);
+			if (!hasUsableBanner) this.bannerState = 'error';
 		},
 		firstMediaUrl(values = [], fallback = '') {
 			return resolveMediaList(values)[0] || fallback;
@@ -230,31 +243,8 @@ export default {
 			return resolveMediaUrl(item.icon || '');
 		},
 		onCourseCoverError(item = {}) {
-			const fallback = this.localCourseCover(item.full || item.title || item.name);
-			if (fallback && item.cover !== fallback) {
-				item.cover = fallback;
-				item.coverError = false;
-				return;
-			}
 			if (this.$set) this.$set(item, 'coverError', true);
 			else item.coverError = true;
-		},
-		localCourseCover(value = '') {
-			const title = String(value || '').replace(/[《》\s]/g, '');
-			const covers = {
-				中考语文:'/static/courses/zk-yuwen.jpg',
-				中考数学:'/static/courses/zk-shuxue.jpg',
-				中考英语:'/static/courses/zk-yingyu.jpg',
-				中考物理:'/static/courses/zk-wuli.jpg',
-				中考化学:'/static/courses/zk-huaxue.jpg',
-				高考语文:'/static/courses/gk-yuwen.jpg',
-				高考数学:'/static/courses/gk-shuxue.jpg',
-				高考英语:'/static/courses/gk-yingyu.jpg',
-				高考物理:'/static/courses/gk-wuli.jpg',
-				高考化学:'/static/courses/gk-huaxue.jpg'
-			};
-			const matched = Object.keys(covers).find(key => title.includes(key));
-			return matched ? covers[matched] : '';
 		},
 		catFallbackText(item = {}) {
 			const text = String(item.text || '');
@@ -304,6 +294,7 @@ page { background:#f7f8fa; color-scheme:light; }
 .banner { padding: 20rpx 24rpx 8rpx; }
 .banner-swiper { width:100%; height:219rpx; border-radius:14rpx; overflow:hidden; background:#eef2f7; }
 .banner-skeleton { background:linear-gradient(110deg,#eef2f7 8%,#f8fafc 18%,#eef2f7 33%); background-size:200% 100%; animation:banner-loading 1.2s linear infinite; }
+.banner-message { display:flex; align-items:center; justify-content:center; padding:24rpx; box-sizing:border-box; color:#718096; font-size:24rpx; text-align:center; cursor:pointer; }
 .banner-img { width:100%; height:100%; display:block; border-radius:14rpx; object-fit:cover; object-position:center; background:#eef2f7; }
 .banner-img :deep(div),
 .banner-img :deep(.uni-image-div) { background-size:cover !important; background-repeat:no-repeat !important; background-position:center center !important; }

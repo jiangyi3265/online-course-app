@@ -2,6 +2,22 @@
 	<view class="page">
 		<view class="nav"><view class="back" @click="goBack">‹</view><view class="nav-title">学习报告</view></view>
 
+		<AppDataState
+			v-if="loadState === 'loading'"
+			type="loading"
+			title="正在加载学习报告"
+			description="正在汇总课程进度与练习记录，请稍候。"
+		/>
+		<AppDataState
+			v-else-if="loadState === 'error'"
+			type="error"
+			title="学习报告加载失败"
+			:description="loadError || '报告数据暂时无法读取，请稍后重试。'"
+			@retry="loadData"
+		/>
+
+		<template v-else>
+
 		<view class="course-card">
 			<view class="course-main">
 				<view class="course-label">课程名字：</view>
@@ -163,6 +179,7 @@
 			<view class="panel-title">学习建议</view>
 			<view class="suggestion" v-for="item in suggestions" :key="item">{{item}}</view>
 		</view>
+		</template>
 	</view>
 </template>
 
@@ -171,17 +188,18 @@ import { getOfflinePaperReviews, getStudyReport, isUsableMediaUrl, resolveMediaU
 import { stripCourseYear } from '@/common/course-data.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import AnalysisViewer from '@/components/analysis-viewer.vue'
+import AppDataState from '@/components/app-data-state.vue'
 import MathRichText from '@/components/math-rich-text.vue'
 import QuestionAudioPlayer from '@/components/question-audio-player.vue'
 
 const REVIEW_KEY = 'offlineExamReviews';
 
 export default {
-	components: { AnalysisViewer, MathRichText, QuestionAudioPlayer },
+	components: { AnalysisViewer, AppDataState, MathRichText, QuestionAudioPlayer },
 	data() {
 		return {
 			report: { overview:[], attempts:[], recentPractice:[], suggestions:[] },
-			courseId: 'gk-math-full',
+			courseId: '',
 			userId: '',
 			readOnly: false,
 			showPractice: false,
@@ -193,12 +211,14 @@ export default {
 			selectedPractice: null,
 			offlineReviews: [],
 			currentTimeText: '',
-			clockTimer: null
+			clockTimer: null,
+			loadState: 'loading',
+			loadError: ''
 		}
 	},
 	computed: {
 		courseTitle() {
-			return stripCourseYear(this.report.courseTitle || this.report.courseName || '高考数学');
+			return stripCourseYear(this.report.courseTitle || this.report.courseName || '课程');
 		},
 		recentRows() {
 			const rows = this.report.recentPractice && this.report.recentPractice.length ? this.report.recentPractice : (this.report.attempts || []);
@@ -286,10 +306,7 @@ export default {
 				progress: Math.max(0, Math.min(100, progress || 0)),
 				checkins: Number(this.report.checkinDays || stats.checkinDays || 0)
 			};
-			return [
-				{ name:'复习加强课', ...base },
-				{ name:'技巧绝招', ...base }
-			];
+			return [{ name:'课程进度', ...base }];
 		},
 		reportDetailRows() {
 			const chapterRows = this.chapterRows;
@@ -310,7 +327,7 @@ export default {
 		}
 	},
 	onLoad(opts = {}) {
-		this.courseId = opts.courseId || 'gk-math-full';
+		this.courseId = opts.courseId || '';
 		this.userId = opts.studentId || opts.userId || '';
 		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || opts.readonly === true;
 		this.offlineReviews = uni.getStorageSync(REVIEW_KEY) || [];
@@ -350,16 +367,27 @@ export default {
 			return Math.max(0, Math.min(100, Math.round(Number(fallback) || 0)));
 		},
 		async loadData() {
+			if (!this.courseId) {
+				this.loadState = 'error';
+				this.loadError = '缺少课程编号，无法读取学习报告。';
+				return;
+			}
+			this.loadState = 'loading';
+			this.loadError = '';
+			this.report = { overview:[], attempts:[], recentPractice:[], suggestions:[] };
 			try {
 				this.report = await getStudyReport(this.courseId, this.userId);
+				if (!this.report || typeof this.report !== 'object') throw new Error('报告数据为空');
 				this.offlineReviews = this.mergeOfflineReviews(this.report.offlineReviews || [], uni.getStorageSync(REVIEW_KEY) || []);
 				await this.loadRemoteOfflineReviews();
 				this.selectedPractice = this.practiceRows[0] || null;
+				this.loadState = 'success';
 			} catch (err) {
-				console.warn('学习报告接口不可用，使用本地报告', err);
-				this.report = this.localReport();
-				await this.loadRemoteOfflineReviews();
-				this.selectedPractice = this.practiceRows[0] || null;
+				console.warn('学习报告接口不可用', err);
+				this.report = { overview:[], attempts:[], recentPractice:[], suggestions:[] };
+				this.selectedPractice = null;
+				this.loadState = 'error';
+				this.loadError = (err && err.message) || '报告数据暂时无法读取，请稍后重试。';
 			}
 		},
 		async loadRemoteOfflineReviews() {
@@ -572,36 +600,6 @@ export default {
 		metricNumber(value = '') {
 			const match = String(value).match(/\d+(?:\.\d+)?/);
 			return match ? Number(match[0]) : 0;
-		},
-		localReport() {
-			return {
-				courseTitle: this.courseId.includes('yingyu') ? '高考英语' : '高考数学',
-				totalLessons: 22,
-				readStudyCount: 5,
-				progress: 23,
-				checkinDays: 1,
-				learningStats: {
-					todayText: '5秒',
-					weekText: '25秒',
-					totalText: '25秒',
-					records: [
-						{ lessonTitle:'根据实际问题选择函数类型', duration:'5秒', updatedAt:'2026-06-01 16:25' },
-						{ lessonTitle:'33.端点效应解题大招', duration:'5秒', updatedAt:'2026-06-01 16:18' },
-						{ lessonTitle:'2.复数加减的模（图解法）', duration:'5秒', updatedAt:'2026-05-31 20:12' },
-						{ lessonTitle:'1.复数乘除的模（三角法）', duration:'5秒', updatedAt:'2026-05-30 18:06' }
-					]
-				},
-				averageScore: 100,
-				wrongCount: 3,
-				practiceCount: 3,
-				accuracy: 76,
-				attempts: [
-					{ id:'local-report-1', title:'高考数学 我的收藏 真题讲练', type:'practice', score:100, total:1, correct:1, wrongCount:0, details:[
-						{ id:'q1', stem:'函数 f(x)=x^2 在 x=2 处的导数为', correct:true, analysis:'f′(x)=2x，代入 x=2 得 4。' }
-					] }
-				],
-				recentPractice: [{ id:'local-practice-1', title:'高考数学 真题讲练', averageScore:100, wrongCount:0, createdAt:'2026-06-08 11:30:00' }]
-			};
 		},
 		goWrongBook() {
 			if (this.readOnly) {

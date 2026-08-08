@@ -5,6 +5,22 @@
 				<view class="nav-title">我的课程文档</view>
 		</view>
 
+		<AppDataState
+			v-if="loadState === 'loading'"
+			type="loading"
+			title="正在加载课程文档"
+			description="正在读取资料和试卷，请稍候。"
+		/>
+		<AppDataState
+			v-else-if="loadState === 'error'"
+			type="error"
+			title="课程文档加载失败"
+			:description="loadError || '文档数据暂时无法读取，请稍后重试。'"
+			@retry="loadDocs"
+		/>
+
+		<template v-else>
+
 		<view class="search">
 			<view class="search-box">
 				<view class="s-ico"></view>
@@ -160,6 +176,7 @@
 			</view>
 		</view>
 		</view>
+		</template>
 
 		<view class="mask" v-if="showLogin">
 			<view class="modal">
@@ -178,19 +195,13 @@
 <script>
 import { getFavorites, getMyDocs, getOfflinePaperReviews, isLoggedIn, isUsableMediaUrl, resolveMediaDownloadUrl, resolveMediaList, resolveMediaUrl, saveOfflinePaperReview, toggleFavorite, uploadAnswerImage, uploadAnswerImageFile } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
+import AppDataState from '@/components/app-data-state.vue'
 
 const REVIEW_KEY = 'offlineExamReviews';
 const PAPER_DRAFT_KEY = 'offlineExamPaperDraftUi';
-const LOCAL_DOCS = [
-	{ id:'local-doc-1', courseId:'gk-math-full', category:'lecture', title:'高考数学集合逻辑讲义.pdf', fileUrl:'#', fileType:'PDF', size:'1.2MB', uploadTime:'2026-05-26T10:11:00', visible:true },
-	{ id:'local-doc-2', courseId:'gk-math-full', category:'lecture', title:'导数极值专题学案.pdf', fileUrl:'#', fileType:'PDF', size:'2.4MB', uploadTime:'2026-05-26T10:11:00', visible:true },
-	{ id:'local-doc-3', courseId:'zk-yingyu-full', category:'lecture', title:'中考英语核心词汇表.xlsx', fileUrl:'#', fileType:'XLSX', size:'640KB', uploadTime:'2026-05-26T10:11:00', visible:true },
-	{ id:'local-paper-1', courseId:'gk-math-full', category:'paper', title:'高考数学集合逻辑测试卷.pdf', fileUrl:'#', fileType:'PDF', size:'1.2MB', uploadTime:'2026-05-26T10:15:00', visible:true },
-	{ id:'local-paper-2', courseId:'gk-math-full', category:'paper', title:'导数极值专题测试卷.pdf', fileUrl:'#', fileType:'PDF', size:'2.4MB', uploadTime:'2026-05-26T10:15:00', visible:true },
-	{ id:'local-paper-3', courseId:'zk-yingyu-full', category:'paper', title:'中考英语核心词汇测试卷.xlsx', fileUrl:'#', fileType:'XLSX', size:'640KB', uploadTime:'2026-05-26T10:15:00', visible:true }
-];
 
 export default {
+	components: { AppDataState },
 	data() {
 		return {
 			kw:'',
@@ -205,6 +216,8 @@ export default {
 			paperDrafts: {},
 			favoriteMap: {},
 			showLogin:false,
+			loadState:'loading',
+			loadError:'',
 			expandedSections: { lecture:false, paper:false }
 		}
 	},
@@ -230,7 +243,8 @@ export default {
 	onShow() {
 		if (!isLoggedIn()) {
 			this.showLogin = true;
-			this.list = this.filterLocalDocs();
+			this.list = [];
+			this.loadState = 'success';
 			return;
 		}
 		this.loadDocs();
@@ -250,17 +264,20 @@ export default {
 			return text;
 		},
 		async loadDocs() {
+			this.loadState = 'loading';
+			this.loadError = '';
+			this.list = [];
 			try {
 				await this.loadOfflineReviews();
 				const docs = await getMyDocs('', this.courseId, this.studentId);
-				const withFallbackDocs = this.ensureCategoryDocs(docs || []);
-				this.list = this.filterDocs(withFallbackDocs, this.activeKeyword().toLowerCase()).map(doc => this.decorateDoc(doc));
+				this.list = this.filterDocs(Array.isArray(docs) ? docs : [], this.activeKeyword().toLowerCase()).map(doc => this.decorateDoc(doc));
 				await this.syncDocFavorites();
+				this.loadState = 'success';
 			} catch (err) {
-				console.warn('文档接口不可用，使用本地文档', err);
-				await this.loadOfflineReviews();
-				this.list = this.filterLocalDocs();
-				await this.syncDocFavorites();
+				console.warn('文档接口不可用', err);
+				this.list = [];
+				this.loadState = 'error';
+				this.loadError = (err && err.message) || '文档数据暂时无法读取，请稍后重试。';
 			}
 		},
 		async loadOfflineReviews() {
@@ -280,7 +297,7 @@ export default {
 			remote.concat(local).forEach(item => {
 				if (!item) return;
 				const docId = item.docId === undefined || item.docId === null ? '' : String(item.docId);
-				const courseId = item.courseId || this.courseId || 'gk-math-full';
+				const courseId = item.courseId || this.courseId || '';
 				const key = item.id || `${courseId}:${docId}`;
 				const current = map[key];
 				const currentTime = current ? new Date(current.updatedAt || current.createdAt || 0).getTime() : 0;
@@ -295,12 +312,6 @@ export default {
 				}
 			});
 			return Object.values(map).sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')));
-		},
-		filterLocalDocs() {
-			const key = this.activeKeyword().toLowerCase();
-			const matched = this.filterDocs(LOCAL_DOCS, key);
-			const list = matched.length ? matched : this.filterDocs(this.createCourseFallbackDocs(), key);
-			return list.map(doc => this.decorateDoc(doc));
 		},
 		activeKeyword() {
 			const keyword = this.kw.trim();
@@ -320,44 +331,10 @@ export default {
 			return docs.filter(doc => String(doc.title || '').toLowerCase().includes(key));
 		},
 		docCourseId(doc = {}) {
-			return doc.courseId || 'gk-math-full';
-		},
-		ensureCategoryDocs(docs = []) {
-			const list = docs.length ? docs : this.filterLocalDocs();
-			const fallback = this.createCourseFallbackDocs();
-			let result = list.slice();
-			if (!result.some(doc => !this.isPaper(doc))) {
-				result = result.concat(fallback.filter(doc => doc.category === 'lecture'));
-			}
-			if (!result.some(doc => this.isPaper(doc))) {
-				result = result.concat(fallback.filter(doc => doc.category === 'paper'));
-			}
-			return result;
+			return doc.courseId || '';
 		},
 			isPaper(doc = {}) {
 				return doc.category === 'paper' || /试卷|测试卷|线下/i.test(doc.title || '');
-			},
-		createCourseFallbackDocs() {
-			const title = this.resolveCourseTitle();
-			const courseId = this.courseId || `local-${title}`;
-				return [
-					{ id:`fallback-lecture-${courseId}`, courseId, category:'lecture', title:`${title}讲义及学习资料.pdf`, fileUrl:'#', fileType:'PDF', size:'1.2MB', uploadTime:'2026-05-26T10:11:00', visible:true },
-					{ id:`fallback-paper-${courseId}`, courseId, category:'paper', title:`${title}线下测试卷.pdf`, fileUrl:'#', fileType:'PDF', size:'1.2MB', uploadTime:'2026-05-26T10:15:00', visible:true }
-				];
-			},
-			resolveCourseTitle() {
-				const key = (this.courseTitle || this.kw).replace(/[《》【】]/g, '').trim();
-				if (key) return key;
-				if (/yingyu|english/i.test(this.courseId)) return '英语';
-				if (/yuwen|chinese/i.test(this.courseId)) return '语文';
-				if (/wuli|physics/i.test(this.courseId)) return '物理';
-				if (/huaxue|chemistry/i.test(this.courseId)) return '化学';
-				if (/shengwu|biology/i.test(this.courseId)) return '生物';
-				if (/lishi|history/i.test(this.courseId)) return '历史';
-				if (/zhengzhi|politics/i.test(this.courseId)) return '政治';
-				if (/dili|geography/i.test(this.courseId)) return '地理';
-				if (/math|shuxue/i.test(this.courseId)) return '数学';
-				return '课程';
 			},
 		toggleSection(type) {
 			this.expandedSections[type] = !this.expandedSections[type];
@@ -672,7 +649,7 @@ export default {
 				...existed,
 				id: existed.id || `offline-${doc.id}-${Date.now()}`,
 				docId: doc.id,
-				courseId: doc.courseId || this.courseId || 'gk-math-full',
+				courseId: doc.courseId || this.courseId || '',
 				title: doc.title,
 				totalScore: doc.totalScore,
 				score: doc.score,
@@ -749,7 +726,7 @@ export default {
 			const record = {
 				id: `offline-${Date.now()}`,
 				docId: doc.id,
-				courseId: doc.courseId || 'gk-math-full',
+				courseId: doc.courseId || this.courseId || '',
 				title: doc.title,
 				totalScore,
 				score,

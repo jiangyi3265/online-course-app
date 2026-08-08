@@ -2,14 +2,22 @@
 	<view class="page">
 		<view class="nav">
 			<view class="back" @click="goBack">‹</view>
-			<view class="nav-title">{{doc.title}}</view>
+			<view class="nav-title">{{ pageTitle }}</view>
 			<view class="nav-spacer"></view>
 		</view>
 
-		<view class="content">
+		<AppDataState
+			v-if="state !== 'success'"
+			:state="state"
+			:title="stateTitle"
+			:description="stateDescription"
+			@retry="loadDoc"
+		/>
+
+		<view v-else class="content">
 			<view class="doc-card">
-				<view class="doc-title">{{doc.title}}</view>
-				<view class="doc-time" v-if="doc.updatedAt">更新时间：{{formatTime(doc.updatedAt)}}</view>
+				<view class="doc-title">{{ doc.title }}</view>
+				<view class="doc-time" v-if="doc.updatedAt">更新时间：{{ formatTime(doc.updatedAt) }}</view>
 				<rich-text class="doc-body" :nodes="docContentHtml"></rich-text>
 			</view>
 		</view>
@@ -17,48 +25,61 @@
 </template>
 
 <script>
+import AppDataState from '@/components/app-data-state.vue'
 import { getFrontendSettings } from '@/common/api.js'
 
 export default {
+	components: { AppDataState },
 	data() {
 		return {
 			type: 'privacy',
-			doc: {
-				title: '隐私政策',
-				content: '暂无内容',
-				updatedAt: ''
-			}
+			state: 'loading',
+			doc: null
 		}
 	},
 	onLoad(opts = {}) {
 		this.type = opts.type === 'user' ? 'user' : 'privacy'
-		this.doc = this.fallbackDoc()
 		this.loadDoc()
 	},
 	computed: {
+		pageTitle() {
+			return this.type === 'user' ? '用户协议' : '隐私政策'
+		},
+		stateTitle() {
+			if (this.state === 'error') return '协议内容加载失败'
+			if (this.state === 'empty') return '协议内容暂未发布'
+			return '正在加载协议内容'
+		},
+		stateDescription() {
+			if (this.state === 'error') return '请检查网络后重试，如仍无法加载请联系管理员。'
+			if (this.state === 'empty') return '管理员发布后即可查看。'
+			return '请稍候…'
+		},
 		docContentHtml() {
-			return this.toRichText(this.doc.content || '暂无内容')
+			return this.toRichText(this.doc && this.doc.content)
 		}
 	},
 	methods: {
-		fallbackDoc() {
-			return this.type === 'user'
-				? { title: '用户协议', content: '暂无内容', updatedAt: '' }
-				: { title: '隐私政策', content: '暂无内容', updatedAt: '' }
-		},
 		async loadDoc() {
+			this.state = 'loading'
+			this.doc = null
 			try {
 				const settings = await getFrontendSettings()
 				const agreements = settings && settings.agreements ? settings.agreements : {}
 				const remoteDoc = this.type === 'user' ? agreements.user : agreements.privacy
-				if (remoteDoc && (remoteDoc.title || remoteDoc.content)) {
-					this.doc = {
-						...this.fallbackDoc(),
-						...remoteDoc
-					}
+				if (!remoteDoc || !String(remoteDoc.content || '').trim()) {
+					this.state = 'empty'
+					return
 				}
+				this.doc = {
+					title: String(remoteDoc.title || this.pageTitle),
+					content: String(remoteDoc.content),
+					updatedAt: remoteDoc.updatedAt || ''
+				}
+				this.state = 'success'
 			} catch (err) {
-				console.warn('协议配置读取失败，使用默认内容', err)
+				console.warn('协议配置读取失败', err)
+				this.state = 'error'
 			}
 		},
 		goBack() {

@@ -5,6 +5,22 @@
 			<view class="nav-title">学情统计</view>
 		</view>
 
+		<AppDataState
+			v-if="loadState === 'loading'"
+			type="loading"
+			title="正在加载学情统计"
+			description="正在汇总课程和学习记录，请稍候。"
+		/>
+		<AppDataState
+			v-else-if="loadState === 'error'"
+			type="error"
+			title="学情统计加载失败"
+			:description="loadError || '学习数据暂时无法读取，请稍后重试。'"
+			@retry="loadRemoteData"
+		/>
+
+		<template v-else>
+
 		<view class="section-head">
 			<view>
 				<view class="section-title">{{pageTitle}}</view>
@@ -110,18 +126,20 @@
 				<view>今日复习：{{englishVocabularyStats.review}}个</view>
 			</view>
 		</view>
+		</template>
 	</view>
 </template>
 
 <script>
-import { getStudySummary } from '@/common/study-summary.js'
 import { decodeRouteText, getStudyCheckins, getStudyReport, getStudySummaryApi, getMyCourses, getMyStudents, isLoggedIn, resolveMediaList } from '@/common/api.js'
-import { AUTHORIZED_COURSES, stripCourseYear } from '@/common/course-data.js'
+import { stripCourseYear } from '@/common/course-data.js'
 import { safeNavigateBack } from '@/common/navigation.js'
+import AppDataState from '@/components/app-data-state.vue'
 
 const CHECKIN_KEY = 'studyCheckins';
 
 export default {
+	components: { AppDataState },
 	data() {
 		return {
 			studySummary: null,
@@ -136,7 +154,9 @@ export default {
 			checkinRecords: [],
 			showCheckinRecords: false,
 			currentTimeText: '',
-			clockTimer: null
+			clockTimer: null,
+			loadState: 'loading',
+			loadError: ''
 		}
 	},
 	computed: {
@@ -164,7 +184,7 @@ export default {
 		englishVocabularyStats() {
 			const data = (this.studySummary && (this.studySummary.englishVocabulary || this.studySummary.vocabularyStats)) || {};
 			return {
-				bookName: data.bookName || data.name || '高考单词3500词',
+				bookName: data.bookName || data.name || '暂无',
 				read: Number(data.readToday || data.todayRead || data.read || 0),
 				dictation: Number(data.dictationToday || data.todayDictation || data.listenWrite || 0),
 				newWords: Number(data.newToday || data.todayNew || data.newWords || 0),
@@ -188,7 +208,6 @@ export default {
 			return;
 		}
 		this.userInfo = uni.getStorageSync('userInfo') || {};
-		this.studySummary = getStudySummary();
 		this.checkinRecords = this.sharedCheckins(uni.getStorageSync(CHECKIN_KEY) || []);
 		await this.loadRemoteData();
 	},
@@ -214,16 +233,27 @@ export default {
 			this.clockTimer = null;
 		},
 		async loadRemoteData() {
+			this.loadState = 'loading';
+			this.loadError = '';
+			this.studySummary = null;
+			this.learningStats = null;
+			this.activeCourses = [];
 			try {
 				this.studySummary = await getStudySummaryApi();
 			} catch (err) {
-				console.warn('学习统计接口不可用，使用本地统计', err);
+				console.warn('学习统计接口不可用', err);
+				this.loadState = 'error';
+				this.loadError = (err && err.message) || '学习统计数据暂时无法读取，请稍后重试。';
+				return;
 			}
 			try {
 				const report = await getStudyReport('', this.studentId);
 				this.learningStats = report.learningStats || null;
 			} catch (err) {
 				console.warn('学习报告接口不可用', err);
+				this.loadState = 'error';
+				this.loadError = (err && err.message) || '学习报告暂时无法读取，请稍后重试。';
+				return;
 			}
 			try {
 				const remoteCheckins = await getStudyCheckins({ userId: this.studentId || '' });
@@ -245,45 +275,37 @@ export default {
 						const courses = current.courses || current.openCourses || [];
 						if (courses.length) {
 							this.activeCourses = courses;
+							this.loadState = 'success';
 							return;
 						}
 					}
 				} catch (err) {
 					console.warn('学生课程接口不可用', err);
+					this.loadState = 'error';
+					this.loadError = (err && err.message) || '学生课程数据暂时无法读取，请稍后重试。';
+					return;
 				}
 			}
 			try {
 				const list = await getMyCourses();
-				this.activeCourses = (list && list.length ? list : AUTHORIZED_COURSES);
+				this.activeCourses = Array.isArray(list) ? list : [];
+				this.loadState = 'success';
 			} catch (err) {
-				console.warn('已激活课程接口不可用，使用本地课程', err);
-				this.activeCourses = AUTHORIZED_COURSES;
+				console.warn('已激活课程接口不可用', err);
+				this.loadState = 'error';
+				this.loadError = (err && err.message) || '已激活课程暂时无法读取，请稍后重试。';
 			}
 		},
 		normalizeCourse(course = {}) {
 			const title = stripCourseYear(course.courseName || course.title || course.sub || '');
 			return {
 				...course,
-				id: course.id || course.courseId || this.inferCourseId(title, course.subject),
+				id: course.id || course.courseId || '',
 				title: this.cleanCourseTitle(title)
 			};
 		},
 		cleanCourseTitle(title = '') {
 			return stripCourseYear(title).replace(/[《》]/g, '').replace(/试听课/g, '').trim();
-		},
-		inferCourseId(title = '', subject = '') {
-			const text = `${title}${subject}`;
-			if (/高考数学|gaokao-math/.test(text)) return 'gk-math-full';
-			if (/高考语文/.test(text)) return 'gk-yuwen-full';
-			if (/高考英语/.test(text)) return 'gk-yingyu-full';
-			if (/高考物理/.test(text)) return 'gk-wuli-full';
-			if (/高考化学/.test(text)) return 'gk-huaxue-full';
-			if (/中考语文/.test(text)) return 'zk-yuwen-full';
-			if (/中考数学/.test(text)) return 'zk-shuxue-full';
-			if (/中考英语/.test(text)) return 'zk-yingyu-full';
-			if (/中考物理/.test(text)) return 'zk-wuli-full';
-			if (/中考化学/.test(text)) return 'zk-huaxue-full';
-			return '';
 		},
 		courseNameById(courseId = '') {
 			const found = this.courseReports.find(item => item.id === courseId);

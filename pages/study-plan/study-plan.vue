@@ -5,8 +5,11 @@
 			<view class="nav-title">学习打卡</view>
 		</view>
 
-		<view class="readonly-tip" v-if="readOnly">当前为只读查看，不能代填或修改学生打卡。</view>
-		<study-checkin-card :course-id="courseId" :student-id="studentId" :read-only="readOnly" />
+		<AppDataState v-if="!courseId" type="error" title="学习打卡无法打开" description="缺少课程编号，请返回课程页面后重试。" :retryable="false" />
+		<template v-else>
+			<view class="readonly-tip" v-if="readOnly">当前为只读查看，不能代填或修改学生打卡。</view>
+			<study-checkin-card :course-id="courseId" :student-id="studentId" :read-only="readOnly" />
+		</template>
 	</view>
 </template>
 
@@ -14,19 +17,20 @@
 import { decodeRouteText } from '@/common/api.js'
 import { safeNavigateBack } from '@/common/navigation.js'
 import StudyCheckinCard from '@/components/study-checkin-card.vue'
+import AppDataState from '@/components/app-data-state.vue'
 
 export default {
-	components: { StudyCheckinCard },
+	components: { AppDataState, StudyCheckinCard },
 	data() {
 		return {
-			courseId: 'gk-math-full',
+			courseId: '',
 			studentId: '',
 			studentName: '',
 			readOnly: false
 		}
 	},
 	onLoad(opts = {}) {
-		this.courseId = opts.courseId || 'gk-math-full';
+		this.courseId = opts.courseId || '';
 		this.studentId = opts.studentId || '';
 		this.studentName = opts.studentName ? decodeRouteText(opts.studentName) : '';
 		this.readOnly = opts.readonly === '1' || opts.readOnly === '1' || !!this.studentId;
