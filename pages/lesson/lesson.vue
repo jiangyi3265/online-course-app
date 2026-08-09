@@ -60,10 +60,10 @@
 				<view class="video-preparing" v-if="videoPreparing && !lessonLocked">
 					<view class="video-preparing-spinner"></view>
 					<view class="video-preparing-title">正在生成安全播放资源</view>
-					<view class="video-preparing-sub">首次转换需要一点时间，完成后会自动开始加载。</view>
+					<view class="video-preparing-sub">正在优先准备本讲，生成前两段后会自动开始播放，无需刷新页面。</view>
 				</view>
 				<view class="lesson-lock" v-if="lessonLocked">
-					<view class="lesson-lock-ico">🔒</view>
+					<view class="lesson-lock-ico" aria-hidden="true"></view>
 					<view class="lesson-lock-title">本节暂未解锁</view>
 					<view class="lesson-lock-sub">{{lockReason}}</view>
 				</view>
@@ -458,6 +458,7 @@ export default {
 					const player = new Hls({
 						enableWorker: false,
 						lowLatencyMode: false,
+						startPosition: 0,
 						startLevel: -1,
 						capLevelToPlayerSize: true,
 						backBufferLength: 30,
@@ -1789,7 +1790,26 @@ page { background:#fff; }
 	text-align:center;
 	background:rgba(15,23,42,.86);
 }
-.lesson-lock-ico { font-size:64rpx; }
+.lesson-lock-ico {
+	position:relative;
+	width:54rpx;
+	height:44rpx;
+	border:5rpx solid #e8eef8;
+	border-radius:9rpx;
+	box-sizing:border-box;
+}
+.lesson-lock-ico::before {
+	content:'';
+	position:absolute;
+	left:11rpx;
+	top:-28rpx;
+	width:22rpx;
+	height:27rpx;
+	border:5rpx solid #e8eef8;
+	border-bottom:0;
+	border-radius:16rpx 16rpx 0 0;
+	box-sizing:border-box;
+}
 .lesson-lock-title { margin-top:16rpx; color:#fff; font-size:30rpx; font-weight:800; }
 .lesson-lock-sub { margin-top:12rpx; max-width:520rpx; color:rgba(255,255,255,.82); font-size:24rpx; line-height:1.5; }
 /* 控件短暂覆盖底部，播放时 3 秒无操作自动隐藏，避免挡住授课画面 */

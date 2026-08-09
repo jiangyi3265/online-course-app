@@ -84,7 +84,7 @@
 						<view class="chap-head" @click.stop="toggle(i)">
 							<text class="chap-title">{{c.title}}</text>
 							<view class="chap-right">
-								<text class="lock" v-if="locked">🔒</text>
+								<view class="lock-icon" v-if="locked" aria-label="课程未激活"></view>
 								<text class="caret" :class="{open: c.open}">{{c.open ? '⌄' : '›'}}</text>
 							</view>
 						</view>
@@ -93,7 +93,7 @@
 								<view class="sub-head" @click.stop="toggleLesson(i, j)">
 									<text class="sub-title">{{ lessonHeader(i, j, s) }}</text>
 									<view class="sub-right">
-										<text class="lock" v-if="locked">🔒</text>
+										<view class="lock-icon" v-if="locked" aria-label="课程未激活"></view>
 										<text class="caret" :class="{open: s.open}">{{s.open ? '⌄' : '›'}}</text>
 									</view>
 								</view>
@@ -107,7 +107,10 @@
 											</view>
 										</view>
 										<view class="child-actions">
-											<view class="child-btn go" :class="{locked: childLessonLocked(child, s)}" @click.stop="goLesson(c, s, child, j, i)">{{ childLessonLocked(child, s) ? '🔒未解锁' : (child.type===2 ? '去练习' : '去学习') }}</view>
+											<view class="child-btn go" :class="{locked: childLessonLocked(child, s)}" @click.stop="goLesson(c, s, child, j, i)">
+												<view v-if="childLessonLocked(child, s)" class="lock-icon child-lock-icon" aria-hidden="true"></view>
+												<text>{{ childLessonLocked(child, s) ? '未解锁' : (child.type===2 ? '去练习' : '去学习') }}</text>
+											</view>
 											<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 										</view>
 									</view>
@@ -155,7 +158,7 @@
 						<view class="chap-head" @click.stop="toggleKnowledge(i)">
 							<text class="chap-title">{{c.title}}</text>
 							<view class="chap-right">
-								<text class="lock" v-if="locked">🔒</text>
+								<view class="lock-icon" v-if="locked" aria-label="课程未激活"></view>
 								<text class="caret" :class="{open: c.open}">{{c.open ? '⌄' : '›'}}</text>
 							</view>
 						</view>
@@ -164,7 +167,7 @@
 								<view class="sub-head" @click.stop="toggleKnowledgeLesson(i, j)">
 									<text class="sub-title">{{s.title || s}}</text>
 									<view class="sub-right">
-										<text class="lock" v-if="locked">🔒</text>
+										<view class="lock-icon" v-if="locked" aria-label="课程未激活"></view>
 										<text class="caret" :class="{open: s.open}">{{s.open ? '⌄' : '›'}}</text>
 									</view>
 								</view>
@@ -1131,7 +1134,42 @@ page { background:#f5f7fa; }
 }
 .chap-title { font-size:30rpx; color:#222; font-weight:700; }
 .chap-right, .sub-right { display:flex; align-items:center; }
-.lock { font-size:26rpx; color:#9aa1a9; margin-right:18rpx; }
+.lock-icon {
+	position:relative;
+	width:26rpx;
+	height:21rpx;
+	margin-right:18rpx;
+	border:2.5rpx solid #8b96a5;
+	border-radius:5rpx;
+	box-sizing:border-box;
+	flex:0 0 26rpx;
+}
+.lock-icon::before {
+	content:'';
+	position:absolute;
+	left:5rpx;
+	top:-13rpx;
+	width:11rpx;
+	height:12rpx;
+	border:2.5rpx solid #8b96a5;
+	border-bottom:0;
+	border-radius:8rpx 8rpx 0 0;
+	box-sizing:border-box;
+}
+.child-lock-icon {
+	width:22rpx;
+	height:18rpx;
+	margin-right:8rpx;
+	border-color:currentColor;
+	flex-basis:22rpx;
+}
+.child-lock-icon::before {
+	left:4rpx;
+	top:-11rpx;
+	width:9rpx;
+	height:10rpx;
+	border-color:currentColor;
+}
 .caret { font-size:32rpx; color:#9aa1a9; }
 .caret.open { font-size:30rpx; }
 
@@ -1190,6 +1228,7 @@ page { background:#f5f7fa; }
 }
 .child-btn.go { background:#3aa3f5; }
 .child-btn.go.locked { background:#c2c8d0; }
+.child-btn.go { display:inline-flex; align-items:center; justify-content:center; }
 .child-btn.ai { background:#2bb673; }
 /* 章节扫雷 */
 .quiz-list { padding: 16rpx 24rpx; }
@@ -1435,6 +1474,35 @@ page { background:#f5f7fa; }
 		white-space:nowrap;
 		overflow:hidden;
 		text-overflow:ellipsis;
+	}
+	.lock-icon {
+		width:16px;
+		height:13px;
+		margin-right:10px;
+		border-width:1.5px;
+		border-radius:3px;
+		flex-basis:16px;
+	}
+	.lock-icon::before {
+		left:3px;
+		top:-8px;
+		width:7px;
+		height:7px;
+		border-width:1.5px;
+		border-bottom:0;
+		border-radius:5px 5px 0 0;
+	}
+	.child-lock-icon {
+		width:14px;
+		height:12px;
+		margin-right:5px;
+		flex-basis:14px;
+	}
+	.child-lock-icon::before {
+		left:2.5px;
+		top:-7px;
+		width:6px;
+		height:6px;
 	}
 	.cover-banner {
 		aspect-ratio:1476 / 472;

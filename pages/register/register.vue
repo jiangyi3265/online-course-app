@@ -268,6 +268,21 @@ page {
 	font-size: 30rpx;
 	color: #16233a;
 }
+/* 浏览器原生密码眼睛必须关闭，页面只保留一个可控、跨端一致的按钮。 */
+.input::-ms-reveal,
+.input::-ms-clear,
+.input::-webkit-credentials-auto-fill-button,
+.input::-webkit-contacts-auto-fill-button,
+.input :deep(.uni-input-input::-ms-reveal),
+.input :deep(.uni-input-input::-ms-clear),
+.input :deep(.uni-input-input::-webkit-credentials-auto-fill-button),
+.input :deep(.uni-input-input::-webkit-contacts-auto-fill-button) {
+	display:none !important;
+	visibility:hidden !important;
+	pointer-events:none !important;
+	width:0 !important;
+	height:0 !important;
+}
 .visibility-button {
 	width:64rpx;
 	height:64rpx;
@@ -384,7 +399,7 @@ page {
 
 @media screen and (min-width: 600px) {
 	.header {
-		height:320px;
+		height:240px;
 		background:#dbe7ef;
 	}
 	.illu {
@@ -444,6 +459,21 @@ page {
 		margin-left:4px;
 		flex-basis:44px;
 	}
+	.eye-icon {
+		width:18px;
+		height:11px;
+		border-width:1.5px;
+	}
+	.eye-pupil {
+		width:5px;
+		height:5px;
+	}
+	.visibility-button:not(.active) .eye-icon::after {
+		left:-3px;
+		top:4px;
+		width:22px;
+		height:1.5px;
+	}
 	.code-btn,
 	.agree-row {
 		font-size:14px;
@@ -468,9 +498,4 @@ page {
 	}
 }
 
-@media screen and (min-width: 900px) and (max-width: 1366px) {
-	.header {
-		height:380px;
-	}
-}
 </style>
