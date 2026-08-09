@@ -540,14 +540,33 @@ page {
 	color: #333;
 	background: transparent;
 }
-/* 隐藏 Edge/IE 与部分 Chromium 内核自带的密码查看按钮，避免和产品按钮叠加。 */
+/* 隐藏 Edge/IE 与部分 Chromium 内核自带的密码查看按钮，避免和产品按钮叠加。
+ * 厂商伪元素分组会导致未知选择器使整组失效，因此分别声明。 */
 .input::-ms-reveal,
+.input :deep(.uni-input-input::-ms-reveal) {
+	display:none !important;
+	visibility:hidden !important;
+	pointer-events:none !important;
+	width:0 !important;
+	height:0 !important;
+}
 .input::-ms-clear,
+.input :deep(.uni-input-input::-ms-clear) {
+	display:none !important;
+	visibility:hidden !important;
+	pointer-events:none !important;
+	width:0 !important;
+	height:0 !important;
+}
 .input::-webkit-credentials-auto-fill-button,
+.input :deep(.uni-input-input::-webkit-credentials-auto-fill-button) {
+	display:none !important;
+	visibility:hidden !important;
+	pointer-events:none !important;
+	width:0 !important;
+	height:0 !important;
+}
 .input::-webkit-contacts-auto-fill-button,
-.input :deep(.uni-input-input::-ms-reveal),
-.input :deep(.uni-input-input::-ms-clear),
-.input :deep(.uni-input-input::-webkit-credentials-auto-fill-button),
 .input :deep(.uni-input-input::-webkit-contacts-auto-fill-button) {
 	display:none !important;
 	visibility:hidden !important;

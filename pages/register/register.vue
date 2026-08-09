@@ -268,14 +268,33 @@ page {
 	font-size: 30rpx;
 	color: #16233a;
 }
-/* 浏览器原生密码眼睛必须关闭，页面只保留一个可控、跨端一致的按钮。 */
+/* 浏览器原生密码眼睛必须关闭，页面只保留一个可控、跨端一致的按钮。
+ * 厂商伪元素分别声明，避免某个内核不认识其中一项时丢弃整组规则。 */
 .input::-ms-reveal,
+.input :deep(.uni-input-input::-ms-reveal) {
+	display:none !important;
+	visibility:hidden !important;
+	pointer-events:none !important;
+	width:0 !important;
+	height:0 !important;
+}
 .input::-ms-clear,
+.input :deep(.uni-input-input::-ms-clear) {
+	display:none !important;
+	visibility:hidden !important;
+	pointer-events:none !important;
+	width:0 !important;
+	height:0 !important;
+}
 .input::-webkit-credentials-auto-fill-button,
+.input :deep(.uni-input-input::-webkit-credentials-auto-fill-button) {
+	display:none !important;
+	visibility:hidden !important;
+	pointer-events:none !important;
+	width:0 !important;
+	height:0 !important;
+}
 .input::-webkit-contacts-auto-fill-button,
-.input :deep(.uni-input-input::-ms-reveal),
-.input :deep(.uni-input-input::-ms-clear),
-.input :deep(.uni-input-input::-webkit-credentials-auto-fill-button),
 .input :deep(.uni-input-input::-webkit-contacts-auto-fill-button) {
 	display:none !important;
 	visibility:hidden !important;
