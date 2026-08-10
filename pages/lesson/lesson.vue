@@ -35,6 +35,10 @@
 					@loadedmetadata="onLoadedMeta"
 					@loadeddata="onLoadedData"
 					@canplay="onCanPlay"
+					@playing="onPlaying"
+					@waiting="onVideoWaiting"
+					@stalled="onVideoWaiting"
+					@progress="onVideoProgress"
 					@play="onPlay"
 					@pause="onPause"
 					@click="onVideoTap"
@@ -45,7 +49,7 @@
 					@error="onVideoError"
 				></video>
 				<view
-					v-if="!videoError && !lessonLocked && playbackRates.length > 1"
+					v-if="!videoError && !lessonLocked && !videoLoading && playbackRates.length > 1"
 					class="mobile-speed-pill"
 					@click.stop="cyclePlaybackRate"
 				>{{rateLabel(playbackRate)}} 倍速</view>
@@ -60,7 +64,12 @@
 				<view class="video-preparing" v-if="videoPreparing && !lessonLocked">
 					<view class="video-preparing-spinner"></view>
 					<view class="video-preparing-title">正在生成安全播放资源</view>
-					<view class="video-preparing-sub">正在优先准备本讲，生成前两段后会自动开始播放，无需刷新页面。</view>
+					<view class="video-preparing-sub">正在优先准备本讲，生成首个分段后即可开始播放，无需刷新页面。</view>
+				</view>
+				<view class="video-preparing video-loading" v-if="videoLoading && !videoPreparing && !videoError && !lessonLocked">
+					<view class="video-preparing-spinner"></view>
+					<view class="video-preparing-title">{{videoLoadingTitle}}</view>
+					<view class="video-preparing-sub">{{videoLoadingMessage}}</view>
 				</view>
 				<view class="lesson-lock" v-if="lessonLocked">
 					<view class="lesson-lock-ico" aria-hidden="true"></view>
@@ -69,7 +78,7 @@
 				</view>
 				<view class="moving-watermark" v-if="showWatermark">{{watermarkText}}</view>
 				<!-- 控件与视频融合：覆盖在视频底部；播放时 3 秒无操作自动隐藏 -->
-				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked && !videoPreparing">
+				<view class="player-controls" :class="{hidden: !controlsVisible}" v-if="!videoError && !lessonLocked && !videoPreparing && !videoLoading">
 					<view
 						class="player-progress-track"
 						:class="{seekable: freePlaybackUnlocked}"
@@ -210,6 +219,12 @@ export default {
 			videoPreparing: false,
 			videoPrepareTimer: null,
 			videoPrepareAttempts: 0,
+			videoLoading: false,
+			videoReady: false,
+			videoLoadingTitle: '正在加载视频',
+			videoLoadingMessage: '正在连接安全视频，通常几秒内即可开始播放。',
+			videoStartupTimer: null,
+			videoStartupAttempts: 0,
 			hlsAttachAttempts: 0,
 			usesHlsJs: false,
 			hlsPlayer: null,
@@ -285,12 +300,16 @@ export default {
 		this.lockNativeVideoPlayback();
 		this.bindH5ProgressEvents();
 	},
+	onShow() {
+		if (this.videoLoading && this.videoUrl && !this.videoError) this.beginVideoStartupGuard();
+	},
 	onUnload() {
 		this.flushProgressOnExit();
 		this.clearSpeedMenuTimer();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
 		this.clearVideoPrepareTimer();
+		this.clearVideoStartupTimer();
 		this.destroyHlsPlayer();
 		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
@@ -304,6 +323,7 @@ export default {
 		this.closeSpeedMenu();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
+		this.clearVideoStartupTimer();
 		this.unbindSeekDragListeners();
 		this.setNativeVideoControls(false);
 		this.unbindNativeVideoGuards();
@@ -325,7 +345,7 @@ export default {
 			return !!this.poster && !this.videoPlaying && !this.videoError && !this.lessonLocked && this.currentSeconds <= 0;
 		},
 		showTapPlayLayer() {
-			return !!this.videoUrl && !this.videoPlaying && !this.videoError && !this.lessonLocked && !this.videoPreparing;
+			return !!this.videoUrl && this.videoReady && !this.videoPlaying && !this.videoError && !this.lessonLocked && !this.videoPreparing && !this.videoLoading;
 		},
 		showLessonOutline() {
 			return false;
@@ -383,6 +403,54 @@ export default {
 			if (typeof document !== 'undefined') document.title = title;
 			this.cleanVideoTooltips();
 		},
+		clearVideoStartupTimer() {
+			if (!this.videoStartupTimer) return;
+			clearTimeout(this.videoStartupTimer);
+			this.videoStartupTimer = null;
+		},
+		beginVideoStartupGuard(message = '') {
+			if (!this.videoUrl || this.lessonLocked || this.videoPreparing || this.videoError) return;
+			const guardActive = !!this.videoStartupTimer;
+			this.videoReady = false;
+			this.videoLoading = true;
+			this.videoLoadingTitle = this.videoStartupAttempts > 0 ? '正在重新连接视频' : '正在加载视频';
+			this.videoLoadingMessage = message || (this.videoStartupAttempts > 0
+				? '首次连接较慢，正在自动更新播放地址并重试。'
+				: '正在连接安全视频，通常几秒内即可开始播放。');
+			if (guardActive) return;
+			this.videoStartupTimer = setTimeout(() => this.handleVideoStartupTimeout(), 20000);
+		},
+		handleVideoStartupTimeout() {
+			this.videoStartupTimer = null;
+			const video = this.nativeVideoElement();
+			if (video && Number(video.readyState || 0) >= 2 && Number(video.videoWidth || 0) > 0) {
+				this.markVideoReady();
+				return;
+			}
+			if (this.videoStartupAttempts < 1) {
+				this.videoStartupAttempts += 1;
+				this.videoLoadingTitle = '正在重新连接视频';
+				this.videoLoadingMessage = '首次连接超时，正在自动更新播放地址并重试一次。';
+				this.loadLesson();
+				return;
+			}
+			this.failVideo('视频连接超时，请点击“重新加载”。如果仍然失败，请稍后再试。');
+		},
+		markVideoReady() {
+			this.clearVideoStartupTimer();
+			this.videoReady = true;
+			this.videoLoading = false;
+			this.videoStartupAttempts = 0;
+			this.videoError = false;
+		},
+		failVideo(message = '') {
+			this.clearVideoStartupTimer();
+			this.videoLoading = false;
+			this.videoReady = false;
+			this.videoPlaying = false;
+			if (message) this.videoErrorMessage = message;
+			this.videoError = true;
+		},
 		clearVideoPrepareTimer() {
 			if (!this.videoPrepareTimer) return;
 			clearTimeout(this.videoPrepareTimer);
@@ -411,10 +479,14 @@ export default {
 		},
 		setProtectedVideoSource(source = '') {
 			this.destroyHlsPlayer();
+			this.clearVideoStartupTimer();
 			this.resumePositionApplied = false;
 			this.hlsAttachAttempts = 0;
 			this.videoUrl = source;
+			this.videoReady = false;
+			this.videoLoading = false;
 			if (!source) return;
+			this.beginVideoStartupGuard();
 			this.$nextTick(() => this.configureHlsPlayback());
 		},
 		configureHlsPlayback() {
@@ -427,8 +499,7 @@ export default {
 					if (this.hlsAttachAttempts <= 20) {
 						setTimeout(() => this.configureHlsPlayback(), 100);
 					} else {
-						this.videoErrorMessage = '视频组件初始化失败，请点击重新加载。';
-						this.videoError = true;
+						this.failVideo('视频组件初始化失败，请点击“重新加载”。');
 					}
 					return;
 				}
@@ -446,8 +517,7 @@ export default {
 					return;
 				}
 				if (!Hls.isSupported()) {
-					this.videoErrorMessage = '当前浏览器不支持安全视频播放，请更新浏览器后重试。';
-					this.videoError = true;
+					this.failVideo('当前浏览器不支持安全视频播放，请更新浏览器后重试。');
 					return;
 				}
 				this.destroyHlsPlayer();
@@ -474,9 +544,22 @@ export default {
 					player.on(Hls.Events.MANIFEST_PARSED, () => {
 						this.videoError = false;
 						this.lockNativeVideoPlayback();
+						player.startLoad(0);
+					});
+					player.on(Hls.Events.FRAG_BUFFERED, () => {
+						const currentMedia = this.nativeVideoElement();
+						if (currentMedia && Number(currentMedia.readyState || 0) >= 2 && Number(currentMedia.videoWidth || 0) > 0) {
+							this.markVideoReady();
+						}
 					});
 					player.on(Hls.Events.ERROR, (_event, detail) => {
-						if (!detail || !detail.fatal) return;
+						if (!detail) return;
+						if (!detail.fatal) {
+							if (/bufferStalled|fragLoad|levelLoad|manifestLoad/i.test(String(detail.details || ''))) {
+								this.beginVideoStartupGuard('视频缓冲较慢，正在继续连接，请稍候。');
+							}
+							return;
+						}
 						if (detail.type === Hls.ErrorTypes.NETWORK_ERROR && this.videoLoadAttempts < 1) {
 							this.videoLoadAttempts += 1;
 							player.startLoad();
@@ -487,8 +570,7 @@ export default {
 							player.recoverMediaError();
 							return;
 						}
-						this.videoErrorMessage = '安全视频连接已失效，请点击重新加载。';
-						this.videoError = true;
+						this.failVideo('安全视频连接已失效，请点击“重新加载”。');
 					});
 				});
 			});
@@ -502,6 +584,7 @@ export default {
 					this.lessonLocked = true;
 					this.lockReason = data.lockReason || '请按课程顺序学习后再观看本节';
 					this.videoPreparing = false;
+					this.videoLoading = false;
 					this.clearVideoPrepareTimer();
 					this.setProtectedVideoSource('');
 					return;
@@ -509,6 +592,7 @@ export default {
 				this.lessonLocked = false;
 				if (data.preparing || (!data.videoUrl && data.protectionMode && !data.protectionError)) {
 					this.videoPreparing = true;
+					this.videoLoading = false;
 					this.videoError = false;
 					this.setProtectedVideoSource('');
 					this.scheduleProtectedVideoRetry(data.retryAfterSeconds || 3);
@@ -516,6 +600,7 @@ export default {
 				}
 				if (data.protectionError) {
 					this.videoPreparing = false;
+					this.videoLoading = false;
 					this.clearVideoPrepareTimer();
 					this.setProtectedVideoSource('');
 					this.videoErrorMessage = `安全视频生成失败：${data.protectionError}`;
@@ -562,8 +647,7 @@ export default {
 				this.$nextTick(() => this.applyInitialPlaybackPosition());
 			} catch (err) {
 				this.videoPreparing = false;
-				this.videoError = true;
-				this.videoErrorMessage = '视频接口暂时不可用，请检查网络后重试。';
+				this.failVideo('视频接口暂时不可用，请检查网络后重试。');
 				console.warn('视频接口不可用', err);
 			}
 		},
@@ -915,12 +999,26 @@ export default {
 		},
 		onLoadedData() {
 			this.videoPreparing = false;
+			this.markVideoReady();
 			this.ensureFirstVideoFrame();
 		},
 		onCanPlay() {
 			this.videoPreparing = false;
-			this.videoError = false;
+			this.markVideoReady();
 			this.ensureFirstVideoFrame();
+		},
+		onPlaying() {
+			this.markVideoReady();
+		},
+		onVideoProgress() {
+			const video = this.nativeVideoElement();
+			if (video && Number(video.readyState || 0) >= 2 && Number(video.videoWidth || 0) > 0) this.markVideoReady();
+		},
+		onVideoWaiting() {
+			if (!this.videoUrl || this.videoError || this.lessonLocked || this.videoPreparing) return;
+			const video = this.nativeVideoElement();
+			if (this.videoReady && !this.videoPlaying && video && video.paused) return;
+			this.beginVideoStartupGuard('视频正在缓冲，网络恢复后会自动继续播放。');
 		},
 		ensureFirstVideoFrame() {
 			const video = this.nativeVideoElement();
@@ -937,7 +1035,9 @@ export default {
 		},
 		onPlay() {
 			this.videoPlaying = true;
-			const video = this.nativeVideoElement();
+			const activeVideo = this.nativeVideoElement();
+			if (activeVideo && Number(activeVideo.readyState || 0) < 2) this.beginVideoStartupGuard();
+			const video = activeVideo;
 			this.lastObservedVideoTime = this.safeSeconds(video && video.currentTime);
 			this.lastProgressObservedAt = Date.now();
 			this.maxVerifiedVideoTime = Math.max(this.maxVerifiedVideoTime, this.lastObservedVideoTime || 0);
@@ -1110,6 +1210,7 @@ export default {
 		},
 		onVideoError() {
 			this.videoPlaying = false;
+			this.videoLoading = true;
 			this.clearControlsHideTimer();
 			this.clearVideoErrorTimer();
 			if (this.videoUrl && this.videoLoadAttempts < 1) {
@@ -1118,7 +1219,7 @@ export default {
 				return;
 			}
 			this.videoErrorTimer = setTimeout(() => {
-				this.videoError = true;
+				this.failVideo(this.videoErrorMessage);
 				this.videoErrorTimer = null;
 			}, 900);
 		},
@@ -1129,6 +1230,10 @@ export default {
 		},
 		retryVideo() {
 			this.videoLoadAttempts = 0;
+			this.videoStartupAttempts = 0;
+			this.clearVideoStartupTimer();
+			this.videoLoading = false;
+			this.videoReady = false;
 			if (/\.m3u8(?:$|[?#])/i.test(this.videoUrl || '') || !this.videoUrl) {
 				this.videoError = false;
 				this.videoPrepareAttempts = 0;
@@ -1730,9 +1835,18 @@ page { background:#fff; }
 	100% { transform:translateX(-100%); opacity:0; }
 }
 .video-error {
-	padding:24rpx 30rpx;
-	background:#fff7ed;
-	color:#9a3412;
+	position:absolute;
+	inset:0;
+	z-index:10;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	box-sizing:border-box;
+	padding:32rpx;
+	text-align:center;
+	background:linear-gradient(145deg, rgba(15,23,42,.97), rgba(69,26,3,.94));
+	color:#fff7ed;
 }
 .video-error-title {
 	font-size:28rpx;
@@ -1741,6 +1855,8 @@ page { background:#fff; }
 .video-error-sub {
 	margin-top:8rpx;
 	font-size:24rpx;
+	line-height:1.55;
+	color:rgba(255,247,237,.82);
 }
 .video-error-action {
 	display:inline-flex;
@@ -1750,8 +1866,8 @@ page { background:#fff; }
 	margin-top:16rpx;
 	padding:0 22rpx;
 	border-radius:999rpx;
-	background:#9a3412;
-	color:#fff;
+	background:#fff7ed;
+	color:#9a3412;
 	font-size:24rpx;
 	font-weight:800;
 }
