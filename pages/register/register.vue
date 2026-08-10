@@ -29,7 +29,7 @@
 				<text class="code-btn" @click="getCode">获取验证码</text>
 			</view>
 
-			<view class="input-row">
+			<view class="input-row password-row">
 				<AppFieldIcon class="field-icon" type="lock" />
 				<input class="input" :type="showPassword ? 'text' : 'password'" maxlength="32" placeholder="请输入密码" v-model="password" placeholder-class="ph" />
 				<view class="visibility-button" :class="{active: showPassword}" role="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click.stop="showPassword = !showPassword">
@@ -37,7 +37,7 @@
 				</view>
 			</view>
 
-			<view class="input-row">
+			<view class="input-row password-row">
 				<AppFieldIcon class="field-icon" type="check" />
 				<input class="input" :type="showConfirmPassword ? 'text' : 'password'" maxlength="32" placeholder="请再次输入密码" v-model="confirmPassword" placeholder-class="ph" />
 				<view class="visibility-button" :class="{active: showConfirmPassword}" role="button" :aria-label="showConfirmPassword ? '隐藏密码' : '显示密码'" @click.stop="showConfirmPassword = !showConfirmPassword">
@@ -268,6 +268,23 @@ page {
 	font-size: 30rpx;
 	color: #16233a;
 }
+.password-row {
+	position:relative;
+}
+.password-row .input {
+	box-sizing:border-box;
+	padding-right:94rpx;
+}
+.password-row .visibility-button {
+	position:absolute;
+	top:50%;
+	right:14rpx;
+	z-index:2;
+	margin-left:0;
+	transform:translateY(-50%);
+	background:#f6f9fe;
+	box-shadow:-14rpx 0 0 #f6f9fe;
+}
 /* 浏览器原生密码眼睛必须关闭，页面只保留一个可控、跨端一致的按钮。
  * 厂商伪元素分别声明，避免某个内核不认识其中一项时丢弃整组规则。 */
 .input::-ms-reveal,
@@ -477,6 +494,13 @@ page {
 		height:44px;
 		margin-left:4px;
 		flex-basis:44px;
+	}
+	.password-row .input {
+		padding-right:72px;
+	}
+	.password-row .visibility-button {
+		right:8px;
+		box-shadow:-12px 0 0 #f6f9fe;
 	}
 	.eye-icon {
 		width:18px;

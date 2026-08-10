@@ -23,7 +23,7 @@
 				<input class="input" type="number" maxlength="11" placeholder="请输入手机号" v-model="phone" placeholder-class="ph" />
 			</view>
 
-			<view class="input-row">
+			<view class="input-row password-row">
 				<AppFieldIcon class="field-icon" type="lock" />
 				<input class="input" :type="showPassword ? 'text' : 'password'" placeholder="请输入密码" v-model="password" placeholder-class="ph" />
 				<view class="visibility-button" :class="{active: showPassword}" role="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click.stop="showPassword = !showPassword">
@@ -62,14 +62,14 @@
 					<input class="input" type="number" maxlength="6" placeholder="验证码" v-model="reset.smsCode" placeholder-class="ph" />
 					<text class="code-btn" @click="getResetCode">获取验证码</text>
 				</view>
-				<view class="input-row">
+				<view class="input-row password-row">
 					<AppFieldIcon class="field-icon" type="lock" />
 					<input class="input" :type="showResetPassword ? 'text' : 'password'" placeholder="请输入新密码" v-model="reset.password" placeholder-class="ph" />
 					<view class="visibility-button" :class="{active: showResetPassword}" role="button" :aria-label="showResetPassword ? '隐藏密码' : '显示密码'" @click.stop="showResetPassword = !showResetPassword">
 						<view class="eye-icon"><view class="eye-pupil"></view></view>
 					</view>
 				</view>
-				<view class="input-row">
+				<view class="input-row password-row">
 					<AppFieldIcon class="field-icon" type="check" />
 					<input class="input" :type="showResetConfirmPassword ? 'text' : 'password'" placeholder="确认新密码" v-model="reset.confirmPassword" placeholder-class="ph" />
 					<view class="visibility-button" :class="{active: showResetConfirmPassword}" role="button" :aria-label="showResetConfirmPassword ? '隐藏密码' : '显示密码'" @click.stop="showResetConfirmPassword = !showResetConfirmPassword">
@@ -540,6 +540,23 @@ page {
 	color: #333;
 	background: transparent;
 }
+.password-row {
+	position: relative;
+}
+.password-row .input {
+	box-sizing: border-box;
+	padding-right: 94rpx;
+}
+.password-row .visibility-button {
+	position: absolute;
+	top: 50%;
+	right: 14rpx;
+	z-index: 2;
+	margin-left: 0;
+	transform: translateY(-50%);
+	background: #eaf4ff;
+	box-shadow: -14rpx 0 0 #eaf4ff;
+}
 /* 隐藏 Edge/IE 与部分 Chromium 内核自带的密码查看按钮，避免和产品按钮叠加。
  * 厂商伪元素分组会导致未知选择器使整组失效，因此分别声明。 */
 .input::-ms-reveal,
@@ -772,6 +789,13 @@ page {
 		height:44px;
 		margin-left:4px;
 		flex-basis:44px;
+	}
+	.password-row .input {
+		padding-right:72px;
+	}
+	.password-row .visibility-button {
+		right:8px;
+		box-shadow:-12px 0 0 #eaf4ff;
 	}
 	.eye-icon {
 		width:18px;
