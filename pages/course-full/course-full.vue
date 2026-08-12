@@ -107,7 +107,7 @@
 											</view>
 										</view>
 										<view class="child-actions">
-											<view class="child-btn go" :class="{locked: childLessonLocked(child, s)}" @click.stop="goLesson(c, s, child, j, i)">
+											<view class="child-btn go" :class="{locked: childLessonLocked(child, s)}" @click.stop="goLesson(c, s, child, j, i, k)">
 												<view v-if="childLessonLocked(child, s)" class="lock-icon child-lock-icon" aria-hidden="true"></view>
 												<text>{{ childLessonLocked(child, s) ? '未解锁' : (child.type===2 ? '去练习' : '去学习') }}</text>
 											</view>
@@ -181,7 +181,7 @@
 											</view>
 										</view>
 										<view class="child-actions">
-											<view class="child-btn go" @click.stop="goKnowledgeChild(c, s, child, j)">{{child.type===2 ? '去练习' : '去学习'}}</view>
+											<view class="child-btn go" @click.stop="goKnowledgeChild(c, s, child, j, i, k)">{{child.type===2 ? '去练习' : '去学习'}}</view>
 											<view class="child-btn ai" @click.stop="goAi(s.title || s)">AI问答</view>
 										</view>
 									</view>
@@ -850,7 +850,7 @@ export default {
 			if (!this.ensureUnlocked()) return;
 			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(item.title)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent('复习加强')}&categoryTitle=${encodeURIComponent('复习加强课')}` });
 		},
-		goKnowledgeChild(chapter, lesson, child, lessonIndex) {
+		goKnowledgeChild(chapter, lesson, child, lessonIndex, chapterIndex, childIndex = -1) {
 			this.collapseCheckinPanel();
 			if (!this.ensureUnlocked()) return;
 			if (child.type === 2) {
@@ -861,7 +861,8 @@ export default {
 				uni.navigateTo({ url:`/pages/practice/practice?type=reinforce&modeTitle=${encodeURIComponent('知识点巩固')}&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(lesson.title || title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lesson.title || lesson)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}&categoryTitle=${encodeURIComponent('知识巩固')}` });
+			const lessonId = String(lesson.title || child.title || child.name || lesson || '').trim();
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lessonId)}&lessonId=${encodeURIComponent(lessonId)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}&categoryTitle=${encodeURIComponent('知识巩固')}&versionIndex=2&chapterIndex=${Number(chapterIndex) || 0}&lessonIndex=${Number(lessonIndex) || 0}&childIndex=${Number(childIndex)}` });
 		},
 		goActivate() {
 			this.collapseCheckinPanel();
@@ -877,7 +878,7 @@ export default {
 				success: () => uni.showToast({ title:'微信号已复制', icon:'success' })
 			});
 		},
-		goLesson(chapter, lesson, child, lessonIndex, chapterIndex) {
+		goLesson(chapter, lesson, child, lessonIndex, chapterIndex, childIndex = -1) {
 			this.collapseCheckinPanel();
 			if (!this.ensureUnlocked()) return;
 			if (this.childLessonLocked(child, lesson)) {
@@ -901,7 +902,7 @@ export default {
 				return;
 			}
 			const videoLabel = this.versionIndex === 0 ? '复习加强' : '技巧绝招';
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(recordLabel(videoLabel))}&lessonId=${encodeURIComponent(rawTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}` });
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(recordLabel(videoLabel))}&lessonId=${encodeURIComponent(rawTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}&versionIndex=${Number(this.versionIndex) || 0}&chapterIndex=${Number(chapterIndex) || 0}&lessonIndex=${Number(lessonIndex) || 0}&childIndex=${Number(childIndex)}` });
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '';
@@ -1133,12 +1134,19 @@ page { background:#f5f7fa; }
 	cursor:pointer;
 }
 .chap-title { font-size:30rpx; color:#222; font-weight:700; }
-.chap-right, .sub-right { display:flex; align-items:center; }
+.chap-right, .sub-right {
+	display:flex;
+	align-items:center;
+	justify-content:flex-end;
+	gap:14rpx;
+	width:66rpx;
+	min-width:66rpx;
+}
 .lock-icon {
 	position:relative;
 	width:26rpx;
 	height:21rpx;
-	margin-right:18rpx;
+	margin-right:0;
 	border:2.5rpx solid #8b96a5;
 	border-radius:5rpx;
 	box-sizing:border-box;
@@ -1170,7 +1178,16 @@ page { background:#f5f7fa; }
 	height:10rpx;
 	border-color:currentColor;
 }
-.caret { font-size:32rpx; color:#9aa1a9; }
+.caret {
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	width:22rpx;
+	height:34rpx;
+	line-height:1;
+	font-size:32rpx;
+	color:#9aa1a9;
+}
 .caret.open { font-size:30rpx; }
 
 .chap-sub { padding: 10rpx 0 0; }
@@ -1478,10 +1495,20 @@ page { background:#f5f7fa; }
 	.lock-icon {
 		width:16px;
 		height:13px;
-		margin-right:10px;
+		margin-right:0;
 		border-width:1.5px;
 		border-radius:3px;
 		flex-basis:16px;
+	}
+	.chap-right,
+	.sub-right {
+		gap:8px;
+		width:42px;
+		min-width:42px;
+	}
+	.caret {
+		width:14px;
+		height:22px;
 	}
 	.lock-icon::before {
 		left:3px;

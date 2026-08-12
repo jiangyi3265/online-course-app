@@ -105,7 +105,7 @@
 					<view class="version-chip" v-for="(item, index) in versionChips" :key="item" :class="{active: versionIndex === index}" @click="setVersion(index)">{{item}}</view>
 				</view>
 
-				<view class="chapter" v-for="(c,i) in chapters" :key="i">
+				<view class="chapter" v-for="(c,i) in chapters" :key="`${versionIndex}-${i}-${c.title}`">
 					<view class="ch-head" @click.stop="toggle(i)">
 						<text class="ch-title">{{c.title}}</text>
 						<view class="ch-right">
@@ -123,7 +123,7 @@
 								</view>
 							</view>
 								<view class="ch-actions">
-									<view class="btn-go" @click.stop="goLesson(c, s)">{{s.type===2 ? '去练习' : '去学习'}}</view>
+									<view class="btn-go" @click.stop="goLesson(c, s, i)">{{s.type===2 ? '去练习' : '去学习'}}</view>
 								<view class="btn-ai" @click.stop="goAi(c.title)">AI问答</view>
 							</view>
 						</view>
@@ -365,10 +365,51 @@ export default {
 			const normalized = source.map((item, index) => ({
 				...(typeof item === 'object' ? item : { name: item }),
 				name: String((item && item.name) || `课程内容${index + 1}`),
-				chapters: (item && item.chapters) || baseChapters
-			}));
-			if (!normalized.length && baseChapters.length) normalized.push({ name:'试听内容', chapters:baseChapters });
+				chapters: this.normalizeTrialChapters((item && item.chapters) || baseChapters, index)
+			})).filter(version => version.chapters.length > 0);
+			if (!normalized.length && baseChapters.length) normalized.push({ name:'试听内容', chapters:this.normalizeTrialChapters(baseChapters, 0) });
 			return normalized;
+		},
+		normalizeTrialChapters(chapters = [], versionIndex = 0) {
+			return (Array.isArray(chapters) ? chapters : []).map((chapter, chapterIndex) => {
+				const lessons = Array.isArray(chapter.items)
+					? chapter.items
+					: (Array.isArray(chapter.children) ? chapter.children : []);
+				const children = [];
+				lessons.forEach((lesson, lessonIndex) => {
+					if (!lesson || lesson.visible === false) return;
+					const hasNestedChildren = Array.isArray(lesson.children) && lesson.children.length > 0;
+					const lessonChildren = hasNestedChildren
+						? lesson.children
+						: [lesson];
+					lessonChildren.forEach((child, childIndex) => {
+						if (!child || child.visible === false) return;
+						const hasVideo = !!(child.hasVideo || lesson.hasVideo || child.videoUrl || lesson.videoUrl);
+						const hasQuestions = Number(child.type) === 2 && (
+							(Array.isArray(child.questionIds) && child.questionIds.length > 0)
+							|| (Array.isArray(lesson.questionIds) && lesson.questionIds.length > 0)
+							|| Number(child.total || lesson.total || 0) > 0
+						);
+						if (Number(child.type) === 2 ? !hasQuestions : !hasVideo) return;
+						children.push({
+							...child,
+							name: child.name || lesson.title || chapter.title || `课程内容${lessonIndex + 1}`,
+							questionIds: Array.isArray(child.questionIds) && child.questionIds.length ? child.questionIds : (lesson.questionIds || []),
+							questionBankName: child.questionBankName || lesson.questionBankName || '',
+							_lessonId: lesson.title || child.title || child.name || chapter.title || '',
+							_versionIndex: versionIndex,
+							_chapterIndex: chapterIndex,
+							_lessonIndex: lessonIndex,
+							_childIndex: hasNestedChildren ? childIndex : -1
+						});
+					});
+				});
+				return {
+					...chapter,
+					open: chapter.open !== false,
+					children
+				};
+			}).filter(chapter => chapter.children.length > 0);
 		},
 		resolveCourseId(title = '', kind = 'trial') {
 			const level = /中考/.test(title) ? 'zk' : 'gk';
@@ -455,20 +496,20 @@ export default {
 		goReinforce() {
 			this.requestPermission('知识巩固');
 		},
-		goLesson(chapter, item) {
+		goLesson(chapter, item, chapterIndex = 0) {
 			if (item && Number(item.type) === 2) {
 				const title = String(item.questionBankName || item.name || chapter.title || '章节练习');
 				const questionIds = Array.isArray(item.questionIds) ? item.questionIds : [];
 				uni.navigateTo({ url:`/pages/practice/practice?type=practice&title=${encodeURIComponent(title)}&practiceTitle=${encodeURIComponent(chapter.title || title)}&courseId=${encodeURIComponent(this.courseId)}&questionIds=${encodeURIComponent(questionIds.join(','))}` });
 				return;
 			}
-			const lessonId = String((chapter && chapter.title) || (item && item.name) || '').trim();
+			const lessonId = String((item && (item._lessonId || item.title || item.name)) || (chapter && chapter.title) || '').trim();
 			if (!lessonId) {
 				uni.showToast({ title:'课程视频暂未上传', icon:'none' });
 				return;
 			}
 			uni.navigateTo({
-				url:`/pages/lesson/lesson?title=${encodeURIComponent(lessonId)}&lessonId=${encodeURIComponent(lessonId)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(lessonId)}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle())}`
+				url:`/pages/lesson/lesson?title=${encodeURIComponent(lessonId)}&lessonId=${encodeURIComponent(lessonId)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent((chapter && chapter.title) || lessonId)}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle())}&versionIndex=${Number(item && item._versionIndex) || 0}&chapterIndex=${Number(item && item._chapterIndex) || Number(chapterIndex) || 0}&lessonIndex=${Number(item && item._lessonIndex) || 0}&childIndex=${Number.isFinite(Number(item && item._childIndex)) ? Number(item._childIndex) : -1}`
 			});
 		},
 		clearEncodedPageTitle() {

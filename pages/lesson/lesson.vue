@@ -202,6 +202,10 @@ export default {
 			courseTitle: '',
 			chapterTitle: '',
 			categoryTitle: '',
+			versionIndex: -1,
+			chapterIndex: -1,
+			lessonIndex: -1,
+			childIndex: -1,
 			videoUrl: '',
 			poster: '',
 			initialTime: 0,
@@ -282,6 +286,10 @@ export default {
 		if (opts && opts.courseId) this.courseId = this.decodeRouteText(opts.courseId);
 		if (opts && opts.courseTitle) this.courseTitle = this.decodeRouteText(opts.courseTitle);
 		if (opts && opts.chapterTitle) this.chapterTitle = this.decodeRouteText(opts.chapterTitle);
+		;['versionIndex', 'chapterIndex', 'lessonIndex', 'childIndex'].forEach(key => {
+			const value = Number(opts && opts[key]);
+			this[key] = Number.isInteger(value) ? value : -1;
+		});
 		this.categoryTitle = this.resolveCategoryTitle(opts);
 		this.refreshPlaybackPolicy();
 		this.syncPageTitle();
@@ -431,7 +439,7 @@ export default {
 				this.videoStartupAttempts += 1;
 				this.videoLoadingTitle = '正在重新连接视频';
 				this.videoLoadingMessage = '首次连接超时，正在自动更新播放地址并重试一次。';
-				this.loadLesson();
+				this.loadLesson(true);
 				return;
 			}
 			this.failVideo('视频连接超时，请点击“重新加载”。如果仍然失败，请稍后再试。');
@@ -575,9 +583,15 @@ export default {
 				});
 			});
 		},
-		async loadLesson() {
+		async loadLesson(forceRetry = false) {
 			try {
-				const data = await getLessonVideo(this.lessonId || this.title, this.courseId);
+				const data = await getLessonVideo(this.lessonId || this.title, this.courseId, {
+					versionIndex: this.versionIndex,
+					chapterIndex: this.chapterIndex,
+					lessonIndex: this.lessonIndex,
+					childIndex: this.childIndex,
+					retry: forceRetry
+				});
 				this.poster = resolveMediaUrl(data.poster || '');
 				if (data.locked) {
 					// 月卡顺序解锁：本节未解锁，仅展示提示，不加载视频
@@ -1237,7 +1251,7 @@ export default {
 			if (/\.m3u8(?:$|[?#])/i.test(this.videoUrl || '') || !this.videoUrl) {
 				this.videoError = false;
 				this.videoPrepareAttempts = 0;
-				this.loadLesson();
+				this.loadLesson(true);
 				return;
 			}
 			this.reloadVideo(true);

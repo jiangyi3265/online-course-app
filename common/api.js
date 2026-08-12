@@ -418,8 +418,14 @@ export function getStudyPlan(courseId = '', userId = '') {
 	return request('/study/plan', { params: { courseId, userId } })
 }
 
-export function getLessonVideo(lessonId, courseId = '') {
-	return request('/lesson/video', { params: { lessonId, courseId } })
+export function getLessonVideo(lessonId, courseId = '', locator = {}) {
+	const params = { lessonId, courseId }
+	;['versionIndex', 'chapterIndex', 'lessonIndex', 'childIndex'].forEach(key => {
+		const value = Number(locator && locator[key])
+		if (Number.isInteger(value) && value >= -1) params[key] = value
+	})
+	if (locator && locator.retry) params.retry = 1
+	return request('/lesson/video', { params })
 }
 
 export function saveLessonProgress(lessonId, payload) {

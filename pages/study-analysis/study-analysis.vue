@@ -110,14 +110,15 @@
 			<view class="empty" v-else>暂无已激活课程，激活课程后这里会显示对应科目的学习报告。</view>
 		</view>
 
-		<view class="english-panel" v-if="englishStats">
+		<view class="english-panel">
 			<view class="english-title">英语词汇</view>
-			<view class="english-grid">
-				<view class="english-item" v-for="item in englishStats.items" :key="item.label">
+			<view class="english-grid" v-if="englishItems.length">
+				<view class="english-item" v-for="item in englishItems" :key="item.label">
 					<text>{{item.label}}</text>
 					<strong>{{item.value}}</strong>
 				</view>
 			</view>
+			<view class="english-empty" v-else>暂无词汇学习记录，开始使用“外语词汇”后，这里会同步显示学习数据。</view>
 			<view class="english-daily">
 				<view>今日学习词汇名字：{{englishVocabularyStats.bookName}}</view>
 				<view>今日认读完成：{{englishVocabularyStats.read}}个</view>
@@ -180,6 +181,9 @@ export default {
 		},
 		englishStats() {
 			return (this.studySummary && this.studySummary.sections || []).find(section => /英语|外语/.test(section.title));
+		},
+		englishItems() {
+			return this.englishStats && Array.isArray(this.englishStats.items) ? this.englishStats.items : [];
 		},
 		englishVocabularyStats() {
 			const data = (this.studySummary && (this.studySummary.englishVocabulary || this.studySummary.vocabularyStats)) || {};
@@ -646,6 +650,16 @@ page { background:#eef3f7; }
 .english-item strong {
 	color:#111827;
 	font-size:31rpx;
+}
+.english-empty {
+	margin-top:18rpx;
+	padding:20rpx;
+	border-radius:14rpx;
+	background:#f6f9fd;
+	border:1rpx solid #edf2f7;
+	color:#64748b;
+	font-size:24rpx;
+	line-height:1.55;
 }
 .english-daily {
 	grid-template-columns:repeat(2, minmax(0, 1fr));
