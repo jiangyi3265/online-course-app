@@ -683,7 +683,9 @@ export default {
 			return `共 ${total} 题　已完成 ${completed} 次`;
 		},
 		versionLabel(version, index) {
-			return (version && version.name) || (index === 0 ? '复习加强课' : '技巧绝招');
+			if (index === 0) return '复习加强课';
+			if (index === 1) return '技巧绝招课';
+			return (version && version.name) || `课程内容${index + 1}`;
 		},
 		lessonCategoryTitle(index = this.versionIndex) {
 			if (index === 2) return '知识巩固';

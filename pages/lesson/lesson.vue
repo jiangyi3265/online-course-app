@@ -214,6 +214,7 @@ export default {
 			totalTime: '00:00',
 			currentSeconds: 0,
 			durationSeconds: 0,
+			authoritativeDurationSeconds: 0,
 			percent: 0,
 			cumulativePercent: 0,
 			videoError: false,
@@ -228,6 +229,9 @@ export default {
 			videoLoadingTitle: '正在加载视频',
 			videoLoadingMessage: '正在连接安全视频，通常几秒内即可开始播放。',
 			videoStartupTimer: null,
+			videoBufferTimer: null,
+			videoDurationTimer: null,
+			durationRefreshActive: true,
 			videoStartupAttempts: 0,
 			hlsAttachAttempts: 0,
 			usesHlsJs: false,
@@ -309,15 +313,20 @@ export default {
 		this.bindH5ProgressEvents();
 	},
 	onShow() {
+		this.durationRefreshActive = true;
 		if (this.videoLoading && this.videoUrl && !this.videoError) this.beginVideoStartupGuard();
+		if (!this.authoritativeDurationSeconds && this.videoUrl && !this.lessonLocked) this.scheduleVideoDurationRefresh();
 	},
 	onUnload() {
+		this.durationRefreshActive = false;
 		this.flushProgressOnExit();
 		this.clearSpeedMenuTimer();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
 		this.clearVideoPrepareTimer();
 		this.clearVideoStartupTimer();
+		this.clearVideoBufferTimer();
+		this.clearVideoDurationTimer();
 		this.destroyHlsPlayer();
 		this.unbindSeekDragListeners();
 		this.unbindFullscreenListener();
@@ -327,11 +336,14 @@ export default {
 		this.exitWebFullscreen(false);
 	},
 	onHide() {
+		this.durationRefreshActive = false;
 		this.flushProgressOnExit();
 		this.closeSpeedMenu();
 		this.clearControlsHideTimer();
 		this.clearVideoErrorTimer();
 		this.clearVideoStartupTimer();
+		this.clearVideoBufferTimer();
+		this.clearVideoDurationTimer();
 		this.unbindSeekDragListeners();
 		this.setNativeVideoControls(false);
 		this.unbindNativeVideoGuards();
@@ -398,7 +410,7 @@ export default {
 		inferCategoryTitle(...values) {
 			const text = values.filter(Boolean).join(' ');
 			if (/复习加强课|复习加强|复习测试/.test(text)) return '复习加强课';
-			if (/技巧绝招课|技巧绝招|绝招课/.test(text)) return '技巧绝招';
+			if (/技巧绝招课|技巧绝招|绝招课/.test(text)) return '技巧绝招课';
 			if (/知识巩固|知识点巩固/.test(text)) return '知识巩固';
 			return '讲点';
 		},
@@ -415,6 +427,61 @@ export default {
 			if (!this.videoStartupTimer) return;
 			clearTimeout(this.videoStartupTimer);
 			this.videoStartupTimer = null;
+		},
+		clearVideoBufferTimer() {
+			if (!this.videoBufferTimer) return;
+			clearTimeout(this.videoBufferTimer);
+			this.videoBufferTimer = null;
+		},
+		clearVideoDurationTimer() {
+			if (!this.videoDurationTimer) return;
+			clearTimeout(this.videoDurationTimer);
+			this.videoDurationTimer = null;
+		},
+		scheduleVideoDurationRefresh(delay = 4000) {
+			if (!this.durationRefreshActive || this.authoritativeDurationSeconds > 0 || this.lessonLocked || !this.videoUrl) return;
+			this.clearVideoDurationTimer();
+			this.videoDurationTimer = setTimeout(() => this.refreshVideoDuration(), Math.max(1500, Number(delay) || 4000));
+		},
+		async refreshVideoDuration() {
+			this.videoDurationTimer = null;
+			const requestedLesson = String(this.lessonId || this.title || '');
+			if (!this.durationRefreshActive || !requestedLesson || this.lessonLocked || !this.videoUrl || this.authoritativeDurationSeconds > 0) return;
+			try {
+				const data = await getLessonVideo(requestedLesson, this.courseId, {
+					versionIndex: this.versionIndex,
+					chapterIndex: this.chapterIndex,
+					lessonIndex: this.lessonIndex,
+					childIndex: this.childIndex,
+					retry: false,
+					durationOnly: true
+				});
+				if (!this.durationRefreshActive || requestedLesson !== String(this.lessonId || this.title || '')) return;
+				const duration = this.safeSeconds(data && data.duration);
+				if (duration > 0) {
+					this.authoritativeDurationSeconds = duration;
+					this.durationSeconds = duration;
+					this.totalTime = this.formatTime(duration);
+					this.percent = duration ? Math.min(100, Math.round((this.currentSeconds / duration) * 100)) : 0;
+					return;
+				}
+				if (data && data.durationPending !== false) this.scheduleVideoDurationRefresh();
+			} catch (err) {
+				if (this.durationRefreshActive) this.scheduleVideoDurationRefresh(6000);
+			}
+		},
+		scheduleVideoBufferOverlay(message = '') {
+			if (!this.videoReady) {
+				this.beginVideoStartupGuard(message);
+				return;
+			}
+			this.clearVideoBufferTimer();
+			this.videoBufferTimer = setTimeout(() => {
+				this.videoBufferTimer = null;
+				const video = this.nativeVideoElement();
+				if (video && Number(video.readyState || 0) >= 3) return;
+				this.beginVideoStartupGuard(message);
+			}, 450);
 		},
 		beginVideoStartupGuard(message = '') {
 			if (!this.videoUrl || this.lessonLocked || this.videoPreparing || this.videoError) return;
@@ -445,6 +512,7 @@ export default {
 			this.failVideo('视频连接超时，请点击“重新加载”。如果仍然失败，请稍后再试。');
 		},
 		markVideoReady() {
+			this.clearVideoBufferTimer();
 			this.clearVideoStartupTimer();
 			this.videoReady = true;
 			this.videoLoading = false;
@@ -452,6 +520,7 @@ export default {
 			this.videoError = false;
 		},
 		failVideo(message = '') {
+			this.clearVideoBufferTimer();
 			this.clearVideoStartupTimer();
 			this.videoLoading = false;
 			this.videoReady = false;
@@ -542,9 +611,12 @@ export default {
 						backBufferLength: 30,
 						maxBufferLength: 24,
 						maxBufferSize: 24 * 1024 * 1024,
-						manifestLoadingMaxRetry: 3,
-						levelLoadingMaxRetry: 3,
-						fragLoadingMaxRetry: 4
+						manifestLoadingTimeOut: 15000,
+						manifestLoadingMaxRetry: 5,
+						levelLoadingTimeOut: 15000,
+						levelLoadingMaxRetry: 5,
+						fragLoadingTimeOut: 20000,
+						fragLoadingMaxRetry: 6
 					});
 					this.hlsPlayer = player;
 					player.attachMedia(media);
@@ -563,12 +635,12 @@ export default {
 					player.on(Hls.Events.ERROR, (_event, detail) => {
 						if (!detail) return;
 						if (!detail.fatal) {
-							if (/bufferStalled|fragLoad|levelLoad|manifestLoad/i.test(String(detail.details || ''))) {
+							if (!this.videoReady && /bufferStalled|fragLoad|levelLoad|manifestLoad/i.test(String(detail.details || ''))) {
 								this.beginVideoStartupGuard('视频缓冲较慢，正在继续连接，请稍候。');
 							}
 							return;
 						}
-						if (detail.type === Hls.ErrorTypes.NETWORK_ERROR && this.videoLoadAttempts < 1) {
+						if (detail.type === Hls.ErrorTypes.NETWORK_ERROR && this.videoLoadAttempts < 3) {
 							this.videoLoadAttempts += 1;
 							player.startLoad();
 							return;
@@ -593,6 +665,12 @@ export default {
 					retry: forceRetry
 				});
 				this.poster = resolveMediaUrl(data.poster || '');
+				this.authoritativeDurationSeconds = this.safeSeconds(data.duration);
+				if (this.authoritativeDurationSeconds > 0) {
+					this.clearVideoDurationTimer();
+					this.durationSeconds = this.authoritativeDurationSeconds;
+					this.totalTime = this.formatTime(this.durationSeconds);
+				}
 				if (data.locked) {
 					// 月卡顺序解锁：本节未解锁，仅展示提示，不加载视频
 					this.lessonLocked = true;
@@ -628,19 +706,20 @@ export default {
 				this.videoErrorMessage = '请检查网络，或稍后重新进入本讲。';
 				this.videoLoadAttempts = 0;
 				this.setProtectedVideoSource(resolveMediaUrl(data.videoUrl || ''));
+				if (data.durationPending && data.videoUrl) this.scheduleVideoDurationRefresh();
 				if (!this.courseTitle && data.courseTitle) this.courseTitle = data.courseTitle;
 				if (!this.chapterTitle && data.chapterTitle) this.chapterTitle = data.chapterTitle;
 				this.pageTotal = data.pageTotal || 1;
 				this.prevTitle = data.prevTitle || '';
 				this.nextTitle = data.nextTitle || '';
 				this.lessonCard = data.card || null;
-				this.durationSeconds = this.safeSeconds(data.duration);
+				this.durationSeconds = this.authoritativeDurationSeconds || this.safeSeconds(data.duration);
 				this.totalTime = this.formatTime(this.durationSeconds);
 				const progress = this.resolveResumeProgress(data.progress);
 				if (progress) {
 					const savedTime = this.safeSeconds(progress.currentTime);
 					const savedDuration = this.safeSeconds(progress.duration);
-					if (savedDuration > 0) {
+					if (savedDuration > 0 && this.authoritativeDurationSeconds <= 0) {
 						this.durationSeconds = savedDuration;
 						this.totalTime = this.formatTime(savedDuration);
 					}
@@ -995,7 +1074,10 @@ export default {
 		onLoadedMeta(e) {
 			const nativeVideo = this.nativeVideoElement();
 			const nativeDuration = nativeVideo && Number.isFinite(Number(nativeVideo.duration)) ? Number(nativeVideo.duration) : 0;
-			const duration = this.safeSeconds(e.detail && e.detail.duration) || this.safeSeconds(nativeDuration) || this.durationSeconds;
+			const duration = this.authoritativeDurationSeconds
+				|| this.safeSeconds(e.detail && e.detail.duration)
+				|| this.safeSeconds(nativeDuration)
+				|| this.durationSeconds;
 			if (duration > 0) {
 				this.durationSeconds = duration;
 				this.totalTime = this.formatTime(duration);
@@ -1032,7 +1114,7 @@ export default {
 			if (!this.videoUrl || this.videoError || this.lessonLocked || this.videoPreparing) return;
 			const video = this.nativeVideoElement();
 			if (this.videoReady && !this.videoPlaying && video && video.paused) return;
-			this.beginVideoStartupGuard('视频正在缓冲，网络恢复后会自动继续播放。');
+			this.scheduleVideoBufferOverlay('视频正在缓冲，网络恢复后会自动继续播放。');
 		},
 		ensureFirstVideoFrame() {
 			const video = this.nativeVideoElement();
@@ -1188,7 +1270,11 @@ export default {
 			this.accumulateWatchProgress(nextSeconds);
 			this.currentSeconds = nextSeconds;
 			const duration = this.safeSeconds(detail.duration);
-			if (duration > 0) this.durationSeconds = duration;
+			if (this.authoritativeDurationSeconds > 0) {
+				this.durationSeconds = this.authoritativeDurationSeconds;
+			} else if (duration > 0) {
+				this.durationSeconds = duration;
+			}
 			this.curTime = this.formatTime(this.currentSeconds);
 			this.totalTime = this.formatTime(this.durationSeconds);
 			this.percent = this.durationSeconds ? Math.min(100, Math.round((this.currentSeconds / this.durationSeconds) * 100)) : 0;
@@ -1859,8 +1945,8 @@ page { background:#fff; }
 	box-sizing:border-box;
 	padding:32rpx;
 	text-align:center;
-	background:linear-gradient(145deg, rgba(15,23,42,.97), rgba(69,26,3,.94));
-	color:#fff7ed;
+	background:rgba(255,251,235,.98);
+	color:#9a3412;
 }
 .video-error-title {
 	font-size:28rpx;
@@ -1870,7 +1956,7 @@ page { background:#fff; }
 	margin-top:8rpx;
 	font-size:24rpx;
 	line-height:1.55;
-	color:rgba(255,247,237,.82);
+	color:#7c2d12;
 }
 .video-error-action {
 	display:inline-flex;
@@ -1880,7 +1966,8 @@ page { background:#fff; }
 	margin-top:16rpx;
 	padding:0 22rpx;
 	border-radius:999rpx;
-	background:#fff7ed;
+	background:#fff;
+	border:1px solid #fed7aa;
 	color:#9a3412;
 	font-size:24rpx;
 	font-weight:800;
@@ -1895,18 +1982,18 @@ page { background:#fff; }
 	justify-content:center;
 	padding:30rpx;
 	text-align:center;
-	background:linear-gradient(145deg, rgba(15,23,42,.94), rgba(30,58,138,.9));
+	background:rgba(248,250,252,.97);
 }
 .video-preparing-spinner {
 	width:48rpx;
 	height:48rpx;
-	border:5rpx solid rgba(255,255,255,.24);
-	border-top-color:#fff;
+	border:5rpx solid rgba(37,99,235,.18);
+	border-top-color:#2563eb;
 	border-radius:50%;
 	animation:video-preparing-spin .85s linear infinite;
 }
-.video-preparing-title { margin-top:20rpx; color:#fff; font-size:30rpx; font-weight:800; }
-.video-preparing-sub { margin-top:10rpx; color:rgba(255,255,255,.76); font-size:23rpx; line-height:1.5; }
+.video-preparing-title { margin-top:20rpx; color:#1e293b; font-size:30rpx; font-weight:800; }
+.video-preparing-sub { margin-top:10rpx; color:#64748b; font-size:23rpx; line-height:1.5; }
 @keyframes video-preparing-spin { to { transform:rotate(360deg); } }
 .lesson-lock {
 	position:absolute;

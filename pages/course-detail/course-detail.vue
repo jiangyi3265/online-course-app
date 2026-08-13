@@ -316,7 +316,12 @@ export default {
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
 			this.courseVersions = this.normalizeVersions(course, course.chapters || []);
-			this.versionChips = this.courseVersions.map((version, index) => String(version.name || `课程内容${index + 1}`));
+			this.versionChips = this.courseVersions.map((version, index) => {
+				const sourceIndex = Number.isInteger(Number(version && version._sourceIndex)) ? Number(version._sourceIndex) : index;
+				if (sourceIndex === 0) return '复习加强课';
+				if (sourceIndex === 1) return '技巧绝招课';
+				return String(version.name || `课程内容${index + 1}`);
+			});
 			if (this.courseVersions.length) this.setVersion(0);
 			else this.chapters = [];
 			this.quizzes = course.quizzes || [];
@@ -364,10 +369,11 @@ export default {
 			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
 			const normalized = source.map((item, index) => ({
 				...(typeof item === 'object' ? item : { name: item }),
+				_sourceIndex: index,
 				name: String((item && item.name) || `课程内容${index + 1}`),
 				chapters: this.normalizeTrialChapters((item && item.chapters) || baseChapters, index)
 			})).filter(version => version.chapters.length > 0);
-			if (!normalized.length && baseChapters.length) normalized.push({ name:'试听内容', chapters:this.normalizeTrialChapters(baseChapters, 0) });
+			if (!normalized.length && baseChapters.length) normalized.push({ _sourceIndex:0, name:'试听内容', chapters:this.normalizeTrialChapters(baseChapters, 0) });
 			return normalized;
 		},
 		normalizeTrialChapters(chapters = [], versionIndex = 0) {
@@ -533,7 +539,9 @@ export default {
 			return `${Math.round(((item.read || 0) / (item.total || 1)) * 100)}%`;
 		},
 		lessonCategoryTitle(index = this.versionIndex) {
-			return this.versionChips[index] || (index === 0 ? '复习加强课' : '技巧绝招');
+			const version = this.courseVersions[index];
+			const sourceIndex = Number.isInteger(Number(version && version._sourceIndex)) ? Number(version._sourceIndex) : index;
+			return this.versionChips[index] || (sourceIndex === 0 ? '复习加强课' : '技巧绝招课');
 		},
 		childName(item, chapter = {}) {
 			return item.name || (item.type === 2 ? '章节练习' : chapter.title || '课程内容');

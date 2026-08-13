@@ -425,6 +425,7 @@ export function getLessonVideo(lessonId, courseId = '', locator = {}) {
 		if (Number.isInteger(value) && value >= -1) params[key] = value
 	})
 	if (locator && locator.retry) params.retry = 1
+	if (locator && locator.durationOnly) params.durationOnly = 1
 	return request('/lesson/video', { params })
 }
 
