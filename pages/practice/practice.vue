@@ -839,10 +839,49 @@ export default {
 
 <style lang="scss">
 page { background:#f5f7fa; }
-.page { min-height:100vh; padding-bottom:150rpx; background:#f5f7fa; }
-.nav { position:relative; height:90rpx; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1rpx solid #eef0f3; }
-.back { position:absolute; left:24rpx; font-size:46rpx; color:#222; cursor:pointer; }
-.nav-title { font-size:30rpx; font-weight:700; color:#222; }
+.page { min-height:100vh; padding-top:90rpx; padding-bottom:150rpx; background:#f5f7fa; box-sizing:border-box; }
+.nav {
+	position:fixed;
+	top:0;
+	left:50%;
+	transform:translateX(-50%);
+	z-index:240;
+	width:100%;
+	max-width:var(--wk-app-width, 100vw);
+	height:90rpx;
+	background:rgba(255,255,255,.98);
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	border-bottom:1rpx solid #eef0f3;
+	box-shadow:0 6rpx 20rpx rgba(30,58,92,.05);
+	backdrop-filter:blur(14rpx);
+	box-sizing:border-box;
+}
+.back {
+	position:absolute;
+	left:0;
+	top:0;
+	z-index:2;
+	width:110rpx;
+	height:90rpx;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	font-size:66rpx;
+	font-weight:300;
+	color:#222;
+	cursor:pointer;
+}
+.nav-title {
+	max-width:calc(100% - 220rpx);
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+	font-size:30rpx;
+	font-weight:800;
+	color:#222;
+}
 .hero { margin:24rpx; padding:28rpx; border-radius:16rpx; background:#1677ff; color:#fff; }
 .hero-title { font-size:36rpx; font-weight:800; }
 .hero-sub { margin-top:10rpx; font-size:24rpx; opacity:.9; }

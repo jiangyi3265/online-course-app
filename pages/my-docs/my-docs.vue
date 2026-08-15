@@ -21,15 +21,6 @@
 
 		<template v-else>
 
-		<view class="search">
-			<view class="search-box">
-				<view class="s-ico"></view>
-				<input class="s-input" v-model="kw" placeholder="请输入文档名称搜索" placeholder-class="s-ph" />
-			</view>
-			<view class="s-divider"></view>
-				<view class="s-btn" @click="search">搜索</view>
-		</view>
-
 			<view class="empty" v-if="list.length===0">
 				<image class="empty-img" src="/static/empty-doc.png" mode="widthFix" />
 				<view class="empty-text">暂无文档</view>
@@ -398,7 +389,6 @@ export default {
 			}
 		},
 		goBack() { safeNavigateBack('/pages/mycourse/mycourse'); },
-		search() { this.loadDocs(); },
 		openDoc(doc) {
 			const url = resolveMediaUrl(doc.fileUrl || '');
 			if (url && url !== '#' && this.openBrowserFile(url, doc.title, false)) {
@@ -798,34 +788,8 @@ page { background:#f5f7fa; }
 	z-index:2;
 }
 .nav-title { font-size:30rpx; color:#222; font-weight:800; }
-.search { display:flex; align-items:center; margin:24rpx; background:#fff; border-radius:14rpx; padding:0 20rpx; height:82rpx; border:1rpx solid #e8edf3; box-shadow:0 4rpx 14rpx rgba(16,24,40,.04); }
-.search-box { flex:1; display:flex; align-items:center; }
-.s-ico {
-	width:28rpx;
-	height:28rpx;
-	margin-right:14rpx;
-	border:4rpx solid #7b8794;
-	border-radius:50%;
-	box-sizing:border-box;
-	position:relative;
-	flex-shrink:0;
-}
-.s-ico::after {
-	content:'';
-	position:absolute;
-	width:12rpx;
-	height:4rpx;
-	right:-10rpx;
-	bottom:-6rpx;
-	background:#7b8794;
-	border-radius:999rpx;
-	transform:rotate(45deg);
-}
-.s-input { flex:1; height:80rpx; font-size:28rpx; color:#222; background:transparent; }
 .s-ph { color:#aab1b9; }
-.s-divider { width:2rpx; height:36rpx; background:#dfe2e6; margin:0 20rpx; }
-.s-btn { color:#3aa3f5; font-size:28rpx; cursor:pointer; }
-.doc-sections { padding:0 24rpx; }
+.doc-sections { padding:24rpx 24rpx 0; }
 .doc-section { margin-bottom:26rpx; }
 .section-head {
 	min-height:98rpx;

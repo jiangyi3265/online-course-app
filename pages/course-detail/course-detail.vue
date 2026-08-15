@@ -909,14 +909,24 @@ page { background:#f5f7fa; }
 	font-weight:900;
 }
 .permission-title { color:#111827; font-size:34rpx; font-weight:900; letter-spacing:-1rpx; }
-.permission-body { margin-top:16rpx; color:#667085; font-size:25rpx; line-height:1.65; }
+.permission-body {
+	max-width:460rpx;
+	margin:16rpx auto 0;
+	color:#667085;
+	font-size:25rpx;
+	line-height:1.65;
+	text-align:center;
+}
 .permission-confirm {
+	width:100%;
 	height:76rpx;
 	margin-top:28rpx;
 	border-radius:14rpx;
-	dis:flex;
+	display:flex;
 	align-items:center;
 	justify-content:center;
+	text-align:center;
+	box-sizing:border-box;
 	background:#1677ff;
 	color:#fff;
 	font-size:27rpx;

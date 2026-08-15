@@ -231,13 +231,16 @@ export default {
 			videoStartupTimer: null,
 			videoBufferTimer: null,
 			videoDurationTimer: null,
+			videoRequestGeneration: 0,
 			durationRefreshActive: true,
 			videoStartupAttempts: 0,
 			hlsAttachAttempts: 0,
 			usesHlsJs: false,
 			hlsPlayer: null,
 			compatibilityMode: false,
+			compatibilityPreferred: false,
 			compatibilityFallbackAttempted: false,
+			hlsFallbackAttempted: false,
 			lessonLocked: false,
 			lockReason: '',
 			videoPlaying: false,
@@ -298,7 +301,8 @@ export default {
 		});
 		this.categoryTitle = this.resolveCategoryTitle(opts);
 		this.refreshPlaybackPolicy();
-		this.compatibilityMode = this.shouldPreferCompatibilityVideo();
+		this.compatibilityPreferred = this.shouldPreferCompatibilityVideo();
+		this.compatibilityMode = this.compatibilityPreferred;
 		this.compatibilityFallbackAttempted = this.compatibilityMode;
 		this.syncPageTitle();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
@@ -525,6 +529,7 @@ export default {
 			this.videoError = false;
 		},
 		failVideo(message = '') {
+			if (this.switchToHlsVideo(message)) return;
 			if (this.switchToCompatibilityVideo(message)) return;
 			this.clearVideoBufferTimer();
 			this.clearVideoStartupTimer();
@@ -535,16 +540,40 @@ export default {
 			this.videoError = true;
 		},
 		shouldPreferCompatibilityVideo() {
-			// 即使是旧 Android，也先尝试可边转码边播放的 HLS。兼容 MP4 需要在
-			// 完整 HLS 就绪后生成，只能作为明确超时/解码失败后的兜底，否则长视频
-			// 首次进入会被迫等待整段转换完成。
-			return false;
+			if (typeof navigator === 'undefined') return false;
+			const userAgent = String(navigator.userAgent || '');
+			// Android 内嵌浏览器和旧平板常会误报原生 HLS/MSE 能力，最终表现为
+			// 00:00、黑屏或“视频读取出现问题”。这些设备优先使用已转成
+			// H.264 Baseline/AAC 且支持 Range 的 fast-start MP4；桌面和 Apple
+			// 设备继续使用加密 HLS。
+			return /Android/i.test(userAgent);
+		},
+		switchToHlsVideo(message = '') {
+			if (!this.compatibilityMode || !this.compatibilityPreferred || this.hlsFallbackAttempted) return false;
+			this.hlsFallbackAttempted = true;
+			this.compatibilityMode = false;
+			this.videoLoadAttempts = 0;
+			this.videoStartupAttempts = 0;
+			this.clearVideoErrorTimer();
+			this.clearVideoStartupTimer();
+			this.clearVideoBufferTimer();
+			this.destroyHlsPlayer();
+			this.videoError = false;
+			this.videoPreparing = true;
+			this.videoLoading = false;
+			this.videoLoadingTitle = '正在切换备用线路';
+			this.videoLoadingMessage = message || '兼容视频暂不可用，正在切换安全分段播放。';
+			this.setProtectedVideoSource('');
+			this.loadLesson(true);
+			return true;
 		},
 		switchToCompatibilityVideo(message = '') {
 			const isHls = /\.m3u8(?:$|[?#])/i.test(String(this.videoUrl || ''));
 			if (!isHls || this.compatibilityMode || this.compatibilityFallbackAttempted) return false;
 			this.compatibilityFallbackAttempted = true;
 			this.compatibilityMode = true;
+			this.videoLoadAttempts = 0;
+			this.videoStartupAttempts = 0;
 			this.clearVideoErrorTimer();
 			this.clearVideoStartupTimer();
 			this.clearVideoBufferTimer();
@@ -566,7 +595,10 @@ export default {
 		scheduleProtectedVideoRetry(seconds = 3) {
 			this.clearVideoPrepareTimer();
 			this.videoPrepareAttempts += 1;
-			if (this.videoPrepareAttempts > 120) {
+			if (this.compatibilityMode && this.videoPrepareAttempts > 20 && this.switchToHlsVideo('兼容视频准备时间较长，正在切换备用线路。')) {
+				return;
+			}
+			if (this.videoPrepareAttempts > 60) {
 				this.videoPreparing = false;
 				this.videoError = true;
 				this.videoErrorMessage = '安全视频生成超时，请稍后重新进入本讲。';
@@ -594,7 +626,21 @@ export default {
 			this.videoLoading = false;
 			if (!source) return;
 			this.beginVideoStartupGuard();
-			this.$nextTick(() => this.configureHlsPlayback());
+			this.$nextTick(() => {
+				if (/\.m3u8(?:$|[?#])/i.test(source)) {
+					this.configureHlsPlayback();
+					return;
+				}
+				// 部分旧 WebView 只更新 Vue 属性不会主动重新装载媒体，显式 load()
+				// 可确保新签发的兼容地址真正交给原生解码器。
+				this.$nextTick(() => {
+					this.lockNativeVideoPlayback();
+					const video = this.nativeVideoElement();
+					if (video && typeof video.load === 'function') {
+						try { video.load(); } catch (err) { /* source assignment still triggers loading */ }
+					}
+				});
+			});
 		},
 		configureHlsPlayback() {
 			const source = String(this.videoUrl || '');
@@ -688,6 +734,8 @@ export default {
 			});
 		},
 		async loadLesson(forceRetry = false) {
+			const requestGeneration = ++this.videoRequestGeneration;
+			const requestedCompatibilityMode = this.compatibilityMode;
 			try {
 				const data = await getLessonVideo(this.lessonId || this.title, this.courseId, {
 					versionIndex: this.versionIndex,
@@ -695,8 +743,13 @@ export default {
 					lessonIndex: this.lessonIndex,
 					childIndex: this.childIndex,
 					retry: forceRetry,
-					legacy: this.compatibilityMode
+					legacy: requestedCompatibilityMode
 				});
+				// Slow networks may return an earlier MP4/HLS request after the
+				// player has already switched routes. Never let that stale response
+				// replace the source or error state of the current route.
+				if (requestGeneration !== this.videoRequestGeneration
+					|| requestedCompatibilityMode !== this.compatibilityMode) return;
 				this.poster = resolveMediaUrl(data.poster || '');
 				this.authoritativeDurationSeconds = this.safeSeconds(data.duration);
 				if (this.authoritativeDurationSeconds > 0) {
@@ -724,6 +777,7 @@ export default {
 					return;
 				}
 				if (data.protectionError) {
+					if (this.switchToHlsVideo(`兼容视频准备失败：${data.protectionError}`)) return;
 					this.videoPreparing = false;
 					this.videoLoading = false;
 					this.clearVideoPrepareTimer();
@@ -772,6 +826,8 @@ export default {
 				this.refreshPlaybackPolicy();
 				this.$nextTick(() => this.applyInitialPlaybackPosition());
 			} catch (err) {
+				if (requestGeneration !== this.videoRequestGeneration
+					|| requestedCompatibilityMode !== this.compatibilityMode) return;
 				this.videoPreparing = false;
 				this.failVideo('视频接口暂时不可用，请检查网络后重试。');
 				console.warn('视频接口不可用', err);
@@ -1364,12 +1420,16 @@ export default {
 		retryVideo() {
 			this.videoLoadAttempts = 0;
 			this.videoStartupAttempts = 0;
+			this.hlsFallbackAttempted = false;
+			this.compatibilityMode = this.compatibilityPreferred;
+			this.compatibilityFallbackAttempted = !!this.compatibilityMode;
 			this.clearVideoStartupTimer();
 			this.videoLoading = false;
 			this.videoReady = false;
 			if (/\/course\/app\/lesson\//i.test(this.videoUrl || '') || /\.m3u8(?:$|[?#])/i.test(this.videoUrl || '') || !this.videoUrl) {
 				this.videoError = false;
 				this.videoPrepareAttempts = 0;
+				this.setProtectedVideoSource('');
 				this.loadLesson(true);
 				return;
 			}
