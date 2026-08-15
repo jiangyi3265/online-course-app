@@ -236,6 +236,8 @@ export default {
 			hlsAttachAttempts: 0,
 			usesHlsJs: false,
 			hlsPlayer: null,
+			compatibilityMode: false,
+			compatibilityFallbackAttempted: false,
 			lessonLocked: false,
 			lockReason: '',
 			videoPlaying: false,
@@ -296,6 +298,8 @@ export default {
 		});
 		this.categoryTitle = this.resolveCategoryTitle(opts);
 		this.refreshPlaybackPolicy();
+		this.compatibilityMode = this.shouldPreferCompatibilityVideo();
+		this.compatibilityFallbackAttempted = this.compatibilityMode;
 		this.syncPageTitle();
 		this.userInfo = uni.getStorageSync('userInfo') || {};
 		await this.loadLesson();
@@ -509,6 +513,7 @@ export default {
 				this.loadLesson(true);
 				return;
 			}
+			if (this.switchToCompatibilityVideo('当前设备正在切换到兼容播放模式。')) return;
 			this.failVideo('视频连接超时，请点击“重新加载”。如果仍然失败，请稍后再试。');
 		},
 		markVideoReady() {
@@ -520,6 +525,7 @@ export default {
 			this.videoError = false;
 		},
 		failVideo(message = '') {
+			if (this.switchToCompatibilityVideo(message)) return;
 			this.clearVideoBufferTimer();
 			this.clearVideoStartupTimer();
 			this.videoLoading = false;
@@ -527,6 +533,30 @@ export default {
 			this.videoPlaying = false;
 			if (message) this.videoErrorMessage = message;
 			this.videoError = true;
+		},
+		shouldPreferCompatibilityVideo() {
+			// 即使是旧 Android，也先尝试可边转码边播放的 HLS。兼容 MP4 需要在
+			// 完整 HLS 就绪后生成，只能作为明确超时/解码失败后的兜底，否则长视频
+			// 首次进入会被迫等待整段转换完成。
+			return false;
+		},
+		switchToCompatibilityVideo(message = '') {
+			const isHls = /\.m3u8(?:$|[?#])/i.test(String(this.videoUrl || ''));
+			if (!isHls || this.compatibilityMode || this.compatibilityFallbackAttempted) return false;
+			this.compatibilityFallbackAttempted = true;
+			this.compatibilityMode = true;
+			this.clearVideoErrorTimer();
+			this.clearVideoStartupTimer();
+			this.clearVideoBufferTimer();
+			this.destroyHlsPlayer();
+			this.videoError = false;
+			this.videoPreparing = true;
+			this.videoLoading = false;
+			this.videoLoadingTitle = '正在切换兼容播放';
+			this.videoLoadingMessage = message || '正在为当前设备准备兼容视频，请稍候。';
+			this.setProtectedVideoSource('');
+			this.loadLesson(true);
+			return true;
 		},
 		clearVideoPrepareTimer() {
 			if (!this.videoPrepareTimer) return;
@@ -594,7 +624,9 @@ export default {
 					return;
 				}
 				if (!Hls.isSupported()) {
-					this.failVideo('当前浏览器不支持安全视频播放，请更新浏览器后重试。');
+					if (!this.switchToCompatibilityVideo('当前浏览器不支持 HLS，正在切换兼容播放。')) {
+						this.failVideo('当前浏览器不支持安全视频播放，请更新浏览器后重试。');
+					}
 					return;
 				}
 				this.destroyHlsPlayer();
@@ -662,7 +694,8 @@ export default {
 					chapterIndex: this.chapterIndex,
 					lessonIndex: this.lessonIndex,
 					childIndex: this.childIndex,
-					retry: forceRetry
+					retry: forceRetry,
+					legacy: this.compatibilityMode
 				});
 				this.poster = resolveMediaUrl(data.poster || '');
 				this.authoritativeDurationSeconds = this.safeSeconds(data.duration);
@@ -1334,7 +1367,7 @@ export default {
 			this.clearVideoStartupTimer();
 			this.videoLoading = false;
 			this.videoReady = false;
-			if (/\.m3u8(?:$|[?#])/i.test(this.videoUrl || '') || !this.videoUrl) {
+			if (/\/course\/app\/lesson\//i.test(this.videoUrl || '') || /\.m3u8(?:$|[?#])/i.test(this.videoUrl || '') || !this.videoUrl) {
 				this.videoError = false;
 				this.videoPrepareAttempts = 0;
 				this.loadLesson(true);

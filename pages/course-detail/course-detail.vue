@@ -104,6 +104,10 @@
 				<view class="version-chips">
 					<view class="version-chip" v-for="(item, index) in versionChips" :key="item" :class="{active: versionIndex === index}" @click="setVersion(index)">{{item}}</view>
 				</view>
+				<view class="version-empty" v-if="!chapters.length">
+					<view class="version-empty-title">本类课程内容暂未配置</view>
+					<view class="version-empty-text">请切换上方另一类课程查看，或稍后再试。</view>
+				</view>
 
 				<view class="chapter" v-for="(c,i) in chapters" :key="`${versionIndex}-${i}-${c.title}`">
 					<view class="ch-head" @click.stop="toggle(i)">
@@ -148,6 +152,10 @@
 						</view>
 					</view>
 					<view class="q-btn" @click="goQuiz(q)">{{q.action || '去测评'}}</view>
+					</view>
+					<view class="minor-panel" v-if="!trialQuizzes.length">
+						<view class="minor-title">暂无章节扫雷题目</view>
+						<view class="minor-text">本课程尚未配置题目，请稍后再试。</view>
 					</view>
 				</template>
 			</view>
@@ -238,18 +246,20 @@ export default {
 			return Math.min(this.progressLabel, 100);
 		},
 		trialQuizzes() {
-			return (this.quizzes || []).slice(0, 1);
+			return (this.quizzes || []).filter(item => {
+				if (!item || item.visible === false) return false;
+				return Array.isArray(item.questionIds) && item.questionIds.length > 0;
+			}).slice(0, 1);
 		},
 		versionSummaries() {
 			return this.courseVersions.slice(0, 2).map((version, index) => {
-				const title = String((version && version.name) || `课程内容${index + 1}`).trim();
 				const chapters = (version && version.chapters) || [];
 				return {
-					label: title,
+					label: index === 0 ? '复习加强课' : '技巧绝招课',
 					total: Number(version.totalLessons || version.lessonCount || version.total || 0) || this.countChapters(chapters),
 					duration: this.versionDuration(version, index)
 				};
-			}).filter(item => item.total || this.durationTextSeconds(item.duration) > 0);
+			});
 		},
 		isChineseTrial() {
 			return /中考语文|高考语文|初中语文|高中语文/.test(`${this.title}${this.courseName}`);
@@ -316,12 +326,7 @@ export default {
 			this.learntCount = course.readStudyCount || 0;
 			this.learntDuration = course.readDuration || '00小时00分';
 			this.courseVersions = this.normalizeVersions(course, course.chapters || []);
-			this.versionChips = this.courseVersions.map((version, index) => {
-				const sourceIndex = Number.isInteger(Number(version && version._sourceIndex)) ? Number(version._sourceIndex) : index;
-				if (sourceIndex === 0) return '复习加强课';
-				if (sourceIndex === 1) return '技巧绝招课';
-				return String(version.name || `课程内容${index + 1}`);
-			});
+			this.versionChips = this.courseVersions.map((version, index) => index === 0 ? '复习加强课' : '技巧绝招课');
 			if (this.courseVersions.length) this.setVersion(0);
 			else this.chapters = [];
 			this.quizzes = course.quizzes || [];
@@ -365,16 +370,34 @@ export default {
 			if (version && version.chapters) this.chapters = version.chapters;
 		},
 		normalizeVersions(course = {}, fallbackChapters = []) {
-			const baseChapters = course.chapters || fallbackChapters || [];
+			const baseChapters = Array.isArray(course.chapters) ? course.chapters : (Array.isArray(fallbackChapters) ? fallbackChapters : []);
 			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
-			const normalized = source.map((item, index) => ({
-				...(typeof item === 'object' ? item : { name: item }),
-				_sourceIndex: index,
-				name: String((item && item.name) || `课程内容${index + 1}`),
-				chapters: this.normalizeTrialChapters((item && item.chapters) || baseChapters, index)
-			})).filter(version => version.chapters.length > 0);
-			if (!normalized.length && baseChapters.length) normalized.push({ _sourceIndex:0, name:'试听内容', chapters:this.normalizeTrialChapters(baseChapters, 0) });
-			return normalized;
+			const slots = [null, null];
+			const pending = [];
+			source.forEach((raw, sourceIndex) => {
+				const item = typeof raw === 'object' && raw ? raw : { name: raw };
+				const name = String(item.name || '').trim();
+				const slotIndex = /技巧|绝招/.test(name) ? 1 : (/复习|加强|2026/.test(name) ? 0 : -1);
+				if (slotIndex >= 0 && !slots[slotIndex]) slots[slotIndex] = { item, sourceIndex };
+				else pending.push({ item, sourceIndex });
+			});
+			pending.forEach(entry => {
+				const slotIndex = slots[0] ? (slots[1] ? -1 : 1) : 0;
+				if (slotIndex >= 0) slots[slotIndex] = entry;
+			});
+			if (!source.length && baseChapters.length) slots[0] = { item: { chapters: baseChapters }, sourceIndex: 0 };
+			const labels = ['复习加强课', '技巧绝招课'];
+			return slots.map((entry, slotIndex) => {
+				const item = entry ? entry.item : {};
+				const sourceIndex = entry ? entry.sourceIndex : slotIndex;
+				return {
+					...item,
+					_slotIndex: slotIndex,
+					_sourceIndex: sourceIndex,
+					name: labels[slotIndex],
+					chapters: this.normalizeTrialChapters(Array.isArray(item.chapters) ? item.chapters : [], sourceIndex)
+				};
+			});
 		},
 		normalizeTrialChapters(chapters = [], versionIndex = 0) {
 			return (Array.isArray(chapters) ? chapters : []).map((chapter, chapterIndex) => {
@@ -394,7 +417,6 @@ export default {
 						const hasQuestions = Number(child.type) === 2 && (
 							(Array.isArray(child.questionIds) && child.questionIds.length > 0)
 							|| (Array.isArray(lesson.questionIds) && lesson.questionIds.length > 0)
-							|| Number(child.total || lesson.total || 0) > 0
 						);
 						if (Number(child.type) === 2 ? !hasQuestions : !hasVideo) return;
 						children.push({
@@ -795,6 +817,16 @@ page { background:#f5f7fa; }
 	font-weight:800;
 }
 .version-chip.active { background:#3aa3f5; color:#fff; }
+.version-empty {
+	margin:18rpx 24rpx 24rpx;
+	padding:42rpx 28rpx;
+	border:1rpx solid #e5edf6;
+	border-radius:16rpx;
+	background:#fff;
+	text-align:center;
+}
+.version-empty-title { color:#334155; font-size:28rpx; font-weight:800; }
+.version-empty-text { margin-top:10rpx; color:#8a94a3; font-size:23rpx; line-height:1.6; }
 
 /* 章节卡片 */
 .chapter {

@@ -67,7 +67,7 @@
 			<view class="func" @click="goReport"><view class="f-ico system-icon"><image class="f-icon-image" src="/static/system-icons/course/report.png?v=20260725" mode="aspectFit" /></view><text class="f-text">学习报告</text></view>
 		</view>
 
-		<view class="course-actions-area" @click="collapseCheckinPanel">
+		<view class="course-actions-area" :style="{ minHeight: tabPanelMinHeight }" @click="collapseCheckinPanel">
 			<!-- Tabs -->
 			<view class="tabs">
 				<view class="tab" v-for="(t,i) in projectTabs" :key="t" :class="{active: tab===i}" @click="setTab(i)">{{t}}</view>
@@ -77,6 +77,10 @@
 			<block v-if="tab===0">
 				<view class="chip-row">
 					<view class="chip" v-for="(v,i) in visibleVersions" :key="v.name || v" :class="{active: versionIndex===i}" @click="setVersion(i)">{{versionLabel(v, i)}}</view>
+				</view>
+				<view class="version-empty" v-if="!chapters.length">
+					<view class="version-empty-title">本类课程内容暂未配置</view>
+					<view class="version-empty-desc">请切换上方另一类课程查看，或稍后再试。</view>
 				</view>
 
 				<view class="chap-list">
@@ -273,7 +277,8 @@ export default {
 			knowledgeChapters: [],
 			chapters: [],
 			quizzes: [],
-			versionStats: []
+			versionStats: [],
+			tabPanelMinHeight: ''
 		}
 	},
 	computed: {
@@ -315,13 +320,13 @@ export default {
 			return this.versions.slice(0, 2);
 		},
 		versionSummaries() {
-			const labels = ['复习加强', '技巧绝招'];
+			const labels = ['复习加强课', '技巧绝招课'];
 			const statsRows = this.versionStats.slice(0, 2);
 			if (statsRows.length) return statsRows.map((item, index) => ({
-				label: item.label || item.name || item.versionName || labels[index] || '课程',
+				label: labels[index] || '课程',
 				total: Number(item.totalLessons || item.lessonCount || item.total || 0),
 				duration: item.totalDuration || item.duration || item.courseDuration || '00小时00分'
-			})).filter(item => item.total || this.durationTextSeconds(item.duration) > 0);
+			}));
 			return this.visibleVersions.map((version, index) => {
 				const chapters = (version && version.chapters) || [];
 				const rawChapters = (version && version.rawChapters) || chapters;
@@ -330,7 +335,7 @@ export default {
 					total: this.countDeclaredChapters(rawChapters) || this.countChapters(chapters) || Number(version.totalLessons || version.lessonCount || 0),
 					duration: this.versionDuration(version, index)
 				};
-			}).filter(item => item.total || this.durationTextSeconds(item.duration) > 0);
+			});
 		},
 		visibleQuizzes() {
 			return (this.quizzes || []).filter(item => this.isVisible(item) && this.hasPracticeQuestions(item));
@@ -536,13 +541,38 @@ export default {
 		normalizeVersions(course = {}, fallbackChapters = []) {
 			const baseChapters = Array.isArray(course.chapters) ? course.chapters : (Array.isArray(fallbackChapters) ? fallbackChapters : []);
 			const source = Array.isArray(course.versions) && course.versions.length ? course.versions : [];
-			const normalized = source.length
-				? source.map((item, index) => ({
-					...(typeof item === 'object' ? item : { name: item }),
-					name: String((item && item.name) || `课程内容${index + 1}`),
-					chapters: item && Array.isArray(item.chapters) ? item.chapters : []
-				}))
-				: (baseChapters.length ? [{ name: '课程内容', chapters: baseChapters }] : []);
+			const slots = [null, null];
+			let knowledge = null;
+			const pending = [];
+			source.forEach((raw, sourceIndex) => {
+				const item = typeof raw === 'object' && raw ? raw : { name: raw };
+				const name = String(item.name || '').trim();
+				if (/知识/.test(name) && !knowledge) knowledge = { item, sourceIndex };
+				else if (/技巧|绝招/.test(name) && !slots[1]) slots[1] = { item, sourceIndex };
+				else if (/复习|加强|2026/.test(name) && !slots[0]) slots[0] = { item, sourceIndex };
+				else pending.push({ item, sourceIndex });
+			});
+			pending.forEach(entry => {
+				const slotIndex = slots[0] ? (slots[1] ? -1 : 1) : 0;
+				if (slotIndex >= 0) slots[slotIndex] = entry;
+				else if (!knowledge) knowledge = entry;
+			});
+			if (!source.length && baseChapters.length) slots[0] = { item: { chapters: baseChapters }, sourceIndex: 0 };
+			const labels = ['复习加强课', '技巧绝招课'];
+			const normalized = slots.map((entry, slotIndex) => ({
+				...(entry ? entry.item : {}),
+				_slotIndex: slotIndex,
+				_sourceIndex: entry ? entry.sourceIndex : slotIndex,
+				name: labels[slotIndex],
+				chapters: entry && Array.isArray(entry.item.chapters) ? entry.item.chapters : []
+			}));
+			normalized.push({
+				...(knowledge ? knowledge.item : {}),
+				_slotIndex: 2,
+				_sourceIndex: knowledge ? knowledge.sourceIndex : 2,
+				name: '知识巩固',
+				chapters: knowledge && Array.isArray(knowledge.item.chapters) ? knowledge.item.chapters : []
+			});
 			return normalized.map((version, index) => ({
 				...version,
 				rawChapters: version.chapters || [],
@@ -568,8 +598,39 @@ export default {
 		},
 		setTab(i) {
 			this.collapseCheckinPanel();
-			this.tab = i;
-			if (i === 3 && !this.knowledgeChapters.length) this.loadReinforce();
+			if (this.tab === i) return;
+			const switchTab = (anchor = null, panel = null, viewport = null) => {
+				const previousMinHeight = Number.parseFloat(this.tabPanelMinHeight) || 0;
+				const panelHeight = Math.ceil(Number(panel && panel.height) || 0);
+				if (panelHeight > previousMinHeight) this.tabPanelMinHeight = `${panelHeight}px`;
+				this.tab = i;
+				if (i === 3 && !this.knowledgeChapters.length) this.loadReinforce();
+				this.$nextTick(() => {
+					if (!anchor || !viewport || typeof uni.createSelectorQuery !== 'function') return;
+					uni.createSelectorQuery().in(this)
+						.select('.tabs').boundingClientRect()
+						.select('.course-actions-area').boundingClientRect()
+						.exec(result => {
+							const next = result && result[0];
+							const nextPanel = result && result[1];
+							const nextPanelHeight = Math.ceil(Number(nextPanel && nextPanel.height) || 0);
+							const currentMinHeight = Number.parseFloat(this.tabPanelMinHeight) || 0;
+							if (nextPanelHeight > currentMinHeight) this.tabPanelMinHeight = `${nextPanelHeight}px`;
+							if (!next) return;
+							const scrollTop = Math.max(0, Number(viewport.scrollTop || 0) + Number(next.top || 0) - Number(anchor.top || 0));
+							uni.pageScrollTo({ scrollTop, duration: 0 });
+						});
+				});
+			};
+			if (typeof uni.createSelectorQuery !== 'function') {
+				switchTab();
+				return;
+			}
+			uni.createSelectorQuery().in(this)
+				.select('.tabs').boundingClientRect()
+				.select('.course-actions-area').boundingClientRect()
+				.selectViewport().scrollOffset()
+				.exec(result => switchTab(result && result[0], result && result[1], result && result[2]));
 		},
 		async loadReinforce() {
 			if (this.reinforceLoaded) return;
@@ -587,12 +648,11 @@ export default {
 					const totalDuration = item.totalDuration || item.duration || item.courseDuration || '';
 					return {
 						...item,
-						label: item.label || item.name || item.versionName || (index === 0 ? '复习加强' : '技巧绝招'),
+						label: index === 0 ? '复习加强课' : '技巧绝招课',
 						totalLessons: Number(item.totalLessons || item.lessonCount || item.total || 0),
 						totalDuration
 					};
-				})
-				.filter(item => item.totalLessons > 0 || this.durationTextSeconds(item.totalDuration) > 0);
+				});
 		},
 		resolveCourseStats(course = {}, fallbackCourse = {}) {
 			const actualLessons = this.countCourseLessons(course);
@@ -795,7 +855,7 @@ export default {
 		},
 		hasPracticeQuestions(child = {}, lesson = {}) {
 			const ids = Array.isArray(child.questionIds) && child.questionIds.length ? child.questionIds : (Array.isArray(lesson.questionIds) ? lesson.questionIds : []);
-			return ids.length > 0 || Number(child.total || lesson.total || 0) > 0;
+			return ids.length > 0;
 		},
 		practiceBankName(child = {}, lesson = {}) {
 			return String(child.questionBankName || lesson.questionBankName || '').trim();
@@ -864,7 +924,9 @@ export default {
 				return;
 			}
 			const lessonId = String(lesson.title || child.title || child.name || lesson || '').trim();
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lessonId)}&lessonId=${encodeURIComponent(lessonId)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}&categoryTitle=${encodeURIComponent('知识巩固')}&versionIndex=2&chapterIndex=${Number(chapterIndex) || 0}&lessonIndex=${Number(lessonIndex) || 0}&childIndex=${Number(childIndex)}` });
+			const knowledgeVersion = this.versions[2] || {};
+			const sourceVersionIndex = Number.isInteger(Number(knowledgeVersion._sourceIndex)) ? Number(knowledgeVersion._sourceIndex) : 2;
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(lessonId)}&lessonId=${encodeURIComponent(lessonId)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '知识巩固')}&categoryTitle=${encodeURIComponent('知识巩固')}&versionIndex=${sourceVersionIndex}&chapterIndex=${Number(chapterIndex) || 0}&lessonIndex=${Number(lessonIndex) || 0}&childIndex=${Number(childIndex)}` });
 		},
 		goActivate() {
 			this.collapseCheckinPanel();
@@ -904,7 +966,9 @@ export default {
 				return;
 			}
 			const videoLabel = this.versionIndex === 0 ? '复习加强' : '技巧绝招';
-			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(recordLabel(videoLabel))}&lessonId=${encodeURIComponent(rawTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}&versionIndex=${Number(this.versionIndex) || 0}&chapterIndex=${Number(chapterIndex) || 0}&lessonIndex=${Number(lessonIndex) || 0}&childIndex=${Number(childIndex)}` });
+			const activeVersion = this.versions[this.versionIndex] || {};
+			const sourceVersionIndex = Number.isInteger(Number(activeVersion._sourceIndex)) ? Number(activeVersion._sourceIndex) : Number(this.versionIndex) || 0;
+			uni.navigateTo({ url:`/pages/lesson/lesson?title=${encodeURIComponent(recordLabel(videoLabel))}&lessonId=${encodeURIComponent(rawTitle)}&courseId=${encodeURIComponent(this.courseId)}&courseTitle=${encodeURIComponent(this.displayCourseName)}&chapterTitle=${encodeURIComponent(chapter.title || '')}&categoryTitle=${encodeURIComponent(this.lessonCategoryTitle(this.versionIndex))}&versionIndex=${sourceVersionIndex}&chapterIndex=${Number(chapterIndex) || 0}&lessonIndex=${Number(lessonIndex) || 0}&childIndex=${Number(childIndex)}` });
 		},
 		formatCourseDate(value) {
 			const raw = value ? String(value) : '';
@@ -1122,6 +1186,16 @@ page { background:#f5f7fa; }
 	color:#fff;
 	box-shadow:0 6rpx 14rpx rgba(58,163,245,.18);
 }
+.version-empty {
+	margin: 20rpx 24rpx;
+	padding: 50rpx 28rpx;
+	border: 1rpx solid #dbe5ef;
+	border-radius: 18rpx;
+	background: #f8fafc;
+	text-align: center;
+}
+.version-empty-title { color:#23364d; font-size:30rpx; font-weight:700; }
+.version-empty-desc { margin-top:12rpx; color:#75869a; font-size:24rpx; line-height:1.6; }
 
 /* 章节 */
 .course-actions-area, .chap-list, .chap, .chap-head, .sub-row, .lesson-children { overflow-anchor:none; }
